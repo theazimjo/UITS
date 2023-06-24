@@ -1,0 +1,80 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Flutter Menu Example'),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          children: <Widget>[
+            ListTile(
+              title: Text('Item 1'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Item1Page()),
+                );
+              },
+            ),
+            ListTile(
+              title: Text('Item 2'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Item2Page()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      body: Center(
+        child: Text('Home Page'),
+      ),
+    );
+  }
+}
+
+class Item1Page extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Item 1'),
+      ),
+      body: Center(
+        child: Text('Item 1 Page'),
+      ),
+    );
+  }
+}
+
+class Item2Page extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Item 2'),
+      ),
+      body: Center(
+        child: Text('Item 2 Page'),
+      ),
+    );
+  }
+}

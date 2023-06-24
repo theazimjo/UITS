@@ -1,0 +1,105 @@
+import 'package:flutter/material.dart';
+
+class SlideshowBar extends StatefulWidget {
+  @override
+  _SlideshowBarState createState() => _SlideshowBarState();
+}
+
+class _SlideshowBarState extends State<SlideshowBar> {
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 150,
+      child: Stack(
+        children: [
+          PageView(
+            controller: _pageController,
+            onPageChanged: (int page) {
+              setState(() {
+                _currentPage = page;
+              });
+            },
+            children: [
+              Container(
+                color: Colors.red,
+              ),
+              Container(
+                color: Colors.blue,
+              ),
+              Container(
+                color: Colors.green,
+              ),
+              Container(
+                color: Colors.yellow,
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (int i = 0; i < 4; i++)
+                    GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          i,
+                          duration: Duration(milliseconds: 500),
+                          curve: Curves.ease,
+                        );
+                      },
+                      child: Container(
+                        margin: EdgeInsets.symmetric(horizontal: 4.0),
+                        width: 12.0,
+                        height: 12.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _currentPage == i
+                              ? Colors.white
+                              : Colors.grey,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Slideshow Bar Example',
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('Slideshow Bar'),
+        ),
+        body: Center(
+          child: SlideshowBar(),
+        ),
+      ),
+    );
+  }
+}

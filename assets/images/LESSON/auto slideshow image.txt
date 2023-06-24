@@ -1,0 +1,162 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:iconly/iconly.dart';
+
+class homeMenu extends StatelessWidget {
+  const homeMenu({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        Expanded(
+          child: Container(
+            margin: EdgeInsets.only(left: 20, right: 20),
+            child: Column(
+              children: [
+                AutoChangeSlideshow(),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //   children: [
+                //     Text(
+                //       "Salom !",
+                //       style: TextStyle(
+                //           fontSize: 20,
+                //           color: Colors.black,
+                //           fontWeight: FontWeight.w400),
+                //     ),
+                //     Icon(Icons.search),
+                //   ],
+                // ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+//
+// Column(
+// children: [
+// Image.asset("assets/images/mission.jpg"),
+// Column(
+// children: [
+// Container(
+// child: Row(
+// crossAxisAlignment: CrossAxisAlignment.center,
+// mainAxisAlignment: MainAxisAlignment.center,
+// children: [
+// Text(
+// "Bizning Missiya",
+// style: TextStyle(
+// fontSize: 35.0,
+// color: Colors.black,
+// ),
+// ),
+// ],
+// ),
+// ),
+// Container(
+// margin: EdgeInsets.only(top: 10.0),
+// child: Column(
+// children: [
+// Column(
+// children: [
+// Text(
+// "O'zbekistonlik IT-tadbirkorlar",
+// style: TextStyle(
+// fontSize: 19,
+// ),
+// ),
+// ],
+// ),
+// Column(
+// children: [
+// Text(
+// "global bozorda muvaffaqiyatli",
+// style: TextStyle(
+// fontSize: 19,
+// ),
+// ),
+// ],
+// ),
+// Column(
+// children: [
+// Text(
+// "faoliyat yuritishi, yurtimiz va butun",
+// style: TextStyle(
+// fontSize: 19,
+// ),
+// ),
+// ],
+// ),
+// Column(
+// children: [
+// Text(
+// "jaxonning faxriga aylanishi uchun",
+// style: TextStyle(
+// fontSize: 19,
+// ),
+// ),
+// ],
+// ),
+// Column(
+// children: [
+// Text(
+// "mexnat qilamiz!",
+// style: TextStyle(
+// fontSize: 19,
+// ),
+// ),
+// ],
+// ),
+// ],
+// ),
+// ),
+// ],
+// ),
+//
+//
+// ],
+// ),
+
+
+class AutoChangeSlideshow extends StatefulWidget {
+  @override
+  _AutoChangeSlideshowState createState() => _AutoChangeSlideshowState();
+}
+
+class _AutoChangeSlideshowState extends State<AutoChangeSlideshow> {
+  int currentIndex = 0;
+  List<String> images = [
+    'assets/images/mission.jpg',
+    'assets/images/up.jpg',
+    'assets/images/main.jpg',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    startTimer();
+  }
+
+  void startTimer() {
+    Timer.periodic(Duration(seconds: 3), (timer) {
+      setState(() {
+        currentIndex = (currentIndex + 1) % images.length;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Image.asset(
+        images[currentIndex],
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+}

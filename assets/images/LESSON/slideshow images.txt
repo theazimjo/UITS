@@ -1,0 +1,72 @@
+import 'package:flutter/material.dart';
+
+List<String> slideImages = [
+  'https://www.bing.com/images/search?view=detailV2&ccid=fzSnClvu&id=0A464DC0E56E6C50AD35FD88A3A38594EA481221&thid=OIP.fzSnClvueUiDCZNJINMWywHaEK&mediaurl=https%3a%2f%2fth.bing.com%2fth%2fid%2fR.7f34a70a5bee79488309934920d316cb%3frik%3dIRJI6pSFo6OI%252fQ%26riu%3dhttp%253a%252f%252fallpicts.in%252fwp-content%252fuploads%252f2018%252f03%252fNatural-Images-HD-1080p-Download-with-Keyhole-Arch-at-Pfeiffer-Beach.jpg%26ehk%3dJPI0MFI04N62Xtd7MT1P2sw4vJgwODLsp1EcpgvuGFo%253d%26risl%3d%26pid%3dImgRaw%26r%3d0&exph=1080&expw=1920&q=images&simid=608026477511910222&FORM=IRPRST&ck=C74D0AC5161DC374F37027F6D99057C1&selectedIndex=2',
+  'https://www.bing.com/images/search?view=detailV2&ccid=wwxK07x0&id=8957E375287CD2A89F527A027746ADC2EE6CB644&thid=OIP.wwxK07x0Umfnh0l-nrjxjgHaDg&mediaurl=https%3a%2f%2fimages.pexels.com%2fphotos%2f459225%2fpexels-photo-459225.jpeg%3fcs%3dsrgb%26dl%3ddaylight-environment-forest-459225.jpg%26fm%3djpg&cdnurl=https%3a%2f%2fth.bing.com%2fth%2fid%2fR.c30c4ad3bc745267e787497e9eb8f18e%3frik%3dRLZs7sKtRncCeg%26pid%3dImgRaw%26r%3d0&exph=2848&expw=6000&q=images&simid=608052655343172608&FORM=IRPRST&ck=B5CA5B9AF537512E8B812EE84F94CCC1&selectedIndex=7',
+  'https://www.bing.com/images/search?view=detailV2&ccid=c4MCiDFg&id=D05A5411EA64B4C5CC972E21C7A1CF270CA3FA26&thid=OIP.c4MCiDFgSGLsR_7-4-j0PwHaEK&mediaurl=https%3a%2f%2fth.bing.com%2fth%2fid%2fR.7383028831604862ec47fefee3e8f43f%3frik%3dJvqjDCfPocchLg%26riu%3dhttp%253a%252f%252fthewowstyle.com%252fwp-content%252fuploads%252f2015%252f01%252fimages-of-nature-4.jpg%26ehk%3d%252b1REJDS0cEPD0z2IP%252fddCyP9IgFz6xVpp8fyQr78SJ0%253d%26risl%3d%26pid%3dImgRaw%26r%3d0&exph=768&expw=1366&q=images&simid=608034921416493679&FORM=IRPRST&ck=A5C8464E53E6A353F832F2D07C566B51&selectedIndex=12',
+];
+
+class SlideshowWidget extends StatefulWidget {
+  @override
+  _SlideshowWidgetState createState() => _SlideshowWidgetState();
+}
+
+class _SlideshowWidgetState extends State<SlideshowWidget> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(() {
+      setState(() {
+        _currentPage = _pageController.page!.round();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 200, // Adjust the height as per your requirement
+      child: PageView.builder(
+        controller: _pageController,
+        itemCount: slideImages.length,
+        itemBuilder: (BuildContext context, int index) {
+          return Image.network(
+            slideImages[index],
+            fit: BoxFit.cover,
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Slideshow Example',
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('Slideshow Example'),
+        ),
+        body: SlideshowWidget(),
+      ),
+    );
+  }
+}
+
+
+
+void main() {
+  runApp(MyApp());
+}
