@@ -10,10 +10,10 @@ class TeamMenu extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          "Team",
+          "Beta version",
         ),
         const Icon(
-          Icons.panorama_fisheye_rounded,
+          Icons.help,
           size: 40,
         )
       ],

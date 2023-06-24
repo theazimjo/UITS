@@ -10,10 +10,10 @@ class ContactMenu extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          "Home",
+          "Beta version",
         ),
         const Icon(
-          Icons.contact_support_outlined,
+          Icons.help,
           size: 40,
         )
       ],

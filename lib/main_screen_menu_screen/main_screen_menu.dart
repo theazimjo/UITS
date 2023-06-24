@@ -68,7 +68,7 @@ class mainScreenMenu extends StatelessWidget {
                   context,
                   icon: IconlyLight.activity,
                   page: 2,
-                  label: "Services",
+                  label: "Courses",
                 ),
                 _bottomAppbarItemFive(
                   context,

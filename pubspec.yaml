@@ -66,7 +66,21 @@ flutter:
   assets:
     - assets/images/main.jpg
     - assets/images/up.jpg
-    - assets/images/mission.jpg
+    - assets/images/comp.jpg
+    - assets/icons/code.png
+    - assets/icons/code2.png
+    - assets/icons/computer.png
+    - assets/icons/jadvali.png
+    - assets/icons/sms.png
+    - assets/icons/price.png
+    - assets/icons/phone.png
+    - assets/icons/ks.jpg
+    - assets/icons/ph.jpg
+    - assets/icons/admin.jpg
+    - assets/icons/3dsmax.jpg
+    - assets/icons/front.jpg
+    - assets/icons/python.jpg
+    - assets/icons/th.jpg
   #     - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
