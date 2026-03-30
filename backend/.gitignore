@@ -1,0 +1,10 @@
+# NestJS/Backend specific
+/dist
+/node_modules
+/.nest
+/coverage
+/.env
+/*.env.*.local
+/npm-debug.log*
+/test-results.xml
+*.log
