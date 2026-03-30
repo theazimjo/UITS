@@ -34,8 +34,28 @@ export class GroupsService {
   async deleteRoom(id: number) { await this.roomRepo.delete(id); }
 
   // Groups
-  async findAllGroups() { return this.groupRepo.find({ relations: ['course', 'room', 'teacher', 'course.field'] }); }
+  async findAllGroups() { return this.groupRepo.find({ relations: ['course', 'room', 'teacher', 'course.field', 'students'] }); }
+  async findOneGroup(id: number) { return this.groupRepo.findOne({ where: { id }, relations: ['course', 'room', 'teacher', 'course.field', 'students'] }); }
   async createGroup(data: Partial<Group>) { return this.groupRepo.save(data); }
-  async updateGroup(id: number, data: Partial<Group>) { await this.groupRepo.update(id, data); return this.groupRepo.findOne({ where: { id } }); }
+  async updateGroup(id: number, data: Partial<Group>) { await this.groupRepo.update(id, data); return this.groupRepo.findOne({ where: { id }, relations: ['course', 'room', 'teacher', 'course.field', 'students'] }); }
   async deleteGroup(id: number) { await this.groupRepo.delete(id); }
+
+  async enrollStudent(groupId: number, studentId: number) {
+    const group = await this.groupRepo.findOne({ where: { id: groupId }, relations: ['students'] });
+    if (!group) throw new Error('Group not found');
+    
+    // Simple way to add to many-to-many
+    // Note: In real app, we should use StudentRepo to find the student first
+    const student = { id: studentId } as any; 
+    group.students = [...(group.students || []), student];
+    return this.groupRepo.save(group);
+  }
+
+  async unenrollStudent(groupId: number, studentId: number) {
+    const group = await this.groupRepo.findOne({ where: { id: groupId }, relations: ['students'] });
+    if (!group) throw new Error('Group not found');
+    
+    group.students = (group.students || []).filter(s => s.id !== studentId);
+    return this.groupRepo.save(group);
+  }
 }

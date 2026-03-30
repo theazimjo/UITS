@@ -1,7 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, ManyToMany, JoinTable } from 'typeorm';
 import { Course } from './course.entity';
 import { Room } from './room.entity';
 import { Staff } from '../../staff/entities/staff.entity';
+import { Student } from '../../students/entities/student.entity';
 
 @Entity()
 export class Group {
@@ -37,6 +38,10 @@ export class Group {
 
   @ManyToOne(() => Staff, { eager: true })
   teacher: Staff;
+
+  @ManyToMany(() => Student, (student) => student.groups)
+  @JoinTable()
+  students: Student[];
 
   @Column({ default: true })
   isActive: boolean;

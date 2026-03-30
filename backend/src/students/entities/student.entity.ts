@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
+import { Group } from '../../groups/entities/group.entity';
 
 @Entity()
 export class Student {
@@ -31,6 +32,9 @@ export class Student {
 
   @Column({ nullable: true })
   photo: string;
+
+  @ManyToMany(() => Group, (group) => group.students)
+  groups: Group[];
 
   @Column({ default: true })
   isActive: boolean;

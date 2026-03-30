@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Clock, MapPin, Edit2, Trash2, Calendar, BookOpen, ChevronLeft, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   createField, updateField, deleteField,
   createCourse, updateCourse, deleteCourse,
@@ -158,77 +159,78 @@ const Groups = ({
       {activeTab === 'guruhlar' && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-10">
           {groups.map(g => (
-            <div key={g.id} className="bg-[#131520] border border-white/10 rounded-2xl p-6 relative group hover:border-indigo-500/40 transition-all duration-300 shadow-xl shadow-black/20">
+            <Link to={`/groups/${g.id}`} key={g.id} className="block no-underline">
+              <div className="bg-[#131520] border border-white/10 rounded-2xl p-6 relative group hover:border-indigo-500/40 transition-all duration-300 shadow-xl shadow-black/20 h-full">
 
-              {/* Actions */}
-              <div className="absolute top-5 right-5 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                <button onClick={() => handleEdit(g, 'group')} className="p-2 bg-white/5 hover:bg-blue-500 hover:text-white text-gray-400 rounded-lg transition-colors"><Edit2 size={16} /></button>
-                <button onClick={() => handleDelete(g.id, 'group')} className="p-2 bg-white/5 hover:bg-red-500 hover:text-white text-gray-400 rounded-lg transition-colors"><Trash2 size={16} /></button>
-              </div>
-
-              {/* Card Header */}
-              <div className="flex justify-between items-start mb-6 pr-20">
-                <div>
-                  <h4 className="text-xl font-bold text-white mb-1">{g.name}</h4>
-                  <div className="flex items-center gap-2 text-sm text-indigo-400 font-medium">
-                    <BookOpen size={14} />
-                    <span>{g.course?.field?.name} / {g.course?.name}</span>
-                  </div>
+                {/* Actions */}
+                <div className="absolute top-5 right-5 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
+                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(g, 'group'); }} className="p-2 bg-white/5 hover:bg-blue-500 hover:text-white text-gray-400 rounded-lg transition-colors"><Edit2 size={16} /></button>
+                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(g.id, 'group'); }} className="p-2 bg-white/5 hover:bg-red-500 hover:text-white text-gray-400 rounded-lg transition-colors"><Trash2 size={16} /></button>
                 </div>
-                <div className="text-right hidden sm:block">
-                  <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-sm font-semibold">
-                    {parseInt(g.monthlyPrice).toLocaleString()} UZS
-                  </span>
-                </div>
-              </div>
 
-              {/* Info Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl border border-white/5">
-                  <Clock size={18} className="text-blue-400" />
+                {/* Card Header */}
+                <div className="flex justify-between items-start mb-6 pr-20">
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Vaqti</p>
-                    <p className="text-sm font-medium text-gray-200">{g.startTime} - {g.endTime}</p>
+                    <h4 className="text-xl font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">{g.name}</h4>
+                    <div className="flex items-center gap-2 text-sm text-indigo-400 font-medium">
+                      <BookOpen size={14} />
+                      <span>{g.course?.field?.name} / {g.course?.name}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl border border-white/5">
-                  <MapPin size={18} className="text-rose-400" />
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Xona</p>
-                    <p className="text-sm font-medium text-gray-200">{g.room?.name || 'Belgilanmagan'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Days */}
-              <div className="mb-6">
-                <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wider">Hafta kunlari</p>
-                <div className="flex flex-wrap gap-2">
-                  {['Dush', 'Sesh', 'Chor', 'Paysh', 'Jum', 'Shan'].map(day => (
-                    <span key={day} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${g.days.includes(day) ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'bg-white/5 text-gray-500 border border-transparent'}`}>
-                      {day}
+                  <div className="text-right hidden sm:block">
+                    <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-sm font-semibold">
+                      {parseInt(g.monthlyPrice).toLocaleString()} UZS
                     </span>
-                  ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Card Footer */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-5 border-t border-white/10 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-sm shadow-lg">
-                    {g.teacher?.name?.substring(0, 1) || 'U'}
+                {/* Info Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl border border-white/5">
+                    <Clock size={18} className="text-blue-400" />
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Vaqti</p>
+                      <p className="text-sm font-medium text-gray-200">{g.startTime} - {g.endTime}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500">O'qituvchi</p>
-                    <p className="text-sm font-medium text-gray-200">{g.teacher?.name || 'Biriktirilmagan'}</p>
+                  <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl border border-white/5">
+                    <MapPin size={18} className="text-rose-400" />
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Xona</p>
+                      <p className="text-sm font-medium text-gray-200">{g.room?.name || 'Belgilanmagan'}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-400 bg-white/5 px-3 py-1.5 rounded-lg">
-                  <Calendar size={14} />
-                  <span>{g.startDate} — {g.endDate}</span>
+
+                {/* Days - Minimized to save space if needed, or keep for detail */}
+                <div className="mb-6">
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Dush', 'Sesh', 'Chor', 'Paysh', 'Jum', 'Shan'].map(day => (
+                      <span key={day} className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${g.days.includes(day) ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'bg-white/5 text-gray-600 border border-transparent'}`}>
+                        {day}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Footer */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-5 border-t border-white/10 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-sm shadow-lg">
+                      {g.teacher?.name?.substring(0, 1) || 'U'}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">O'qituvchi</p>
+                      <p className="text-sm font-medium text-gray-200">{g.teacher?.name || 'Biriktirilmagan'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 bg-white/5 px-3 py-1.5 rounded-lg">
+                    <Calendar size={12} />
+                    <span>{g.startDate}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
           {groups.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/5 border border-dashed border-white/10 rounded-2xl">

@@ -20,6 +20,7 @@ export class StudentsController {
 
   @Get(':id')
   findOne(@Param('id') id: string): Promise<Student | null> {
+    if (isNaN(+id)) return Promise.resolve(null);
     return this.studentsService.findOne(+id);
   }
 
@@ -35,6 +36,7 @@ export class StudentsController {
 
   @Delete(':id')
   remove(@Param('id') id: string): Promise<void> {
+    if (isNaN(+id)) return Promise.resolve();
     return this.studentsService.remove(+id);
   }
 }

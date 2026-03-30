@@ -20,6 +20,7 @@ export class StaffController {
 
   @Delete(':id')
   remove(@Param('id') id: string): Promise<void> {
+    if (isNaN(+id)) return Promise.resolve();
     return this.staffService.remove(+id);
   }
 }

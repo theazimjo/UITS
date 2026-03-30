@@ -18,6 +18,7 @@ import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Staff from './pages/Staff';
 import Groups from './pages/Groups';
+import GroupDetail from './pages/GroupDetail';
 
 // Icons
 import { Wallet } from 'lucide-react';
@@ -130,6 +131,14 @@ function App() {
               fetchFields={() => getFields().then(res => setFields(res.data))} 
               fetchCourses={() => getCourses().then(res => setCourses(res.data))} 
               fetchRooms={() => getRooms().then(res => setRooms(res.data))} 
+            />
+          } />
+
+          <Route path="/groups/:id" element={
+            <GroupDetail 
+              students={students} 
+              getStudents={() => getStudents().then(res => setStudents(res.data))}
+              fetchGroups={() => getGroups().then(res => setGroups(res.data))}
             />
           } />
           
