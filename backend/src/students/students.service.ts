@@ -19,11 +19,11 @@ export class StudentsService {
   }
 
   async findAll(): Promise<Student[]> {
-    return this.studentsRepository.find();
+    return this.studentsRepository.find({ relations: ['groups'] });
   }
 
   async findOne(id: number): Promise<Student | null> {
-    return this.studentsRepository.findOne({ where: { id } });
+    return this.studentsRepository.findOne({ where: { id }, relations: ['groups'] });
   }
 
   async create(student: Partial<Student>): Promise<Student> {

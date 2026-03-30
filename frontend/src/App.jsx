@@ -19,6 +19,7 @@ import Students from './pages/Students';
 import Staff from './pages/Staff';
 import Groups from './pages/Groups';
 import GroupDetail from './pages/GroupDetail';
+import Payments from './pages/Payments';
 
 // Icons
 import { Wallet } from 'lucide-react';
@@ -145,12 +146,8 @@ function App() {
               staffList={staffList}
             />
           } />
-          
           <Route path="/payments" element={
-            <div className="h-[70vh] flex flex-col items-center justify-center text-gray-700 italic font-black uppercase tracking-[0.4em] gap-4">
-              <Wallet size={48} className="opacity-20"/>
-              <p>To'lovlar bo'limi tez orada...</p>
-            </div>
+            <Payments students={students} groups={groups} />
           } />
           
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

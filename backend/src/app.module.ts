@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
 import { StaffModule } from './staff/staff.module';
+import { PaymentsModule } from './payments/payments.module';
 import { GroupsModule } from './groups/groups.module';
 import { User } from './users/entities/user.entity';
 import { UsersService } from './users/users.service';
@@ -23,6 +24,7 @@ import * as bcrypt from 'bcrypt';
     }),
     AuthModule,
     UsersModule,
+    PaymentsModule,
     StudentsModule,
     StaffModule,
     GroupsModule,

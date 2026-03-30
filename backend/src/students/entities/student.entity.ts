@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, OneToMany } from 'typeorm';
 import { Group } from '../../groups/entities/group.entity';
+import { Payment } from '../../payments/entities/payment.entity';
 
 @Entity()
 export class Student {
@@ -38,4 +39,7 @@ export class Student {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @OneToMany(() => Payment, (payment) => payment.student)
+  payments: Payment[];
 }

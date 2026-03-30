@@ -3,9 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Users, Clock, MapPin, Calendar,
   BookOpen, Plus, Trash2, Search, UserPlus,
-  Info, Edit2
+  Info, Edit2, CreditCard, Download, ArrowRight
 } from 'lucide-react';
-import { getGroupById, enrollStudent, unenrollStudent, getStudents, updateGroup } from '../services/api';
+import { 
+  getGroupById, enrollStudent, unenrollStudent, getStudents, 
+  updateGroup, getPaymentsByGroup
+} from '../services/api';
 import Modal from '../components/common/Modal';
 
 const GroupDetail = ({ 
@@ -15,8 +18,10 @@ const GroupDetail = ({
   const { id } = useParams();
   const navigate = useNavigate();
   const [group, setGroup] = useState(null);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,7 +31,39 @@ const GroupDetail = ({
 
   useEffect(() => {
     fetchGroup();
+    fetchPayments();
   }, [id]);
+
+  const fetchPayments = async () => {
+    try {
+      const res = await getPaymentsByGroup(id);
+      setPayments(res.data);
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+    }
+  };
+
+  const handlePrevMonth = () => {
+    if (!group?.startDate) return;
+    const minMonth = group.startDate.substring(0, 7);
+    const date = new Date(selectedMonth + '-01');
+    date.setMonth(date.getMonth() - 1);
+    const newMonth = date.toISOString().substring(0, 7);
+    if (newMonth >= minMonth) {
+      setSelectedMonth(newMonth);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (!group?.endDate) return;
+    const maxMonth = group.endDate.substring(0, 7);
+    const date = new Date(selectedMonth + '-01');
+    date.setMonth(date.getMonth() + 1);
+    const newMonth = date.toISOString().substring(0, 7);
+    if (newMonth <= maxMonth) {
+      setSelectedMonth(newMonth);
+    }
+  };
 
   useEffect(() => {
     if (editFormData.startDate && editFormData.courseId) {
@@ -88,13 +125,13 @@ const GroupDetail = ({
     }
   };
 
+
   const handleEnroll = async (studentId) => {
     try {
       await enrollStudent(id, studentId);
       await fetchGroup();
       if (refreshStudents) refreshStudents();
       if (fetchGroups) fetchGroups();
-      setIsEnrollModalOpen(false);
     } catch (err) {
       console.error('Enroll error:', err);
     }
@@ -165,7 +202,7 @@ const GroupDetail = ({
           </div>
 
           <div className="flex flex-wrap gap-4">
-            <button 
+            <button
               onClick={() => setIsEditModalOpen(true)}
               className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-semibold border border-white/10 transition-all"
             >
@@ -197,16 +234,13 @@ const GroupDetail = ({
           className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'students' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
           <Users size={18} />
-          O'quvchilar ro'yxati
-          <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] ${activeTab === 'students' ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-500'}`}>
-            {group.students?.length || 0}
-          </span>
+          O'quvchilar
         </button>
       </div>
 
       {/* Content */}
       <div className="animate-fade-in">
-        {activeTab === 'info' ? (
+        {activeTab === 'info' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Info Cards */}
             <div className="bg-[#131520] border border-white/10 p-8 rounded-3xl shadow-xl shadow-black/20">
@@ -286,18 +320,66 @@ const GroupDetail = ({
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'students' && (
           <div className="bg-[#131520] border border-white/10 rounded-3xl overflow-hidden shadow-xl shadow-black/20 border-t-0 rounded-t-none">
-            <div className="p-8 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/[0.02] gap-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                Guruh o'quvchilari
-                <span className="px-3 py-1 bg-indigo-600/20 text-indigo-400 rounded-lg text-xs font-black">
-                  {group.students?.length || 0}
-                </span>
-              </h3>
+            <div className="p-8 border-b border-white/10 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white/[0.02] gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                  Guruh o'quvchilari
+                  <span className="px-3 py-1 bg-indigo-600/20 text-indigo-400 rounded-lg text-xs font-black">
+                    {group.students?.length || 0}
+                  </span>
+                </h3>
+
+                {/* Month Switcher */}
+                <div className="flex items-center gap-1 bg-[#0b0d17] p-1 rounded-xl border border-white/5 shadow-inner">
+                  <button 
+                    onClick={handlePrevMonth}
+                    className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div className="px-4 py-1.5 min-w-[140px] text-center">
+                    <span className="text-xs font-black text-indigo-400 uppercase tracking-widest whitespace-nowrap">
+                      {new Date(selectedMonth + '-01').toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={handleNextMonth}
+                    className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
+                  >
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="flex gap-4 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
+                <div className="flex-1 lg:flex-none min-w-[120px] bg-white/5 border border-white/5 p-3 rounded-2xl">
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Kutilmoqda</p>
+                  <p className="text-sm font-black text-white whitespace-nowrap">
+                    {((group.students?.length || 0) * (group.monthlyPrice || 0)).toLocaleString()} <span className="text-[10px] text-gray-500">UZS</span>
+                  </p>
+                </div>
+                <div className="flex-1 lg:flex-none min-w-[120px] bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-2xl">
+                  <p className="text-[9px] font-black text-emerald-500/50 uppercase tracking-widest mb-1">Tushdi</p>
+                  <p className="text-sm font-black text-emerald-400 whitespace-nowrap">
+                    {payments.filter(p => p.month === selectedMonth).reduce((sum, p) => sum + parseFloat(p.amount), 0).toLocaleString()} <span className="text-[10px] text-emerald-500/50">UZS</span>
+                  </p>
+                </div>
+                <div className="flex-1 lg:flex-none min-w-[120px] bg-amber-500/5 border border-amber-500/10 p-3 rounded-2xl">
+                  <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest mb-1">Qoldi</p>
+                  <p className="text-sm font-black text-amber-400 whitespace-nowrap">
+                    {(((group.students?.length || 0) * (group.monthlyPrice || 0)) - payments.filter(p => p.month === selectedMonth).reduce((sum, p) => sum + parseFloat(p.amount), 0)).toLocaleString()} <span className="text-[10px] text-amber-500/50">UZS</span>
+                  </p>
+                </div>
+              </div>
+
               <button
                 onClick={() => setIsEnrollModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
               >
                 <Plus size={18} />
                 O'quvchi qo'shish
@@ -309,43 +391,77 @@ const GroupDetail = ({
                 <thead>
                   <tr className="bg-white/[0.01] text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] border-b border-white/5">
                     <th className="px-8 py-5">O'quvchi</th>
-                    <th className="px-8 py-5">Telefon</th>
-                    <th className="px-8 py-5">Maktab / Sinf</th>
+                    <th className="px-8 py-5">ID / Ma'lumot</th>
+                    <th className="px-8 py-5">To'lov Holati</th>
                     <th className="px-8 py-5 text-right">Amallar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {group.students && group.students.length > 0 ? group.students.map(s => (
-                    <tr key={s.id} className="group hover:bg-white/[0.01] transition-colors">
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-indigo-400 font-bold border border-white/10 shadow-inner">
-                            {s.name.substring(0, 1)}
+                  {group.students && group.students.length > 0 ? group.students.map(s => {
+                    const hasPaid = payments.some(p => p.student?.id === s.id && p.month === selectedMonth);
+                    return (
+                      <tr key={s.id} className="group hover:bg-white/[0.01] transition-colors">
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-indigo-400 font-bold border border-white/10 shadow-inner">
+                              {s.name.substring(0, 1)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-200 group-hover:text-white transition-colors">{s.name}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-bold text-gray-200 group-hover:text-white transition-colors">{s.name}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">ID: {s.externalId || 'S-' + s.id}</p>
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="text-xs font-mono text-gray-500 bg-white/5 px-2 py-1 rounded w-fit">
+                            {s.externalId || 'S-' + s.id}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 text-gray-400 font-medium">{s.phone || '—'}</td>
-                      <td className="px-8 py-5">
-                        <div className="text-sm text-gray-300 font-medium">
-                          {s.schoolName || '—'}
-                          {s.classroom && <span className="text-gray-600 mx-2">|</span>}
-                          {s.classroom}
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        <button
-                          onClick={() => handleUnenroll(s.id)}
-                          className="p-2 text-gray-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
+                        </td>
+                        <td className="px-8 py-5">
+                          {(() => {
+                            const studentPayments = payments.filter(p => p.student?.id === s.id && p.month === selectedMonth);
+                            const paidAmount = studentPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+                            const monthlyPrice = parseFloat(group.monthlyPrice || 0);
+
+                            if (paidAmount >= monthlyPrice) {
+                              return (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-black border border-emerald-500/20">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  To'langan
+                                </span>
+                              );
+                            } else if (paidAmount > 0) {
+                              return (
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-black border border-amber-500/20 w-fit">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    Qisman ({paidAmount.toLocaleString()})
+                                  </span>
+                                  <p className="text-[9px] text-gray-500 font-bold ml-1">Qarz: {(monthlyPrice - paidAmount).toLocaleString()} UZS</p>
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 text-xs font-black border border-rose-500/20">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                  To'lanmagan
+                                </span>
+                              );
+                            }
+                          })()}
+                        </td>
+                        <td className="px-8 py-5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleUnenroll(s.id)}
+                              className="p-2 text-gray-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
                     <tr>
                       <td colSpan="4" className="px-8 py-20 text-center">
                         <div className="flex flex-col items-center">
@@ -369,9 +485,9 @@ const GroupDetail = ({
       </div>
 
       {/* Edit Group Modal */}
-      <Modal 
-        isOpen={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)} 
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
         title="Guruhni tahrirlash"
       >
         <form onSubmit={handleUpdateGroup} className="space-y-5 p-1">
@@ -462,6 +578,7 @@ const GroupDetail = ({
           </div>
         </form>
       </Modal>
+
 
       {/* Enroll Modal */}
       <Modal

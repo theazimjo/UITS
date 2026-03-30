@@ -37,6 +37,13 @@ export const deleteGroup = (id) => api.delete(`/groups/${id}`);
 export const enrollStudent = (groupId, studentId) => api.post(`/groups/${groupId}/enroll/${studentId}`);
 export const unenrollStudent = (groupId, studentId) => api.delete(`/groups/${groupId}/unenroll/${studentId}`);
 
+// Payments
+export const getPayments = () => api.get('/payments');
+export const getPaymentsByGroup = (groupId) => api.get(`/payments/group/${groupId}`);
+export const getPaymentsByStudentAndGroup = (studentId, groupId) => api.get(`/payments/student/${studentId}/group/${groupId}`);
+export const createPayment = (data) => api.post('/payments', data);
+export const deletePayment = (id) => api.delete(`/payments/${id}`);
+
 export const getFields = () => api.get('/groups/fields');
 export const createField = (field) => api.post('/groups/fields', field);
 export const updateField = (id, field) => api.patch(`/groups/fields/${id}`, field);
