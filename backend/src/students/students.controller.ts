@@ -28,6 +28,11 @@ export class StudentsController {
     return this.studentsService.create(student);
   }
 
+  @Delete('all/clear')
+  deleteAll() {
+    return this.studentsService.deleteAll();
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string): Promise<void> {
     return this.studentsService.remove(+id);

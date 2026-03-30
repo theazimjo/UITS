@@ -14,7 +14,7 @@ export class Student {
   @Column({ nullable: true })
   phone: string;
 
-  @Column({ nullable: true })
+  @Column({ unique: true, nullable: true })
   externalId: string; // From hikvision_id
 
   @Column({ nullable: true })
