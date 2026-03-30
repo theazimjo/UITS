@@ -34,7 +34,7 @@ export class StudentsService {
     for (const extStudent of students) {
       // Find if student already exists by hikvision_id (externalId)
       let student = await this.studentsRepository.findOne({ 
-        where: { externalId: extStudent.hikvision_id } 
+        where: { externalId: extStudent.id.toString() } 
       });
 
       if (!student) {
@@ -43,7 +43,7 @@ export class StudentsService {
 
       // Map fields
       student.name = extStudent.full_name;
-      student.externalId = extStudent.hikvision_id;
+      student.externalId = extStudent.id.toString();
       student.schoolName = extStudent.school_name;
       student.classroom = extStudent.classroom;
       student.parentName = extStudent.parent_name;
