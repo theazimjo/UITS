@@ -13,6 +13,11 @@ export class StudentsController {
     return this.studentsService.findAll();
   }
 
+  @Post('sync')
+  async sync() {
+    return this.studentsService.syncFromExternalApi();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string): Promise<Student | null> {
     return this.studentsService.findOne(+id);

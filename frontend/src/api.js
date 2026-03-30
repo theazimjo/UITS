@@ -15,6 +15,7 @@ api.interceptors.request.use((config) => {
 
 export const login = (credentials) => api.post('/auth/login', credentials);
 export const getStudents = () => api.get('/students');
+export const syncStudents = () => api.post('/students/sync');
 export const createStudent = (student) => api.post('/students', student);
 export const deleteStudent = (id) => api.delete(`/students/${id}`);
 
