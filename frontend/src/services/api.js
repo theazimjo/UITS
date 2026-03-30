@@ -18,6 +18,7 @@ export const getStudents = () => api.get('/students');
 export const syncStudents = () => api.post('/students/sync');
 export const createStudent = (student) => api.post('/students', student);
 export const deleteStudent = (id) => api.delete(`/students/${id}`);
+export const deleteAllStudents = () => api.delete('/students/all/clear');
 
 export const getStaff = () => api.get('/staff');
 export const createStaff = (staff) => api.post('/staff', staff);

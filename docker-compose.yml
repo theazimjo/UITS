@@ -28,6 +28,9 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=2255
       - DB_NAME=crm_db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       - db
     networks:
@@ -40,6 +43,9 @@ services:
     container_name: crm-frontend
     ports:
       - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
     networks:

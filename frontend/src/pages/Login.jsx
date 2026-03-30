@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { login } from './api';
+import { login } from '../services/api';
 import { LogIn, User, Lock, AlertCircle, Loader2 } from 'lucide-react';
 
 const Login = ({ onLoginSuccess }) => {
