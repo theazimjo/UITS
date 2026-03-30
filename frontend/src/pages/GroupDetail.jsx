@@ -1,35 +1,90 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ChevronLeft, Users, Clock, MapPin, Calendar, 
-  BookOpen, Plus, Trash2, Search, UserPlus, 
-  Info 
+import {
+  ChevronLeft, Users, Clock, MapPin, Calendar,
+  BookOpen, Plus, Trash2, Search, UserPlus,
+  Info, Edit2
 } from 'lucide-react';
-import { getGroupById, enrollStudent, unenrollStudent, getStudents } from '../services/api';
+import { getGroupById, enrollStudent, unenrollStudent, getStudents, updateGroup } from '../services/api';
 import Modal from '../components/common/Modal';
 
-const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) => {
+const GroupDetail = ({ 
+  students, getStudents: refreshStudents, fetchGroups,
+  fields = [], courses = [], rooms = [], staffList = []
+}) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editFormData, setEditFormData] = useState({
+    name: '', sohaId: '', courseId: '', roomId: '', teacherId: '', days: [], startTime: '', endTime: '', startDate: '', endDate: '', monthlyPrice: ''
+  });
 
   useEffect(() => {
     fetchGroup();
   }, [id]);
 
+  useEffect(() => {
+    if (editFormData.startDate && editFormData.courseId) {
+      const course = courses.find(c => c.id === parseInt(editFormData.courseId));
+      if (course) {
+        const start = new Date(editFormData.startDate);
+        const end = new Date(start.setMonth(start.getMonth() + parseInt(course.duration)));
+        setEditFormData(prev => ({
+          ...prev,
+          endDate: end.toISOString().split('T')[0],
+          monthlyPrice: course.monthlyPrice
+        }));
+      }
+    }
+  }, [editFormData.startDate, editFormData.courseId, courses]);
+
   const fetchGroup = async () => {
     try {
       setLoading(true);
       const res = await getGroupById(id);
-      setGroup(res.data);
+      const g = res.data;
+      setGroup(g);
+      // Initialize edit form when group is fetched
+      setEditFormData({
+        name: g.name,
+        sohaId: g.course?.field?.id || '',
+        courseId: g.course?.id || '',
+        roomId: g.room?.id || '',
+        teacherId: g.teacher?.id || '',
+        days: g.days || [],
+        startTime: g.startTime,
+        endTime: g.endTime,
+        startDate: g.startDate,
+        endDate: g.endDate,
+        monthlyPrice: g.monthlyPrice
+      });
     } catch (err) {
       console.error('Error fetching group:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateGroup = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...editFormData,
+        course: { id: parseInt(editFormData.courseId) },
+        room: { id: parseInt(editFormData.roomId) },
+        teacher: { id: parseInt(editFormData.teacherId) }
+      };
+      await updateGroup(id, payload);
+      await fetchGroup();
+      if (fetchGroups) fetchGroups();
+      setIsEditModalOpen(false);
+    } catch (err) {
+      console.error('Update error:', err);
     }
   };
 
@@ -68,17 +123,17 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
   );
 
   const currentStudentIds = group.students?.map(s => s.id) || [];
-  const availableStudents = students.filter(s => 
+  const availableStudents = students.filter(s =>
     !currentStudentIds.includes(s.id) &&
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="animate-fade-in p-6 lg:p-10 max-w-[1400px] mx-auto min-h-screen">
-      
+
       {/* Breadcrumbs / Back */}
       <div className="mb-8">
-        <button 
+        <button
           onClick={() => navigate('/groups')}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
         >
@@ -90,7 +145,7 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
       {/* Header Card */}
       <div className="bg-[#131520] border border-white/10 rounded-3xl p-8 mb-10 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-        
+
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-xl">
@@ -110,11 +165,14 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
           </div>
 
           <div className="flex flex-wrap gap-4">
-            <button className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-semibold border border-white/10 transition-all">
-              <Info size={18} />
+            <button 
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-semibold border border-white/10 transition-all"
+            >
+              <Edit2 size={18} />
               Guruhni tahrirlash
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('students')}
               className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-500/20 transition-all"
             >
@@ -127,19 +185,19 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-[#131520] p-1.5 rounded-2xl border border-white/10 w-fit mb-8 shadow-xl">
-        <button 
+        <button
           onClick={() => setActiveTab('info')}
           className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'info' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
           <Info size={18} />
           Umumiy ma'lumot
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('students')}
           className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'students' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
         >
           <Users size={18} />
-          O'quvchilar ro'yxati 
+          O'quvchilar ro'yxati
           <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] ${activeTab === 'students' ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-500'}`}>
             {group.students?.length || 0}
           </span>
@@ -237,7 +295,7 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
                   {group.students?.length || 0}
                 </span>
               </h3>
-              <button 
+              <button
                 onClick={() => setIsEnrollModalOpen(true)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
               >
@@ -245,7 +303,7 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
                 O'quvchi qo'shish
               </button>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -279,7 +337,7 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
                         </div>
                       </td>
                       <td className="px-8 py-5 text-right">
-                        <button 
+                        <button
                           onClick={() => handleUnenroll(s.id)}
                           className="p-2 text-gray-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                         >
@@ -293,7 +351,7 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
                         <div className="flex flex-col items-center">
                           <Users size={48} className="text-gray-700 mb-4 opacity-50" />
                           <p className="text-gray-500 font-medium">Bu guruhda hali o'quvchilar yo'q</p>
-                          <button 
+                          <button
                             onClick={() => setIsEnrollModalOpen(true)}
                             className="mt-4 text-indigo-400 hover:text-indigo-300 font-bold text-sm underline underline-offset-4 decoration-2"
                           >
@@ -310,16 +368,111 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
         )}
       </div>
 
-      {/* Enroll Modal */}
+      {/* Edit Group Modal */}
       <Modal 
-        isOpen={isEnrollModalOpen} 
-        onClose={() => setIsEnrollModalOpen(false)} 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        title="Guruhni tahrirlash"
+      >
+        <form onSubmit={handleUpdateGroup} className="space-y-5 p-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Guruh nomi</label>
+              <input type="text" value={editFormData.name} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Soha (Ota)</label>
+              <select value={editFormData.sohaId} onChange={e => setEditFormData({ ...editFormData, sohaId: e.target.value, courseId: '' })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                <option value="">Soha tanlang</option>
+                {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Yo'nalish</label>
+              <select value={editFormData.courseId} onChange={e => setEditFormData({ ...editFormData, courseId: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required disabled={!editFormData.sohaId}>
+                <option value="">Yo'nalish tanlang</option>
+                {courses.filter(c => c.fieldId === parseInt(editFormData.sohaId)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Xona</label>
+              <select value={editFormData.roomId} onChange={e => setEditFormData({ ...editFormData, roomId: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                <option value="">Xona tanlang</option>
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.name} ({r.capacity} kishi)</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">O'qituvchi</label>
+              <select value={editFormData.teacherId} onChange={e => setEditFormData({ ...editFormData, teacherId: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                <option value="">O'qituvchi tanlang</option>
+                {staffList.filter(s => {
+                  const roleName = s.role?.name?.toLowerCase() || '';
+                  return roleName.includes('teacher') || roleName.includes("o'qituvchi") || roleName.includes("o’qituvchi") || roleName.includes("o‘qituvchi") || roleName.includes("ustoz");
+                }).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Boshlanish sanasi</label>
+              <input type="date" value={editFormData.startDate} onChange={e => setEditFormData({ ...editFormData, startDate: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tugash sanasi (Avto)</label>
+              <input type="date" value={editFormData.endDate} readOnly className="w-full bg-[#131520]/50 border border-white/10 rounded-xl px-4 py-3 text-gray-400 outline-none" />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Dars kunlari</label>
+              <div className="flex flex-wrap gap-2">
+                {['Dush', 'Sesh', 'Chor', 'Paysh', 'Jum', 'Shan', 'Yak'].map(day => (
+                  <button key={day} type="button" onClick={() => {
+                    const days = editFormData.days.includes(day) ? editFormData.days.filter(d => d !== day) : [...editFormData.days, day];
+                    setEditFormData({ ...editFormData, days });
+                  }} className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${editFormData.days.includes(day) ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-[#131520] border-white/10 text-gray-400 hover:border-white/20'}`}>
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Boshlanish vaqti</label>
+              <input type="time" value={editFormData.startTime} onChange={e => setEditFormData({ ...editFormData, startTime: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tugash vaqti</label>
+              <input type="time" value={editFormData.endTime} onChange={e => setEditFormData({ ...editFormData, endTime: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Oylik to'lov (UZS)</label>
+              <input type="number" value={editFormData.monthlyPrice} onChange={e => setEditFormData({ ...editFormData, monthlyPrice: e.target.value })} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-xl font-black text-emerald-400" required />
+            </div>
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all">Bekor qilish</button>
+            <button type="submit" className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all">Saqlash</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Enroll Modal */}
+      <Modal
+        isOpen={isEnrollModalOpen}
+        onClose={() => setIsEnrollModalOpen(false)}
         title="O'quvchini guruhga qo'shish"
       >
         <div className="p-1 space-y-6">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-            <input 
+            <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -331,7 +484,7 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
 
           <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
             {availableStudents.length > 0 ? availableStudents.map(s => (
-              <div 
+              <div
                 key={s.id}
                 className="flex items-center justify-between p-4 bg-[#1a1c2a] border border-white/5 rounded-2xl hover:border-indigo-500/30 transition-all group"
               >
@@ -344,7 +497,7 @@ const GroupDetail = ({ students, getStudents: refreshStudents, fetchGroups }) =>
                     <p className="text-xs text-gray-500">{s.phone || 'Telefon yo\'q'}</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => handleEnroll(s.id)}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-xl text-xs font-bold transition-all"
                 >

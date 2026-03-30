@@ -135,10 +135,14 @@ function App() {
           } />
 
           <Route path="/groups/:id" element={
-            <GroupDetail 
-              students={students} 
+            <GroupDetail
+              students={students}
               getStudents={() => getStudents().then(res => setStudents(res.data))}
               fetchGroups={() => getGroups().then(res => setGroups(res.data))}
+              fields={fields}
+              courses={courses}
+              rooms={rooms}
+              staffList={staffList}
             />
           } />
           
