@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Phone, CreditCard, Percent, CheckCircle2, X } from 'lucide-react';
+import { Plus, Trash2, Phone, CreditCard, Percent, CheckCircle2, X, Users } from 'lucide-react';
 import { createStaff, deleteStaff, createRole } from '../services/api';
 import Modal from '../components/common/Modal';
 
@@ -31,129 +31,253 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
   };
 
   return (
-    <div className="animate-fade-in px-4 lg:px-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 mt-2">
+    <div className="animate-fade-in p-6 lg:p-10 max-w-[1600px] mx-auto min-h-screen">
+
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-1 uppercase tracking-tighter font-black italic">Xodimlar</h2>
-          <p className="text-sm text-gray-500">O'qituvchilar va ma'muriyat boshqaruvi</p>
+          <h2 className="text-3xl font-bold text-white tracking-tight">Xodimlar</h2>
+          <p className="text-sm text-gray-400 mt-2">O'qituvchilar va ma'muriyat boshqaruvini nazorat qilish</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-black uppercase bg-purple-600 hover:bg-purple-500 text-white shadow-xl shadow-purple-600/20 transition-all active:scale-95 italic">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+        >
           <Plus size={18} /> Xodim qo'shish
         </button>
       </div>
 
-      <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+      {/* Tabs and Role Actions */}
+      <div className="flex flex-wrap items-center gap-2.5 mb-8">
         {['Barchasi', ...roles.map(r => r.name)].map((roleName) => (
-          <button key={roleName} onClick={() => setActiveRoleTab(roleName)} className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border whitespace-nowrap ${activeRoleTab === roleName ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}>
+          <button
+            key={roleName}
+            onClick={() => setActiveRoleTab(roleName)}
+            className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 border ${activeRoleTab === roleName
+              ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
+              : 'bg-[#131520] border-white/10 text-gray-400 hover:text-gray-200 hover:bg-white/5'
+              }`}
+          >
             {roleName}
           </button>
         ))}
+
+        <div className="h-6 w-px bg-white/10 mx-2 hidden sm:block"></div>
+
         {showRoleInput ? (
-          <div className="flex items-center gap-2 animate-fade-in">
-            <input type="text" value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} className="glass-input px-4 py-2 rounded-xl text-xs w-32 outline-none" placeholder="Lavozim..." autoFocus />
-            <button onClick={handleAddRole} className="p-2 bg-emerald-500/20 text-emerald-500 rounded-xl hover:bg-emerald-500 hover:text-white transition-all"><CheckCircle2 size={16} /></button>
-            <button onClick={() => setShowRoleInput(false)} className="p-2 text-gray-500"><X size={16} /></button>
+          <div className="flex items-center gap-2 bg-[#131520] border border-white/10 p-1 rounded-xl animate-fade-in">
+            <input
+              type="text"
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              className="bg-transparent px-3 py-1 text-sm text-white w-32 md:w-40 outline-none placeholder-gray-600"
+              placeholder="Yangi lavozim"
+              autoFocus
+            />
+            <button onClick={handleAddRole} className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500 hover:text-white transition-colors">
+              <CheckCircle2 size={16} />
+            </button>
+            <button onClick={() => setShowRoleInput(false)} className="p-1.5 bg-white/5 text-gray-400 rounded-lg hover:bg-rose-500 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
           </div>
         ) : (
-          <button onClick={() => setShowRoleInput(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] uppercase font-black text-purple-500 hover:bg-purple-500/10 transition-all">
-            <Plus size={14} /> Lavozim qo'shish
+          <button
+            onClick={() => setShowRoleInput(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20 transition-all"
+          >
+            <Plus size={16} /> Lavozim qo'shish
           </button>
         )}
       </div>
 
-      <div className="glass-card rounded-3xl border border-white/5 p-8">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="text-[10px] text-gray-500 uppercase tracking-[0.2em] border-b border-white/5">
-              <th className="pb-4 font-bold">Xodim</th>
-              <th className="pb-4 font-bold">Ma'lumot</th>
-              <th className="pb-4 font-bold">Maosh Turi</th>
-              <th className="pb-4 font-bold">Oylik maosh / KPI</th>
-              <th className="pb-4 font-bold text-right">Amal</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {filteredStaff.map((staff) => (
-              <tr key={staff.id} className="group hover:bg-white/[0.02] transition-all">
-                <td className="py-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-black text-sm uppercase">{staff.name.substring(0, 1)}</div>
-                    <div><p className="font-bold text-gray-200 group-hover:text-indigo-400 transition-colors uppercase italic tracking-tight">{staff.name}</p><p className="text-[10px] text-gray-500 mt-1 uppercase tracking-widest font-bold">{staff.role?.name || 'Lavozim yo\'q'}</p></div>
-                  </div>
-                </td>
-                <td className="py-5 text-xs text-gray-400 font-bold font-mono italic"><Phone size={12} className="inline mr-2 text-emerald-500" /> {staff.phone || '—'}</td>
-                <td className="py-5">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm
-                    ${staff.salaryType === 'FIXED' ? 'bg-blue-500/10 text-blue-400' :
-                      staff.salaryType === 'KPI' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-500'}`}>
-                    {staff.salaryType === 'FIXED' ? 'Fiks (Oylik)' : staff.salaryType === 'KPI' ? 'KPI (%)' : 'Aralash'}
-                  </span>
-                </td>
-                <td className="py-5">
-                  <div className="space-y-1">
-                    {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
-                      <div className="text-sm text-gray-200 font-black flex items-center gap-1.5"><CreditCard size={14} className="text-blue-500" /> {staff.fixedAmount} <span className="text-[10px] text-gray-500 font-medium">UZS</span></div>
-                    )}
-                    {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
-                      <div className="text-sm text-emerald-400 font-black flex items-center gap-1.5 italic"><Percent size={14} className="text-emerald-500" /> {staff.kpiPercentage}% <span className="text-[10px] text-gray-500 italic">KPI</span></div>
-                    )}
-                  </div>
-                </td>
-                <td className="py-5 text-right">
-                  <button onClick={async () => { if (window.confirm('O\'chirmoqchisiz?')) { await deleteStaff(staff.id); fetchStaff(); } }} className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl opacity-0 group-hover:opacity-100 transition-all active:scale-90"><Trash2 size={16} /></button>
-                </td>
+      {/* Data Table */}
+      <div className="bg-[#131520] border border-white/10 rounded-2xl overflow-hidden shadow-xl shadow-black/20">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-white/[0.02] border-b border-white/10 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-4">Xodim ma'lumotlari</th>
+                <th className="px-6 py-4">Aloqa</th>
+                <th className="px-6 py-4">Maosh Turi</th>
+                <th className="px-6 py-4">Oylik maosh / KPI</th>
+                <th className="px-6 py-4 text-right">Amallar</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {filteredStaff.map((staff) => (
+                <tr key={staff.id} className="group hover:bg-white/[0.02] transition-colors duration-200">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                        {staff.name.substring(0, 1)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-200 group-hover:text-indigo-300 transition-colors">
+                          {staff.name}
+                        </p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5">
+                          {staff.role?.name || 'Lavozim belgilanmagan'}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <Phone size={14} className="text-indigo-400" />
+                      <span>{staff.phone || 'Kiritilmagan'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border
+                      ${staff.salaryType === 'FIXED' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                        staff.salaryType === 'KPI' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                      {staff.salaryType === 'FIXED' ? 'Fiks (Oylik)' : staff.salaryType === 'KPI' ? 'KPI (%)' : 'Aralash'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="space-y-1.5">
+                      {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
+                        <div className="text-sm text-gray-300 font-medium flex items-center gap-2">
+                          <CreditCard size={14} className="text-gray-500" />
+                          {parseInt(staff.fixedAmount).toLocaleString()} <span className="text-xs text-gray-500">UZS</span>
+                        </div>
+                      )}
+                      {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
+                        <div className="text-sm text-emerald-400 font-medium flex items-center gap-2">
+                          <Percent size={14} className="text-emerald-500/70" />
+                          {staff.kpiPercentage}% <span className="text-xs text-emerald-500/50">KPI</span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={async () => { if (window.confirm("Haqiqatdan ham bu xodimni o'chirmoqchimisiz?")) { await deleteStaff(staff.id); fetchStaff(); } }}
+                      className="p-2 text-gray-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                      title="O'chirish"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {/* Empty State */}
+              {filteredStaff.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <Users size={40} className="text-gray-600 mb-3" />
+                      <p className="text-gray-400 text-sm font-medium">Ushbu lavozimda xodimlar topilmadi</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Yangi xodim qo'shish">        <form onSubmit={onAddStaffSubmit} className="space-y-6">
-        <div className="relative">
-          <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-2 block ml-1">F.I.SH</label>
-          <input type="text" required value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} className="w-full glass-input rounded-2xl px-5 py-4 outline-none text-sm border-white/5 focus:border-purple-500/40" placeholder="Ali Valiev" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+      {/* MODAL */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Yangi xodim qo'shish">
+        <form onSubmit={onAddStaffSubmit} className="space-y-5 p-1">
           <div>
-            <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-2 block ml-1">Lavozimi</label>
-            <select required value={newStaff.roleId} onChange={(e) => setNewStaff({ ...newStaff, roleId: e.target.value })} className="w-full glass-input rounded-2xl px-4 py-4 outline-none text-sm bg-[#0b0d17] appearance-none cursor-pointer">
-              <option value="">Tanlang...</option>
-              {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+            <label className="text-sm font-medium text-gray-400 mb-1.5 block">F.I.SH</label>
+            <input
+              type="text" required
+              value={newStaff.name}
+              onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+              className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              placeholder="Masalan: Aliyev Vali"
+            />
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <label className="text-sm font-medium text-gray-400 mb-1.5 block">Lavozimi</label>
+              <select
+                required
+                value={newStaff.roleId}
+                onChange={(e) => setNewStaff({ ...newStaff, roleId: e.target.value })}
+                className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              >
+                <option value="" disabled>Tanlang...</option>
+                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-400 mb-1.5 block">Telefon raqam</label>
+              <input
+                type="tel"
+                value={newStaff.phone}
+                onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
+                className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                placeholder="+998 90 123 45 67"
+              />
+            </div>
+          </div>
+
           <div>
-            <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-2 block ml-1">Telefon</label>
-            <input type="tel" value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} className="w-full glass-input rounded-2xl px-5 py-4 outline-none text-sm" placeholder="+998 ..." />
-          </div>
-        </div>
-        <div>
-          <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-3 block ml-1">Maosh Turi</label>
-          <div className="grid grid-cols-3 gap-2">
-            {['FIXED', 'KPI', 'MIXED'].map(type => (
-              <button key={type} type="button" onClick={() => setNewStaff({ ...newStaff, salaryType: type })} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-tighter transition-all ${newStaff.salaryType === type ? 'bg-purple-600 text-white shadow-lg' : 'bg-white/5 text-gray-500 hover:bg-white/10'}`}>
-                {type === 'FIXED' ? 'Fiks' : type === 'KPI' ? 'KPI' : 'Aralash'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4 animate-fade-in">
-          {(newStaff.salaryType === 'FIXED' || newStaff.salaryType === 'MIXED') && (
-            <div className="animate-fade-in">
-              <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-2 block ml-1">Summa (UZS)</label>
-              <input type="number" required value={newStaff.fixedAmount} onChange={(e) => setNewStaff({ ...newStaff, fixedAmount: parseFloat(e.target.value) })} className="glass-input p-4 rounded-2xl w-full" placeholder="UZS" />
+            <label className="text-sm font-medium text-gray-400 mb-2 block">Maosh turi</label>
+            <div className="flex bg-[#131520] border border-white/10 rounded-xl p-1 gap-1">
+              {[
+                { type: 'FIXED', label: 'Fiks (Oylik)' },
+                { type: 'KPI', label: 'KPI (%)' },
+                { type: 'MIXED', label: 'Aralash' }
+              ].map(({ type, label }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setNewStaff({ ...newStaff, salaryType: type })}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${newStaff.salaryType === type
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-          )}
-          {(newStaff.salaryType === 'KPI' || newStaff.salaryType === 'MIXED') && (
-            <div className="animate-fade-in">
-              <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-2 block ml-1">KPI (%)</label>
-              <input type="number" required value={newStaff.kpiPercentage} onChange={(e) => setNewStaff({ ...newStaff, kpiPercentage: parseFloat(e.target.value) })} className="glass-input p-4 rounded-2xl w-full" placeholder="%" />
-            </div>
-          )}
-        </div>
-        <button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black py-5 rounded-[1.5rem] mt-4 shadow-2xl transition-all active:scale-95 uppercase tracking-widest text-xs italic flex items-center justify-center gap-2">
-          <CheckCircle2 size={18} /> Saqlash
-        </button>
-      </form>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {(newStaff.salaryType === 'FIXED' || newStaff.salaryType === 'MIXED') && (
+              <div className="animate-fade-in">
+                <label className="text-sm font-medium text-gray-400 mb-1.5 block">Fiks summa (UZS)</label>
+                <input
+                  type="number" required
+                  value={newStaff.fixedAmount}
+                  onChange={(e) => setNewStaff({ ...newStaff, fixedAmount: parseFloat(e.target.value) })}
+                  className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+            )}
+            {(newStaff.salaryType === 'KPI' || newStaff.salaryType === 'MIXED') && (
+              <div className="animate-fade-in">
+                <label className="text-sm font-medium text-gray-400 mb-1.5 block">KPI ulushi (%)</label>
+                <input
+                  type="number" required
+                  value={newStaff.kpiPercentage}
+                  onChange={(e) => setNewStaff({ ...newStaff, kpiPercentage: parseFloat(e.target.value) })}
+                  className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="0"
+                  min="0" max="100"
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3.5 mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20 text-base"
+          >
+            Ma'lumotlarni saqlash
+          </button>
+        </form>
       </Modal>
     </div>
   );

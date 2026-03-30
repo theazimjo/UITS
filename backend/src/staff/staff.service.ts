@@ -11,7 +11,7 @@ export class StaffService {
   ) {}
 
   async findAll(): Promise<Staff[]> {
-    return this.staffRepository.find();
+    return this.staffRepository.find({ relations: ['role'] });
   }
 
   async create(staff: Partial<Staff>): Promise<Staff> {

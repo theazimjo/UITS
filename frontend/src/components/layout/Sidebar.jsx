@@ -1,36 +1,67 @@
-                                                                                                                                                              import React from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  Users, LayoutDashboard, BookOpen, Wallet, UserSquare2, LogOut 
+import {
+  Users, LayoutDashboard, BookOpen, Wallet, UserSquare2, LogOut, Hexagon
 } from 'lucide-react';
 
 const Sidebar = ({ onLogout }) => {
+  const navItems = [
+    { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+    { to: '/groups', icon: <BookOpen size={20} />, label: 'Guruhlar' },
+    { to: '/students', icon: <Users size={20} />, label: 'Talabalar' },
+    { to: '/payments', icon: <Wallet size={20} />, label: 'To\'lovlar' },
+    { to: '/staff', icon: <UserSquare2 size={20} />, label: 'Xodimlar' },
+  ];
+
   return (
-    <aside className="w-72 glass-card border-r border-white/5 flex flex-col p-6 z-20 m-4 rounded-3xl shadow-2xl">
-      <div className="flex items-center gap-3 mb-10 px-2 lg:px-4">
-        <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-600/20">
-          <UserSquare2 className="text-white w-6 h-6" />
+    <aside className="w-[280px] bg-[#131520] border border-white/10 flex flex-col p-5 z-20 m-4 rounded-2xl shadow-2xl shadow-black/40 h-[calc(100vh-2rem)] sticky top-4 flex-shrink-0">
+
+      {/* Brand Header */}
+      <div className="flex items-center gap-3 mb-10 px-2 mt-2">
+        <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <Hexagon className="text-white w-6 h-6" fill="currentColor" fillOpacity={0.2} strokeWidth={1.5} />
         </div>
-        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 italic">UITS CRM</span>
+        <span className="text-xl font-bold text-white tracking-tight">
+          UITS <span className="text-indigo-400 font-medium">CRM</span>
+        </span>
       </div>
-      <nav className="flex-1 flex flex-col gap-3">
-        {[
-          { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-          { to: '/groups', icon: <BookOpen size={20} />, label: 'Guruhlar' },
-          { to: '/students', icon: <Users size={20} />, label: 'Talabalar' },
-          { to: '/payments', icon: <Wallet size={20} />, label: 'To\'lovlar' },
-          { to: '/staff', icon: <UserSquare2 size={20} />, label: 'Xodimlar' },
-        ].map((item) => (
-          <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-purple-600 text-white shadow-2xl shadow-purple-600/60 font-black' : 'text-gray-500 hover:text-white hover:bg-white/5 hover:translate-x-1'}`}>
-            <div className="group-hover:text-purple-400 transition-colors">{item.icon}</div>    
-            <span className="text-sm tracking-wide">{item.label}</span>
+
+      {/* Navigation Links */}
+      <nav className="flex-1 flex flex-col gap-1.5">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => `
+              flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group
+              ${isActive
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 font-medium'
+                : 'text-gray-400 hover:text-gray-100 hover:bg-white/5'
+              }
+            `}
+          >
+            {({ isActive }) => (
+              <>
+                <div className={`${isActive ? 'text-white' : 'text-gray-500 group-hover:text-indigo-400'} transition-colors duration-200`}>
+                  {item.icon}
+                </div>
+                <span className="text-sm tracking-wide">{item.label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
-      <button onClick={onLogout} className="mt-6 flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-600 hover:text-red-500 hover:bg-red-500/10 transition-all font-medium group text-left">
-        <LogOut size={20} className="group-hover:-translate-x-1" />
-        <span className="text-sm">Chiqish</span>
-      </button>
+
+      {/* Logout Button */}
+      <div className="pt-4 mt-auto border-t border-white/10">
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-200 font-medium group text-left"
+        >
+          <LogOut size={20} className="text-gray-500 group-hover:text-rose-400 transition-colors" />
+          <span className="text-sm">Tizimdan chiqish</span>
+        </button>
+      </div>
     </aside>
   );
 };

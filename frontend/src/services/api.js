@@ -31,18 +31,22 @@ export const deleteRole = (id) => api.delete(`/roles/${id}`);
 // Groups, Fields, Courses, Rooms
 export const getGroups = () => api.get('/groups');
 export const createGroup = (group) => api.post('/groups', group);
+export const updateGroup = (id, group) => api.patch(`/groups/${id}`, group);
 export const deleteGroup = (id) => api.delete(`/groups/${id}`);
 
 export const getFields = () => api.get('/groups/fields');
 export const createField = (field) => api.post('/groups/fields', field);
+export const updateField = (id, field) => api.patch(`/groups/fields/${id}`, field);
 export const deleteField = (id) => api.delete(`/groups/fields/${id}`);
 
 export const getCourses = () => api.get('/groups/courses');
 export const createCourse = (course) => api.post('/groups/courses', course);
+export const updateCourse = (id, course) => api.patch(`/groups/courses/${id}`, course);
 export const deleteCourse = (id) => api.delete(`/groups/courses/${id}`);
 
 export const getRooms = () => api.get('/groups/rooms');
 export const createRoom = (room) => api.post('/groups/rooms', room);
+export const updateRoom = (id, room) => api.patch(`/groups/rooms/${id}`, room);
 export const deleteRoom = (id) => api.delete(`/groups/rooms/${id}`);
 
 export default api;
