@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Course } from './course.entity';
 import { Room } from './room.entity';
 import { Staff } from '../../staff/entities/staff.entity';
@@ -43,6 +43,9 @@ export class Group {
 
   @OneToMany(() => Enrollment, (enrollment) => enrollment.group)
   enrollments: Enrollment[];
+
+  @CreateDateColumn()
+  createdAt: Date;
 
   @Column({
     type: 'enum',

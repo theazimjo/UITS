@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
 import { Group } from './group.entity';
 import { EnrollmentStatus } from '../enums/enrollment-status.enum';
@@ -23,4 +23,7 @@ export class Enrollment {
 
   @CreateDateColumn()
   joinedDate: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

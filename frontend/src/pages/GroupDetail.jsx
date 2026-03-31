@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Users, Clock, MapPin, Calendar,
   BookOpen, Plus, Trash2, Search, UserPlus,
-  Info, Edit2, CreditCard, Download, ArrowRight
+  Info, Edit2, CreditCard, Download, ArrowRight,
+  History, CheckCircle, XCircle, Flag, UserMinus, UserCheck
 } from 'lucide-react';
 import {
   getGroupById, enrollStudent, unenrollStudent, getStudents,
@@ -291,6 +292,13 @@ const GroupDetail = ({
           <Users size={18} />
           O'quvchilar
         </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+        >
+          <History size={18} />
+          Tarix
+        </button>
       </div>
 
       {/* Content */}
@@ -552,6 +560,93 @@ const GroupDetail = ({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="bg-[#131520] border border-white/10 rounded-3xl p-8 shadow-xl shadow-black/20 border-t-0 rounded-t-none">
+            <div className="max-w-4xl mx-auto">
+              {(() => {
+                const events = [];
+                
+                // Group Created
+                if (group.createdAt) {
+                  events.push({
+                    id: 'group-created',
+                    type: 'GROUP_CREATED',
+                    date: new Date(group.createdAt),
+                    title: 'Guruh yaratildi',
+                    description: `"${group.name}" guruhi tizimga kiritildi.`,
+                    icon: <Flag size={20} className="text-blue-400" />
+                  });
+                }
+                
+                // Enrollments
+                if (group.enrollments) {
+                  group.enrollments.forEach(en => {
+                    // Joined
+                    if (en.joinedDate) {
+                      events.push({
+                        id: `joined-${en.id}`,
+                        type: 'STUDENT_JOINED',
+                        date: new Date(en.joinedDate),
+                        title: "O'quvchi qo'shildi",
+                        description: `${en.student?.name} guruhga a'zo bo'ldi.`,
+                        icon: <UserPlus size={20} className="text-emerald-400" />
+                      });
+                    }
+                    
+                    // Left/Graduated
+                    if (en.status !== 'ACTIVE' && (en.updatedAt || en.joinedDate)) {
+                      const isDropped = en.status === 'DROPPED';
+                      events.push({
+                        id: `status-${en.id}`,
+                        type: 'STUDENT_STATUS_CHANGE',
+                        date: new Date(en.updatedAt || en.joinedDate),
+                        title: isDropped ? "O'quvchi guruhdan chiqdi / chiqarildi" : "Guruhni bitirdi",
+                        description: `${en.student?.name} holati "${getEnrollmentStatusDetails(en.status).label}" ga o'zgardi.`,
+                        icon: isDropped ? <XCircle size={20} className="text-rose-400" /> : <CheckCircle size={20} className="text-purple-400" />
+                      });
+                    }
+                  });
+                }
+                
+                // Sort descending
+                const sortedEvents = events.sort((a, b) => b.date - a.date);
+                
+                if (sortedEvents.length === 0) {
+                  return (
+                    <div className="py-20 text-center text-gray-500 italic">
+                      Hech qanday tarixiy ma'lumot topilmadi
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {sortedEvents.map((ev, idx) => (
+                      <div key={ev.id} className="relative pl-12 pb-8 group last:pb-0">
+                        {idx !== sortedEvents.length - 1 && (
+                          <div className="absolute left-[22px] top-10 bottom-0 w-[2px] bg-white/5 group-hover:bg-indigo-500/20 transition-colors"></div>
+                        )}
+                        <div className="absolute left-0 top-0 w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner z-10 group-hover:border-indigo-500/30 transition-all">
+                          {ev.icon}
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 hover:bg-white/[0.04] transition-all">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                            <h4 className="font-bold text-white tracking-tight">{ev.title}</h4>
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-1 rounded">
+                              {ev.date.toLocaleString('uz-UZ', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-gray-400 text-sm leading-relaxed">{ev.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
