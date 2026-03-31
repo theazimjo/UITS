@@ -98,4 +98,20 @@ export class GroupsController {
     if (isNaN(+id) || isNaN(+studentId)) throw new BadRequestException('Invalid ID');
     return this.groupsService.unenrollStudent(+id, +studentId);
   }
+
+  @Patch(':id/enrollment/:studentId/status')
+  updateEnrollmentStatus(
+    @Param('id') id: string, 
+    @Param('studentId') studentId: string,
+    @Body('status') status: any
+  ) {
+    if (isNaN(+id) || isNaN(+studentId)) throw new BadRequestException('Invalid ID');
+    return this.groupsService.updateEnrollmentStatus(+id, +studentId, status);
+  }
+
+  @Post(':id/complete')
+  completeGroup(@Param('id') id: string, @Body('endDate') endDate: string) {
+    if (isNaN(+id)) throw new BadRequestException('Invalid ID');
+    return this.groupsService.completeGroup(+id, endDate);
+  }
 }

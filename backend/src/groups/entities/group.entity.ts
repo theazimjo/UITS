@@ -1,9 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Course } from './course.entity';
 import { Room } from './room.entity';
 import { Staff } from '../../staff/entities/staff.entity';
-import { Student } from '../../students/entities/student.entity';
+import { Enrollment } from './enrollment.entity';
 import { Payment } from '../../payments/entities/payment.entity';
+import { GroupStatus } from '../enums/group-status.enum';
 
 @Entity()
 export class Group {
@@ -40,12 +41,15 @@ export class Group {
   @ManyToOne(() => Staff, { eager: true })
   teacher: Staff;
 
-  @ManyToMany(() => Student, (student) => student.groups)
-  @JoinTable()
-  students: Student[];
+  @OneToMany(() => Enrollment, (enrollment) => enrollment.group)
+  enrollments: Enrollment[];
 
-  @Column({ default: true })
-  isActive: boolean;
+  @Column({
+    type: 'enum',
+    enum: GroupStatus,
+    default: GroupStatus.WAITING,
+  })
+  status: GroupStatus;
 
   @OneToMany(() => Payment, (payment) => payment.group)
   payments: Payment[];

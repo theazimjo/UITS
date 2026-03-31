@@ -1,5 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, OneToMany } from 'typeorm';
-import { Group } from '../../groups/entities/group.entity';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Enrollment } from '../../groups/entities/enrollment.entity';
 import { Payment } from '../../payments/entities/payment.entity';
 
 @Entity()
@@ -34,8 +34,8 @@ export class Student {
   @Column({ nullable: true })
   photo: string;
 
-  @ManyToMany(() => Group, (group) => group.students)
-  groups: Group[];
+  @OneToMany(() => Enrollment, (enrollment) => enrollment.student)
+  enrollments: Enrollment[];
 
   @Column({ default: true })
   isActive: boolean;

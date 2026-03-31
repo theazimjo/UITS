@@ -6,9 +6,10 @@ import { Room } from './entities/room.entity';
 import { Group } from './entities/group.entity';
 import { GroupsService } from './groups.service';
 import { GroupsController } from './groups.controller';
+import { Enrollment } from './entities/enrollment.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Field, Course, Room, Group])],
+  imports: [TypeOrmModule.forFeature([Field, Course, Room, Group, Enrollment])],
   providers: [GroupsService],
   controllers: [GroupsController],
   exports: [GroupsService],

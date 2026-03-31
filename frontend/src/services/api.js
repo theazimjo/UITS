@@ -36,6 +36,8 @@ export const updateGroup = (id, group) => api.patch(`/groups/${id}`, group);
 export const deleteGroup = (id) => api.delete(`/groups/${id}`);
 export const enrollStudent = (groupId, studentId) => api.post(`/groups/${groupId}/enroll/${studentId}`);
 export const unenrollStudent = (groupId, studentId) => api.delete(`/groups/${groupId}/unenroll/${studentId}`);
+export const updateEnrollmentStatus = (groupId, studentId, status) => api.patch(`/groups/${groupId}/enrollment/${studentId}/status`, { status });
+export const completeGroup = (groupId, data) => api.post(`/groups/${groupId}/complete`, data);
 
 // Payments
 export const getPayments = () => api.get('/payments');
