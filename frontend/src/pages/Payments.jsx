@@ -78,7 +78,7 @@ const Payments = ({ students = [], groups = [] }) => {
   );
 
   const selectedStudent = students.find(s => s.id === parseInt(formData.studentId));
-  const studentGroups = groups.filter(g => g.students?.some(s => s.id === parseInt(formData.studentId)));
+  const studentGroups = groups.filter(g => g.enrollments?.some(e => (e.studentId || e.student?.id) === parseInt(formData.studentId)));
 
   return (
     <div className="animate-fade-in space-y-8">

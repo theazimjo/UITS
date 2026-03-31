@@ -14,6 +14,21 @@ export class StaffService {
     return this.staffRepository.find({ relations: ['role'] });
   }
 
+  async findOne(id: number): Promise<Staff | null> {
+    return this.staffRepository.findOne({ 
+      where: { id }, 
+      relations: [
+        'role', 
+        'groups', 
+        'groups.course', 
+        'groups.enrollments', 
+        'groups.enrollments.student',
+        'groups.payments',
+        'groups.payments.student'
+      ] 
+    });
+  }
+
   async create(staff: Partial<Staff>): Promise<Staff> {
     return this.staffRepository.save(staff);
   }

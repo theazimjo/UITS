@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Phone, CreditCard, Percent, CheckCircle2, X, Users } from 'lucide-react';
+import { Plus, Trash2, Phone, CreditCard, Percent, CheckCircle2, X, Users, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { createStaff, deleteStaff, createRole } from '../services/api';
 import Modal from '../components/common/Modal';
 
 const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
+  const navigate = useNavigate();
   const [activeRoleTab, setActiveRoleTab] = useState('Barchasi');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newStaff, setNewStaff] = useState({ name: '', roleId: '', phone: '', salaryType: 'FIXED', fixedAmount: 0, kpiPercentage: 0 });
@@ -106,7 +108,11 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
             </thead>
             <tbody className="divide-y divide-white/5">
               {filteredStaff.map((staff) => (
-                <tr key={staff.id} className="group hover:bg-white/[0.02] transition-colors duration-200">
+                <tr 
+                  key={staff.id} 
+                  onClick={() => navigate(`/staff/${staff.id}`)}
+                  className="group hover:bg-white/[0.04] transition-all duration-300 cursor-pointer border-l-2 border-transparent hover:border-indigo-500"
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
@@ -153,13 +159,9 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={async () => { if (window.confirm("Haqiqatdan ham bu xodimni o'chirmoqchimisiz?")) { await deleteStaff(staff.id); fetchStaff(); } }}
-                      className="p-2 text-gray-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-lg transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                      title="O'chirish"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex justify-end pr-2">
+                       <ChevronRight size={18} className="text-gray-600 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all" />
+                    </div>
                   </td>
                 </tr>
               ))}

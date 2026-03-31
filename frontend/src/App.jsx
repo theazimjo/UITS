@@ -20,6 +20,7 @@ import Staff from './pages/Staff';
 import Groups from './pages/Groups';
 import GroupDetail from './pages/GroupDetail';
 import Payments from './pages/Payments';
+import StaffDetail from './pages/StaffDetail';
 
 // Icons
 import { Wallet } from 'lucide-react';
@@ -118,6 +119,12 @@ function App() {
               roles={roles} 
               fetchStaff={() => getStaff().then(res => setStaffList(res.data))} 
               fetchRoles={() => getRoles().then(res => setRoles(res.data))} 
+            />
+          } />
+          
+          <Route path="/staff/:id" element={
+            <StaffDetail 
+              fetchStaff={() => getStaff().then(res => setStaffList(res.data))} 
             />
           } />
           

@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Role } from './role.entity';
+import { Group } from '../../groups/entities/group.entity';
 
 @Entity()
 export class Staff {
@@ -23,6 +24,9 @@ export class Staff {
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
   kpiPercentage: number;
+
+  @OneToMany(() => Group, (group) => group.teacher)
+  groups: Group[];
 
   @Column({ default: true })
   isActive: boolean;

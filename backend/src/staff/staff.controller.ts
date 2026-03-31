@@ -13,6 +13,12 @@ export class StaffController {
     return this.staffService.findAll();
   }
 
+  @Get(':id')
+  async findOne(@Param('id') id: string): Promise<Staff | null> {
+    if (isNaN(+id)) return null;
+    return this.staffService.findOne(+id);
+  }
+
   @Post()
   create(@Body() staff: Partial<Staff>): Promise<Staff> {
     return this.staffService.create(staff);

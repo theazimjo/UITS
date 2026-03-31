@@ -21,6 +21,7 @@ export const deleteStudent = (id) => api.delete(`/students/${id}`);
 export const deleteAllStudents = () => api.delete('/students/all/clear');
 
 export const getStaff = () => api.get('/staff');
+export const getStaffById = (id) => api.get(`/staff/${id}`);
 export const createStaff = (staff) => api.post('/staff', staff);
 export const deleteStaff = (id) => api.delete(`/staff/${id}`);
 
