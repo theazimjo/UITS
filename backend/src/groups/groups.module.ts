@@ -7,9 +7,10 @@ import { Group } from './entities/group.entity';
 import { GroupsService } from './groups.service';
 import { GroupsController } from './groups.controller';
 import { Enrollment } from './entities/enrollment.entity';
+import { GroupPhase } from './entities/group-phase.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Field, Course, Room, Group, Enrollment])],
+  imports: [TypeOrmModule.forFeature([Field, Course, Room, Group, Enrollment, GroupPhase])],
   providers: [GroupsService],
   controllers: [GroupsController],
   exports: [GroupsService],

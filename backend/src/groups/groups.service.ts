@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { Field } from './entities/field.entity';
 import { Course } from './entities/course.entity';
 import { Room } from './entities/room.entity';
@@ -8,6 +8,7 @@ import { Group } from './entities/group.entity';
 import { Enrollment } from './entities/enrollment.entity';
 import { GroupStatus } from './enums/group-status.enum';
 import { EnrollmentStatus } from './enums/enrollment-status.enum';
+import { GroupPhase } from './entities/group-phase.entity';
 
 @Injectable()
 export class GroupsService implements OnModuleInit {
@@ -17,6 +18,7 @@ export class GroupsService implements OnModuleInit {
     @InjectRepository(Room) private readonly roomRepo: Repository<Room>,
     @InjectRepository(Group) private readonly groupRepo: Repository<Group>,
     @InjectRepository(Enrollment) private readonly enrollmentRepo: Repository<Enrollment>,
+    @InjectRepository(GroupPhase) private readonly phaseRepo: Repository<GroupPhase>,
   ) {}
 
   async onModuleInit() {
@@ -52,8 +54,22 @@ export class GroupsService implements OnModuleInit {
           console.log('Migration completed.');
         }
       }
+      
+      // Phase Migration
+      const groups = await this.groupRepo.find({ relations: ['phases', 'teacher', 'course'] });
+      for (const group of groups) {
+        if (!group.phases || group.phases.length === 0) {
+          const initialPhase = this.phaseRepo.create({
+            group: { id: group.id },
+            teacher: { id: group.teacher?.id },
+            course: { id: group.course?.id },
+            startDate: group.startDate,
+          });
+          await this.phaseRepo.save(initialPhase);
+        }
+      }
     } catch (err) {
-      console.warn('Migration skipped or failed (table might be gone):', err.message);
+      console.warn('Migration skipped or failed:', err.message);
     }
   }
 
@@ -84,7 +100,7 @@ export class GroupsService implements OnModuleInit {
   async findOneGroup(id: number) { 
     return this.groupRepo.findOne({ 
       where: { id }, 
-      relations: ['course', 'room', 'teacher', 'course.field', 'enrollments', 'enrollments.student'] 
+      relations: ['course', 'room', 'teacher', 'course.field', 'enrollments', 'enrollments.student', 'phases'] 
     }); 
   }
   async createGroup(data: Partial<Group>) { return this.groupRepo.save(data); }
@@ -141,6 +157,48 @@ export class GroupsService implements OnModuleInit {
     if (!enrollment) throw new Error('Enrollment not found');
     enrollment.status = status;
     return this.enrollmentRepo.save(enrollment);
+  }
+
+  async transferGroup(id: number, data: { teacherId: number, courseId: number, startDate: string }) {
+    const group = await this.findOneGroup(id);
+    if (!group) throw new Error('Group not found');
+
+    // 1. Close current phase
+    const currentPhase = await this.phaseRepo.findOne({
+      where: { group: { id }, endDate: IsNull() }
+    });
+
+    if (currentPhase) {
+      // Calculate end date (day before new start date)
+      const newStart = new Date(data.startDate);
+      const prevEnd = new Date(newStart);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      
+      currentPhase.endDate = prevEnd.toISOString().split('T')[0];
+      await this.phaseRepo.save(currentPhase);
+    } else {
+      // If no phase exists (old group), create one for the previous state if possible
+      // But for simplicity, we'll just start fresh with the new one
+    }
+
+    // 2. Create new phase
+    const newPhase = this.phaseRepo.create({
+      group: { id },
+      teacher: { id: data.teacherId },
+      course: { id: data.courseId },
+      startDate: data.startDate,
+    });
+    await this.phaseRepo.save(newPhase);
+
+    // 3. Update Group entity
+    group.teacher = { id: data.teacherId } as any;
+    group.course = { id: data.courseId } as any;
+    group.startDate = data.startDate;
+    // We might need to recalculate endDate based on course duration, 
+    // but the user's manual transfer might have its own end date logic.
+    // For now, let's keep it simple.
+
+    return this.groupRepo.save(group);
   }
 
   async completeGroup(id: number, endDate: string) {

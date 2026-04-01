@@ -39,6 +39,7 @@ export const enrollStudent = (groupId, studentId) => api.post(`/groups/${groupId
 export const unenrollStudent = (groupId, studentId) => api.delete(`/groups/${groupId}/unenroll/${studentId}`);
 export const updateEnrollmentStatus = (groupId, studentId, status) => api.patch(`/groups/${groupId}/enrollment/${studentId}/status`, { status });
 export const completeGroup = (groupId, data) => api.post(`/groups/${groupId}/complete`, data);
+export const transferGroup = (id, data) => api.post(`/groups/${id}/action/transfer`, data);
 
 // Payments
 export const getPayments = () => api.get('/payments');

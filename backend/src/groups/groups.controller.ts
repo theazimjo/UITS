@@ -5,11 +5,22 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('groups')
 @UseGuards(JwtAuthGuard)
 export class GroupsController {
-  constructor(private readonly groupsService: GroupsService) {}
+  constructor(private readonly groupsService: GroupsService) {
+    console.log('--- GroupsController Initialized ---');
+  }
 
   @Get()
   findAllGroups() { return this.groupsService.findAllGroups(); }
 
+  @Post(':id/action/transfer')
+  async transfer(
+    @Param('id') id: string, 
+    @Body() data: { teacherId: number, courseId: number, startDate: string }
+  ) {
+    console.log('--- TRANSFER ACTION CALLED VR3 ---');
+    console.log('Group ID:', id, 'Data:', data);
+    return this.groupsService.transferGroup(+id, data);
+  }
 
   @Get('fields')
   findAllFields() { return this.groupsService.findAllFields(); }
@@ -65,28 +76,6 @@ export class GroupsController {
     return this.groupsService.deleteRoom(+id); 
   }
 
-  // Generic group routes - Must be at the bottom to avoid conflicts with static routes above
-  @Get(':id')
-  findOneGroup(@Param('id') id: string) { 
-    if (isNaN(+id)) return null;
-    return this.groupsService.findOneGroup(+id); 
-  }
-
-  @Post()
-  createGroup(@Body() data: any) { return this.groupsService.createGroup(data); }
-
-  @Delete(':id')
-  deleteGroup(@Param('id') id: string) { 
-    if (isNaN(+id)) return null;
-    return this.groupsService.deleteGroup(+id); 
-  }
-
-  @Patch(':id')
-  updateGroup(@Param('id') id: string, @Body() data: any) { 
-    if (isNaN(+id)) return null;
-    return this.groupsService.updateGroup(+id, data); 
-  }
-
   @Post(':id/enroll/:studentId')
   enrollStudent(@Param('id') id: string, @Param('studentId') studentId: string) {
     if (isNaN(+id) || isNaN(+studentId)) throw new BadRequestException('Invalid ID');
@@ -110,8 +99,28 @@ export class GroupsController {
   }
 
   @Post(':id/complete')
-  completeGroup(@Param('id') id: string, @Body('endDate') endDate: string) {
-    if (isNaN(+id)) throw new BadRequestException('Invalid ID');
+  async complete(@Param('id') id: string, @Body('endDate') endDate: string) {
     return this.groupsService.completeGroup(+id, endDate);
+  }
+
+  @Get(':id')
+  findOneGroup(@Param('id') id: string) { 
+    if (isNaN(+id)) return null;
+    return this.groupsService.findOneGroup(+id); 
+  }
+
+  @Post()
+  createGroup(@Body() data: any) { return this.groupsService.createGroup(data); }
+
+  @Delete(':id')
+  deleteGroup(@Param('id') id: string) { 
+    if (isNaN(+id)) return null;
+    return this.groupsService.deleteGroup(+id); 
+  }
+
+  @Patch(':id')
+  updateGroup(@Param('id') id: string, @Body() data: any) { 
+    if (isNaN(+id)) return null;
+    return this.groupsService.updateGroup(+id, data); 
   }
 }

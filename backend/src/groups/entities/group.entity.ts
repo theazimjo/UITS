@@ -4,6 +4,7 @@ import { Room } from './room.entity';
 import { Staff } from '../../staff/entities/staff.entity';
 import { Enrollment } from './enrollment.entity';
 import { Payment } from '../../payments/entities/payment.entity';
+import { GroupPhase } from './group-phase.entity';
 import { GroupStatus } from '../enums/group-status.enum';
 
 @Entity()
@@ -56,4 +57,7 @@ export class Group {
 
   @OneToMany(() => Payment, (payment) => payment.group)
   payments: Payment[];
+
+  @OneToMany(() => GroupPhase, (phase) => phase.group)
+  phases: GroupPhase[];
 }
