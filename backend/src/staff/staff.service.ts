@@ -39,6 +39,8 @@ export class StaffService {
     const endDate = new Date(year, monthNum, 0);
 
     let totalSalary = Number(staff.fixedAmount) || 0;
+    let totalRevenue = 0;
+    let totalKpi = 0;
     const groupBreakdown: any[] = [];
 
     // Filter groups where this staff is/was a teacher
@@ -67,7 +69,9 @@ export class StaffService {
 
           if (staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') {
             totalSalary += kpiSalary;
+            totalKpi += kpiSalary;
           }
+          totalRevenue += coursePrice * activeStudents;
 
           groupBreakdown.push({
             groupId: group.id,
@@ -88,6 +92,8 @@ export class StaffService {
       salaryType: staff.salaryType,
       fixedAmount: Number(staff.fixedAmount),
       kpiPercentage: Number(staff.kpiPercentage),
+      totalRevenue,
+      totalKpi,
       totalSalary,
       groupBreakdown
     };

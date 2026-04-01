@@ -12,6 +12,7 @@ import { GroupPhase } from './entities/group-phase.entity';
 import { Student } from '../students/entities/student.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Staff } from '../staff/entities/staff.entity';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class GroupsService implements OnModuleInit {
@@ -25,6 +26,7 @@ export class GroupsService implements OnModuleInit {
     @InjectRepository(Student) private readonly studentRepo: Repository<Student>,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Staff) private readonly staffRepo: Repository<Staff>,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   async onModuleInit() {
@@ -105,7 +107,11 @@ export class GroupsService implements OnModuleInit {
   async findOneGroup(id: number) { 
     return this.groupRepo.findOne({ 
       where: { id }, 
-      relations: ['course', 'room', 'teacher', 'course.field', 'enrollments', 'enrollments.student', 'phases'] 
+      relations: [
+        'course', 'room', 'teacher', 'course.field', 
+        'enrollments', 'enrollments.student', 
+        'phases', 'phases.teacher', 'phases.course'
+      ] 
     }); 
   }
   async createGroup(data: Partial<Group>) { return this.groupRepo.save(data); }
@@ -115,7 +121,8 @@ export class GroupsService implements OnModuleInit {
   }
   async deleteGroup(id: number) { await this.groupRepo.delete(id); }
 
-  async enrollStudent(groupId: number, studentId: number) {
+  async enrollStudent(groupId: number, studentId: number, joinedDateStr?: string) {
+    const joinedDate = joinedDateStr ? new Date(joinedDateStr) : new Date();
     const existing = await this.enrollmentRepo.findOne({
       where: { group: { id: groupId }, student: { id: studentId } },
       relations: ['student']
@@ -123,7 +130,7 @@ export class GroupsService implements OnModuleInit {
     if (existing) {
       if (existing.status !== EnrollmentStatus.ACTIVE) {
         existing.status = EnrollmentStatus.ACTIVE;
-        existing.joinedDate = new Date();
+        existing.joinedDate = joinedDate;
         return this.enrollmentRepo.save(existing);
       }
       return existing;
@@ -132,9 +139,19 @@ export class GroupsService implements OnModuleInit {
       group: { id: groupId },
       student: { id: studentId },
       status: EnrollmentStatus.ACTIVE,
-      joinedDate: new Date()
+      joinedDate: joinedDate
     });
     return this.enrollmentRepo.save(newEnrollment);
+  }
+
+  async enrollMultipleStudents(groupId: number, studentIds: number[], joinedDateStr?: string) {
+    const results: any[] = [];
+    for (const studentId of studentIds) {
+      if (studentId && !isNaN(studentId)) {
+        results.push(await this.enrollStudent(groupId, studentId, joinedDateStr));
+      }
+    }
+    return results;
   }
 
   async unenrollStudent(groupId: number, studentId: number) {
@@ -179,7 +196,22 @@ export class GroupsService implements OnModuleInit {
     group.teacher = { id: data.teacherId } as any;
     group.course = { id: data.courseId } as any;
     group.startDate = data.startDate;
-    return this.groupRepo.save(group);
+    const updated = await this.groupRepo.save(group);
+
+    // LOG HISTORY
+    await this.activityLogService.logAction({
+      action: 'GROUP_TRANSFER',
+      entityName: 'GROUP',
+      entityId: id,
+      description: `Guruh boshqa o'qituvchi/yo'nalishga o'tkazildi.`,
+      details: {
+        teacherId: data.teacherId,
+        courseId: data.courseId,
+        startDate: data.startDate
+      }
+    });
+
+    return updated;
   }
 
   async completeGroup(id: number, endDate: string) {
@@ -191,6 +223,16 @@ export class GroupsService implements OnModuleInit {
     group.status = GroupStatus.COMPLETED;
     group.endDate = endDate;
     await this.groupRepo.save(group);
+
+    // LOG HISTORY
+    await this.activityLogService.logAction({
+      action: 'GROUP_COMPLETE',
+      entityName: 'GROUP',
+      entityId: id,
+      description: `Guruh faoliyati yakunlandi.`,
+      details: { endDate }
+    });
+
     return this.findOneGroup(id);
   }
 

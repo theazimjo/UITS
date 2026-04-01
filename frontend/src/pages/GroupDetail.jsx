@@ -8,7 +8,7 @@ import {
   RefreshCw, ArrowRightCircle
 } from 'lucide-react';
 import {
-  getGroupById, enrollStudent, unenrollStudent, getStudents,
+  getGroupById, enrollStudent, enrollMultipleStudents, unenrollStudent, getStudents,
   updateGroup, getPaymentsByGroup, updateEnrollmentStatus, completeGroup,
   transferGroup
 } from '../services/api';
@@ -30,6 +30,8 @@ const GroupDetail = ({
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [enrollDate, setEnrollDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedStudents, setSelectedStudents] = useState([]);
   
   const [editFormData, setEditFormData] = useState({
     name: '', sohaId: '', courseId: '', roomId: '', teacherId: '', days: [], startTime: '', endTime: '', startDate: '', endDate: '', monthlyPrice: '', status: ''
@@ -190,13 +192,29 @@ const GroupDetail = ({
 
   const handleEnroll = async (studentId) => {
     try {
-      await enrollStudent(id, studentId);
+      await enrollStudent(id, studentId, { joinedDate: enrollDate });
       await fetchGroup(true);
       if (refreshStudents) refreshStudents();
       if (fetchGroups) fetchGroups();
       setIsEnrollModalOpen(false);
+      setEnrollDate(new Date().toISOString().split('T')[0]); // Reset
     } catch (err) {
       console.error('Enroll error:', err);
+    }
+  };
+
+  const handleEnrollMultiple = async () => {
+    if (selectedStudents.length === 0) return;
+    try {
+      await enrollMultipleStudents(id, { studentIds: selectedStudents, joinedDate: enrollDate });
+      await fetchGroup(true);
+      if (refreshStudents) refreshStudents();
+      if (fetchGroups) fetchGroups();
+      setIsEnrollModalOpen(false);
+      setSelectedStudents([]);
+      setEnrollDate(new Date().toISOString().split('T')[0]); // Reset
+    } catch (err) {
+      console.error('Enroll multiple error:', err);
     }
   };
 
@@ -464,37 +482,176 @@ const GroupDetail = ({
         )}
 
         {activeTab === 'history' && (
-          <div className="bg-[#131520] border border-white/10 rounded-3xl p-10 shadow-2xl">
-             <div className="max-w-3xl mx-auto space-y-8">
-                {(() => {
-                  const events = [];
-                  if (group.createdAt) events.push({ id:'c', date:new Date(group.createdAt), title:'Guruh yaratildi', desc:`"${group.name}" guruhi ochilib, ish boshladi.`, icon:<Flag size={18} className="text-blue-400"/>});
-                  group.enrollments?.forEach(en => {
-                    if (en.joinedDate) events.push({ id:'j-'+en.id, date:new Date(en.joinedDate), title:"Loyiha a'zosi qo'shildi", desc:`${en.student?.name} guruhga qabul qilindi.`, icon:<UserPlus size={18} className="text-emerald-400"/>});
-                    if (en.status !== 'ACTIVE') events.push({ id:'s-'+en.id, date:new Date(en.updatedAt || new Date()), title: en.status === 'DROPPED' ? "Tark etish" : "Muvaffaqiyatli bitirish", desc:`${en.student?.name} holati "${en.status}" qilib belgilandi.`, icon: en.status === 'DROPPED' ? <XCircle size={18} className="text-rose-400"/> : <CheckCircle size={18} className="text-purple-400"/>});
-                  });
-                  group.phases?.forEach(ph => {
-                    events.push({ id:'p-'+ph.id, date:new Date(ph.startDate), title: ph.endDate ? "O'tkazilgan bosqich" : "Joriy bosqich", desc:`${ph.startDate} dan boshlab ${ph.teacher?.name} tomonidan ${ph.course?.name} darsi olib borilgan.`, icon:<ArrowRightCircle size={18} className={ph.endDate ? "text-amber-500":"text-indigo-400"}/>});
-                  });
+          <div className="space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                <History size={22} className="text-indigo-400" /> Guruh tarixi
+              </h3>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                {group.phases?.length || 0} bosqich
+              </span>
+            </div>
 
-                  const sorted = events.sort((a,b) => b.date - a.date);
-                  if (sorted.length === 0) return <p className="text-center text-gray-600 py-10 italic">Tarix bo'sh</p>;
-
-                  return sorted.map((ev, i) => (
-                    <div key={ev.id} className="relative pl-12 pb-10 group last:pb-0">
-                      {i !== sorted.length - 1 && <div className="absolute left-[19px] top-8 bottom-0 w-[2px] bg-white/5 group-hover:bg-indigo-500/10 transition-colors"></div>}
-                      <div className="absolute left-0 top-0 w-10 h-10 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center z-10 group-hover:border-indigo-500/50 transition-all shadow-inner">{ev.icon}</div>
-                      <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.04] transition-all shadow-lg">
-                        <div className="flex justify-between items-center mb-3">
-                           <h4 className="font-black text-white uppercase text-xs tracking-widest">{ev.title}</h4>
-                           <span className="text-[9px] font-black text-gray-600 bg-black p-1.5 rounded-lg tracking-widest">{ev.date.toLocaleDateString()}</span>
+            {/* Phases Timeline — O'tkazishlar tarixi */}
+            {group.phases?.length > 0 && (
+              <div className="bg-[#131520] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+                <div className="px-8 py-5 border-b border-white/5 bg-white/[0.01]">
+                  <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.25em] flex items-center gap-2">
+                    <ArrowRightCircle size={14} /> O'qituvchilar va bosqichlar
+                  </h4>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {[...group.phases].sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((ph, i, arr) => (
+                    <div key={ph.id} className="px-8 py-6 flex items-start gap-6 hover:bg-white/[0.02] transition-colors">
+                      {/* Step number */}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-inner ${
+                        !ph.endDate 
+                          ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' 
+                          : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                      }`}>
+                        {i + 1}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                            !ph.endDate
+                              ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/20'
+                              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                          }`}>
+                            {!ph.endDate ? 'Joriy' : `${i + 1}-bosqich`}
+                          </span>
+                          {i > 0 && <span className="text-[9px] text-amber-500/60 font-bold uppercase">← o'tkazilgan</span>}
                         </div>
-                        <p className="text-sm text-gray-400 leading-relaxed font-medium">{ev.desc}</p>
+                        <p className="text-white font-bold text-[15px] mb-1">{ph.teacher?.name || 'Noma\'lum o\'qituvchi'}</p>
+                        <p className="text-gray-500 text-[13px]">{ph.course?.name || 'Yo\'nalish belgilanmagan'}</p>
+                      </div>
+                      {/* Dates */}
+                      <div className="text-right shrink-0">
+                        <p className="text-[11px] text-gray-400 font-mono font-bold">{ph.startDate}</p>
+                        {ph.endDate ? (
+                          <p className="text-[10px] text-amber-500/60 font-mono mt-1">→ {ph.endDate}</p>
+                        ) : (
+                          <p className="text-[10px] text-indigo-400 font-bold mt-1">hozir</p>
+                        )}
                       </div>
                     </div>
-                  ));
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Events Timeline */}
+            <div className="bg-[#131520] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+              <div className="px-8 py-5 border-b border-white/5 bg-white/[0.01]">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] flex items-center gap-2">
+                  <Calendar size={14} /> Voqealar xronologiyasi
+                </h4>
+              </div>
+              <div className="p-6">
+                {(() => {
+                  const events = [];
+
+                  // 1. Guruh yaratildi
+                  if (group.createdAt) events.push({ 
+                    id: 'c', 
+                    date: new Date(group.createdAt), 
+                    type: 'create',
+                    title: 'Guruh yaratildi', 
+                    desc: `"${group.name}" guruhi ochilib, ish boshladi.`,
+                    color: 'blue'
+                  });
+                  
+                  // 2. Guruh tugatildi
+                  if (group.status === 'COMPLETED' && group.endDate) {
+                    events.push({ 
+                      id: 'comp', 
+                      date: new Date(group.endDate), 
+                      type: 'complete',
+                      title: 'Guruh faoliyati yakunlandi', 
+                      desc: `Guruh ${group.endDate} sanasida rasman yopildi va arxivga o'tkazildi.`,
+                      color: 'purple'
+                    });
+                  }
+
+                  // 3. O'quvchilar
+                  group.enrollments?.forEach(en => {
+                    if (en.joinedDate) events.push({ 
+                      id: 'j-' + en.id, 
+                      date: new Date(en.joinedDate), 
+                      type: 'enroll',
+                      title: `${en.student?.name || 'Talaba'} qo'shildi`, 
+                      desc: `Guruhga yangi o'quvchi qabul qilindi.`,
+                      color: 'emerald'
+                    });
+                    if (en.status === 'DROPPED') events.push({ 
+                      id: 's-' + en.id, 
+                      date: new Date(en.updatedAt || new Date()), 
+                      type: 'drop',
+                      title: `${en.student?.name || 'Talaba'} tark etdi`, 
+                      desc: `O'quvchi guruhdan chiqdi.`,
+                      color: 'rose'
+                    });
+                    if (en.status === 'GRADUATED') events.push({ 
+                      id: 's-' + en.id, 
+                      date: new Date(en.updatedAt || new Date()), 
+                      type: 'graduate',
+                      title: `${en.student?.name || 'Talaba'} bitirdi`, 
+                      desc: `O'quvchi guruhni muvaffaqiyatli yakunladi.`,
+                      color: 'purple'
+                    });
+                  });
+
+                  const sorted = events.sort((a, b) => b.date - a.date);
+                  if (sorted.length === 0) return <p className="text-center text-gray-600 py-10 italic">Tarix bo'sh</p>;
+
+                  const colorMap = {
+                    blue:    { bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/20',    dot: 'bg-blue-500' },
+                    purple:  { bg: 'bg-purple-500/10',  text: 'text-purple-400',  border: 'border-purple-500/20',  dot: 'bg-purple-500' },
+                    emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', dot: 'bg-emerald-500' },
+                    rose:    { bg: 'bg-rose-500/10',    text: 'text-rose-400',    border: 'border-rose-500/20',    dot: 'bg-rose-500' },
+                    amber:   { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/20',   dot: 'bg-amber-500' },
+                  };
+
+                  return (
+                    <div className="relative">
+                      {/* Vertical line */}
+                      <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-gradient-to-b from-indigo-500/20 via-white/5 to-transparent" />
+                      
+                      <div className="space-y-1">
+                        {sorted.map((ev) => {
+                          const c = colorMap[ev.color] || colorMap.blue;
+                          return (
+                            <div key={ev.id} className="relative pl-8 py-3 group/item hover:bg-white/[0.02] rounded-xl transition-all">
+                              {/* Dot */}
+                              <div className={`absolute left-[3px] top-[18px] w-[10px] h-[10px] rounded-full ${c.dot} ring-4 ring-[#131520] z-10`} />
+                              
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className={`shrink-0 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${c.bg} ${c.text} border ${c.border}`}>
+                                    {ev.type === 'create' && '🏁'}
+                                    {ev.type === 'complete' && '✅'}
+                                    {ev.type === 'enroll' && '➕'}
+                                    {ev.type === 'drop' && '🚪'}
+                                    {ev.type === 'graduate' && '🎓'}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-[13px] font-bold text-gray-200 group-hover/item:text-white transition-colors truncate">{ev.title}</p>
+                                    <p className="text-[11px] text-gray-600 truncate">{ev.desc}</p>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-mono font-bold text-gray-600 shrink-0 tabular-nums">{ev.date.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
                 })()}
-             </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -646,27 +803,64 @@ const GroupDetail = ({
       </Modal>
 
       {/* Enroll Modal */}
-      <Modal isOpen={isEnrollModalOpen} onClose={() => setIsEnrollModalOpen(false)} title="Guruhga talaba qo'shish">
+      <Modal isOpen={isEnrollModalOpen} onClose={() => { setIsEnrollModalOpen(false); setSelectedStudents([]); }} title="Guruhga talaba qo'shish">
          <div className="space-y-5">
+            <div>
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 px-1">Qo'shilish sanasi</label>
+              <input type="date" value={enrollDate} onChange={e => setEnrollDate(e.target.value)} className="w-full bg-[#131520] border border-white/10 rounded-xl px-4 py-3.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" required />
+            </div>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input type="text" placeholder="Ism yoki ID bo'yicha qidirish..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-[#131520] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+              <input type="text" placeholder="Ism yoki ID bo'yicha qidirish..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-[#131520] border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
+            
+            {availableStudents.length > 0 && (
+              <div className="flex justify-between items-center px-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allFiltered = availableStudents.map(s => s.id);
+                    const allSelected = allFiltered.every(sid => selectedStudents.includes(sid));
+                    if (allSelected) {
+                      setSelectedStudents(prev => prev.filter(sid => !allFiltered.includes(sid)));
+                    } else {
+                      setSelectedStudents(prev => [...new Set([...prev, ...allFiltered])]);
+                    }
+                  }}
+                  className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold tracking-widest uppercase transition-colors"
+                >
+                  {availableStudents.every(s => selectedStudents.includes(s.id)) ? "Tanlovni bekor qilish" : "Filtrlanganlarni tanlash"}
+                </button>
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{selectedStudents.length} ta tanlandi</span>
+              </div>
+            )}
+
             <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                {availableStudents.map(s => (
-                 <div key={s.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] transition-all group/item">
+                 <div key={s.id} onClick={() => setSelectedStudents(prev => prev.includes(s.id) ? prev.filter(sid => sid !== s.id) : [...prev, s.id])} className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl cursor-pointer transition-all border ${selectedStudents.includes(s.id) ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/5 hover:bg-white/[0.08]'}`}>
                     <div className="flex items-center gap-4">
+                       <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${selectedStudents.includes(s.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-500 text-transparent'}`}>
+                         <CheckCircle size={14} strokeWidth={3} />
+                       </div>
                        <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold">{s.name.substring(0,1)}</div>
                        <div>
                           <p className="font-bold text-white text-sm">{s.name}</p>
                           <p className="text-[10px] text-gray-500 font-mono">ID: {s.externalId || 'S-'+s.id}</p>
                        </div>
                     </div>
-                    <button onClick={() => handleEnroll(s.id)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-indigo-500/10">Qo'shish</button>
                  </div>
                ))}
                {availableStudents.length === 0 && <p className="text-center py-10 text-gray-600 font-bold italic">Topilmadi</p>}
             </div>
+
+            {selectedStudents.length > 0 && (
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/5">
+                <button type="button" onClick={() => setSelectedStudents([])} className="px-6 py-3 text-gray-500 font-bold hover:text-white transition-colors uppercase tracking-widest text-[10px]">Bekor qilish</button>
+                <button type="button" onClick={handleEnrollMultiple} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-500/40 uppercase tracking-widest active:scale-95 transition-all">
+                  Qo'shish ({selectedStudents.length})
+                </button>
+              </div>
+            )}
          </div>
       </Modal>
 

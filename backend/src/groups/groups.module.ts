@@ -11,13 +11,15 @@ import { GroupPhase } from './entities/group-phase.entity';
 import { Student } from '../students/entities/student.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Staff } from '../staff/entities/staff.entity';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Field, Course, Room, Group, Enrollment, GroupPhase,
       Student, Payment, Staff
-    ])
+    ]),
+    ActivityLogModule,
   ],
   providers: [GroupsService],
   controllers: [GroupsController],

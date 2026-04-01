@@ -25,7 +25,7 @@ const StaffDetail = ({ fetchStaff }) => {
         setLoading(true);
         const staffRes = await getStaffById(id);
         setStaff(staffRes.data);
-        
+
         setSalaryLoading(true);
         const salaryRes = await getStaffSalary(id, currentMonth);
         setSalaryData(salaryRes.data);
@@ -66,8 +66,10 @@ const StaffDetail = ({ fetchStaff }) => {
     group.enrollments?.map(enrollment => ({
       ...enrollment.student,
       groupName: group.name,
-      groupId: group.id,
-      enrollmentStatus: enrollment.status
+      enrollmentStatus: enrollment.status,
+      isPaid: group.payments?.some(p => p.student?.id === enrollment.student?.id && p.month === currentMonth),
+      lastPayment: group.payments?.filter(p => p.student?.id === enrollment.student?.id)
+        .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())[0]
     }))
   ).filter(Boolean) || [];
 
@@ -124,28 +126,37 @@ const StaffDetail = ({ fetchStaff }) => {
             </div>
           </div>
 
-          <div className="flex bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
-            {[
-              { id: 'overview', label: "Asosiy" },
-              { id: 'students', label: "O'quvchilar", count: allStudents.length },
-              { id: 'salary', label: "Maosh" }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative px-5 py-1.5 text-[13px] font-medium rounded-md transition-all flex items-center gap-1.5 ${activeTab === tab.id
+          <div className="flex items-center gap-3">
+            <div className="flex bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
+              {[
+                { id: 'overview', label: "Asosiy" },
+                { id: 'students', label: "O'quvchilar", count: allStudents.length },
+                { id: 'salary', label: "Maosh" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative px-5 py-1.5 text-[13px] font-medium rounded-md transition-all flex items-center gap-1.5 ${activeTab === tab.id
                     ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
                     : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
-                  }`}
-              >
-                {tab.label}
-                {tab.count !== undefined && tab.count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-black/10 dark:bg-white/20' : 'bg-black/5 dark:bg-white/10'}`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
+                    }`}
+                >
+                  {tab.label}
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-black/10 dark:bg-white/20' : 'bg-black/5 dark:bg-white/10'}`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Unified Month Picker */}
+            <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
+              <button onClick={() => handleMonthChange(-1)} className="p-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-500 hover:text-black"><ChevronLeft size={16} /></button>
+              <span className="px-4 text-[12px] font-bold min-w-[110px] text-center uppercase tracking-tight">{getMonthName(currentMonth)}</span>
+              <button onClick={() => handleMonthChange(1)} className="p-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-500 hover:text-black"><ChevronRight size={16} /></button>
+            </div>
           </div>
         </div>
 
@@ -234,37 +245,31 @@ const StaffDetail = ({ fetchStaff }) => {
                 {/* macOS Finder-like Toolbar for Month Selection */}
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Maosh hisoblagich</h2>
-                  <div className="flex items-center bg-gray-200/80 dark:bg-black/40 rounded-lg border border-black/5 dark:border-white/10 overflow-hidden shadow-sm">
-                    <button onClick={() => handleMonthChange(-1)} className="px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"><ChevronLeft size={16} /></button>
-                    <span className="px-4 text-[13px] font-medium min-w-[120px] text-center">{getMonthName(selectedMonth)}</span>
-                    <button onClick={() => handleMonthChange(1)} className="px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"><ChevronRight size={16} /></button>
-                  </div>
                 </div>
 
-                {/* Salary Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Guruhlar tushumi</p>
-                    <h3 className="text-2xl font-semibold">{salaryData.revenue.toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
+                    <h3 className="text-2xl font-semibold">{(salaryData?.totalRevenue || 0).toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
                   </div>
 
                   {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
                     <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm">
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">KPI ({staff.kpiPercentage}%)</p>
-                      <h3 className="text-2xl font-semibold text-[#007aff]">{salaryData.kpi.toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
+                      <h3 className="text-2xl font-semibold text-[#007aff]">{(salaryData?.totalKpi || 0).toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
                     </div>
                   )}
 
                   {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
                     <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Fiks maosh</p>
-                      <h3 className="text-2xl font-semibold text-[#34c759]">{salaryData.fixed.toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">O'zgarmas oylik</p>
+                      <h3 className="text-2xl font-semibold text-gray-500">{(salaryData?.fixedAmount || 0).toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
                     </div>
                   )}
 
-                  <div className="bg-gradient-to-b from-[#007aff] to-[#005bb5] text-white rounded-2xl p-5 shadow-lg border border-[#004a94]">
-                    <p className="text-xs text-blue-100 mb-1.5">Yakuniy summa</p>
-                    <h3 className="text-3xl font-bold">{salaryData.total.toLocaleString()} <span className="text-xs text-blue-200 font-normal">UZS</span></h3>
+                  <div className="bg-emerald-500/10 backdrop-blur-md rounded-2xl p-5 border border-emerald-500/20 shadow-sm">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1.5 font-bold uppercase tracking-wider">Jami maosh</p>
+                    <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{(salaryData?.totalSalary || 0).toLocaleString()} <span className="text-xs font-normal">UZS</span></h3>
                   </div>
                 </div>
 
@@ -274,20 +279,26 @@ const StaffDetail = ({ fetchStaff }) => {
                     <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10">
                       <tr>
                         <th className="px-6 py-4 font-medium">Guruh nomi</th>
-                        <th className="px-6 py-4 font-medium">Jami tushum</th>
-                        <th className="px-6 py-4 font-medium">O'qituvchi ulushi</th>
+                        <th className="px-6 py-4 font-medium">O'quvchilar</th>
+                        <th className="px-6 py-4 font-medium">Guruh tushumi</th>
+                        {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
+                          <th className="px-6 py-4 font-medium text-right">O'qituvchi ulushi (KPI)</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                      {salaryData.breakdown.length > 0 ? salaryData.breakdown.map((group) => (
-                        <tr key={group.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4 font-medium">{group.name}</td>
-                          <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{group.revenue.toLocaleString()} UZS</td>
-                          <td className="px-6 py-4 font-medium text-[#007aff]">{group.kpi.toLocaleString()} UZS</td>
+                      {salaryData?.groupBreakdown?.length > 0 ? salaryData.groupBreakdown.map((group) => (
+                        <tr key={group.groupId} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                          <td className="px-6 py-4 font-medium">{group.groupName}</td>
+                          <td className="px-6 py-4 text-gray-500">{group.students} ta</td>
+                          <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{(group.students * group.coursePrice).toLocaleString()} UZS</td>
+                          {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
+                            <td className="px-6 py-4 font-medium text-[#007aff] text-right">{group.kpiSalary.toLocaleString()} UZS</td>
+                          )}
                         </tr>
                       )) : (
                         <tr>
-                          <td colSpan="3" className="px-6 py-10 text-center text-gray-400 text-[13px]">Ushbu oyda ma'lumot yo'q</td>
+                          <td colSpan="4" className="px-6 py-10 text-center text-gray-400 text-[13px]">Ushbu oyda ma'lumot yo'q</td>
                         </tr>
                       )}
                     </tbody>
@@ -310,12 +321,6 @@ const StaffDetail = ({ fetchStaff }) => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                  </div>
-
-                  <div className="flex items-center bg-white/70 dark:bg-black/30 rounded-lg border border-gray-200/50 dark:border-white/10 shadow-sm backdrop-blur-md">
-                    <button onClick={() => handleMonthChange(-1)} className="px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 border-r border-gray-200/50 dark:border-white/10"><ChevronLeft size={16} /></button>
-                    <span className="px-5 text-[13px] font-medium text-center min-w-[130px]">{getMonthName(selectedMonth)}</span>
-                    <button onClick={() => handleMonthChange(1)} className="px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10 border-l border-gray-200/50 dark:border-white/10"><ChevronRight size={16} /></button>
                   </div>
                 </div>
 

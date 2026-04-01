@@ -93,9 +93,25 @@ export class GroupsController {
   }
 
   @Post(':id/enroll/:studentId')
-  enrollStudent(@Param('id') id: string, @Param('studentId') studentId: string) {
+  enrollStudent(
+    @Param('id') id: string, 
+    @Param('studentId') studentId: string,
+    @Body() body: { joinedDate?: string }
+  ) {
     if (isNaN(+id) || isNaN(+studentId)) throw new BadRequestException('Invalid ID');
-    return this.groupsService.enrollStudent(+id, +studentId);
+    return this.groupsService.enrollStudent(+id, +studentId, body?.joinedDate);
+  }
+
+  @Post(':id/enroll-multiple')
+  enrollMultipleStudents(
+    @Param('id') id: string,
+    @Body() body: { studentIds: number[], joinedDate?: string }
+  ) {
+    if (isNaN(+id)) throw new BadRequestException('Invalid Group ID');
+    if (!body.studentIds || !Array.isArray(body.studentIds) || body.studentIds.length === 0) {
+      throw new BadRequestException('studentIds array is required');
+    }
+    return this.groupsService.enrollMultipleStudents(+id, body.studentIds, body.joinedDate);
   }
 
   @Delete(':id/unenroll/:studentId')

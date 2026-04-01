@@ -6,6 +6,7 @@ import { StudentsModule } from './students/students.module';
 import { StaffModule } from './staff/staff.module';
 import { PaymentsModule } from './payments/payments.module';
 import { GroupsModule } from './groups/groups.module';
+import { ActivityLogModule } from './activity-log/activity-log.module';
 import { User } from './users/entities/user.entity';
 import { UsersService } from './users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -28,6 +29,7 @@ import * as bcrypt from 'bcrypt';
     StudentsModule,
     StaffModule,
     GroupsModule,
+    ActivityLogModule,
   ],
 })
 export class AppModule implements OnApplicationBootstrap {
