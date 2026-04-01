@@ -135,6 +135,12 @@ export class GroupsController {
     return this.groupsService.completeGroup(+id, endDate);
   }
 
+  @Get(':id/activities')
+  getActivities(@Param('id') id: string) {
+    if (isNaN(+id)) throw new BadRequestException('Invalid group ID');
+    return this.groupsService.getActivitiesForGroup(+id);
+  }
+
   // --- GENERIC INSTANCE ROUTES (Must be LAST) ---
 
   @Get(':id')

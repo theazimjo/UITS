@@ -65,5 +65,6 @@ export const getRooms = () => api.get('/groups/rooms');
 export const createRoom = (room) => api.post('/groups/rooms', room);
 export const updateRoom = (id, room) => api.patch(`/groups/rooms/${id}`, room);
 export const deleteRoom = (id) => api.delete(`/groups/rooms/${id}`);
+export const getGroupActivities = (id) => api.get(`/groups/${id}/activities`);
 
 export default api;

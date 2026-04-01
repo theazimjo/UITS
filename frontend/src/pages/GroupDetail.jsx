@@ -10,7 +10,7 @@ import {
 import {
   getGroupById, enrollStudent, enrollMultipleStudents, unenrollStudent, getStudents,
   updateGroup, getPaymentsByGroup, updateEnrollmentStatus, completeGroup,
-  transferGroup
+  transferGroup, getGroupActivities
 } from '../services/api';
 import Modal from '../components/common/Modal';
 
@@ -22,6 +22,7 @@ const GroupDetail = ({
   const navigate = useNavigate();
   const [group, setGroup] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
@@ -137,6 +138,9 @@ const GroupDetail = ({
         courseId: g.course?.id || '',
         startDate: new Date().toISOString().split('T')[0]
       });
+
+      const actRes = await getGroupActivities(id);
+      setActivities(actRes.data || []);
     } catch (err) {
       console.error('Error fetching group:', err);
     } finally {
@@ -561,57 +565,40 @@ const GroupDetail = ({
               </div>
               <div className="p-6">
                 {(() => {
-                  const events = [];
+                  const events = activities.map(act => {
+                    let color = 'gray', title = 'O\'zgarish';
+                    let type = 'edit';
+                    
+                    if (act.action === 'GROUP_CREATE') { color = 'blue'; title = 'Guruh yaratildi'; type = 'create'; }
+                    else if (act.action === 'GROUP_EDIT') { color = 'amber'; title = 'Guruh tahrirlandi'; type = 'edit'; }
+                    else if (act.action === 'GROUP_TRANSFER') { color = 'amber'; title = 'Guruh o\'tkazildi'; type = 'transfer'; }
+                    else if (act.action === 'GROUP_COMPLETE') { color = 'purple'; title = 'Guruh tugatildi'; type = 'complete'; }
+                    else if (act.action === 'STUDENT_ENROLL') { color = 'emerald'; title = 'O\'quvchi qo\'shildi'; type = 'enroll'; }
+                    else if (act.action === 'STUDENT_ENROLL_MULTIPLE') { color = 'emerald'; title = 'Ommaviy qabul'; type = 'enroll'; }
+                    else if (act.action === 'STUDENT_UNENROLL') { color = 'rose'; title = 'Guruhdan o\'chirildi'; type = 'drop'; }
+                    else if (act.action === 'STUDENT_STATUS_EDIT') { color = 'orange'; title = 'Holat o\'zgardi'; type = 'edit'; }
 
-                  // 1. Guruh yaratildi
-                  if (group.createdAt) events.push({
-                    id: 'c',
-                    date: new Date(group.createdAt),
-                    type: 'create',
-                    title: 'Guruh yaratildi',
-                    desc: `"${group.name}" guruhi ochilib, ish boshladi.`,
-                    color: 'blue'
+                    return {
+                      id: act.id,
+                      date: new Date(act.createdAt),
+                      type: type,
+                      title: title,
+                      desc: act.description || `Guruh tarixida o'zgarish (${act.action}).`,
+                      color: color
+                    };
                   });
 
-                  // 2. Guruh tugatildi
-                  if (group.status === 'COMPLETED' && group.endDate) {
+                  // Legacy fallback for older groups before ActivityLog was added
+                  if (activities.length === 0 && group.createdAt) {
                     events.push({
-                      id: 'comp',
-                      date: new Date(group.endDate),
-                      type: 'complete',
-                      title: 'Guruh faoliyati yakunlandi',
-                      desc: `Guruh ${group.endDate} sanasida rasman yopildi va arxivga o'tkazildi.`,
-                      color: 'purple'
+                      id: 'legacy-create',
+                      date: new Date(group.createdAt),
+                      type: 'create',
+                      title: 'Guruh yaratilgan (Asosil)',
+                      desc: `"${group.name}" guruhi ro'yxatdan o'tgan. Tizimda to'liq tarix yangilanishidan oldin.`,
+                      color: 'blue'
                     });
                   }
-
-                  // 3. O'quvchilar
-                  group.enrollments?.forEach(en => {
-                    if (en.joinedDate) events.push({
-                      id: 'j-' + en.id,
-                      date: new Date(en.joinedDate),
-                      type: 'enroll',
-                      title: `${en.student?.name || 'Talaba'} qo'shildi`,
-                      desc: `Guruhga yangi o'quvchi qabul qilindi.`,
-                      color: 'emerald'
-                    });
-                    if (en.status === 'DROPPED') events.push({
-                      id: 's-' + en.id,
-                      date: new Date(en.updatedAt || new Date()),
-                      type: 'drop',
-                      title: `${en.student?.name || 'Talaba'} tark etdi`,
-                      desc: `O'quvchi guruhdan chiqdi.`,
-                      color: 'rose'
-                    });
-                    if (en.status === 'GRADUATED') events.push({
-                      id: 's-' + en.id,
-                      date: new Date(en.updatedAt || new Date()),
-                      type: 'graduate',
-                      title: `${en.student?.name || 'Talaba'} bitirdi`,
-                      desc: `O'quvchi guruhni muvaffaqiyatli yakunladi.`,
-                      color: 'purple'
-                    });
-                  });
 
                   const sorted = events.sort((a, b) => b.date - a.date);
                   if (sorted.length === 0) return <p className="text-center text-gray-600 py-10 italic">Tarix bo'sh</p>;
@@ -622,6 +609,8 @@ const GroupDetail = ({
                     emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', dot: 'bg-emerald-500' },
                     rose: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20', dot: 'bg-rose-500' },
                     amber: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', dot: 'bg-amber-500' },
+                    orange: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', dot: 'bg-orange-500' },
+                    gray: { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20', dot: 'bg-gray-500' },
                   };
 
                   return (
@@ -631,7 +620,7 @@ const GroupDetail = ({
 
                       <div className="space-y-1">
                         {sorted.map((ev) => {
-                          const c = colorMap[ev.color] || colorMap.blue;
+                          const c = colorMap[ev.color] || colorMap.gray;
                           return (
                             <div key={ev.id} className="relative pl-8 py-3 group/item hover:bg-white/[0.02] rounded-xl transition-all">
                               {/* Dot */}
@@ -639,19 +628,23 @@ const GroupDetail = ({
 
                               <div className="flex items-center justify-between gap-4">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <span className={`shrink-0 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${c.bg} ${c.text} border ${c.border}`}>
+                                  <span className={`shrink-0 flex items-center justify-center w-7 h-7 rounded-lg text-[12px] font-black ${c.bg} ${c.text} border ${c.border}`}>
                                     {ev.type === 'create' && '🏁'}
                                     {ev.type === 'complete' && '✅'}
                                     {ev.type === 'enroll' && '➕'}
                                     {ev.type === 'drop' && '🚪'}
                                     {ev.type === 'graduate' && '🎓'}
+                                    {ev.type === 'edit' && '✏️'}
+                                    {ev.type === 'transfer' && '🔀'}
                                   </span>
                                   <div className="min-w-0">
                                     <p className="text-[13px] font-bold text-gray-200 group-hover/item:text-white transition-colors truncate">{ev.title}</p>
                                     <p className="text-[11px] text-gray-600 truncate">{ev.desc}</p>
                                   </div>
                                 </div>
-                                <span className="text-[10px] font-mono font-bold text-gray-600 shrink-0 tabular-nums">{ev.date.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                <span className="text-[10px] font-mono font-bold text-gray-500 shrink-0 tabular-nums">
+                                  {ev.date.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
                               </div>
                             </div>
                           );

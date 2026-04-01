@@ -114,9 +114,14 @@ export class GroupsService implements OnModuleInit {
       ] 
     }); 
   }
-  async createGroup(data: Partial<Group>) { return this.groupRepo.save(data); }
+  async createGroup(data: Partial<Group>) { 
+    const g = await this.groupRepo.save(data); 
+    await this.activityLogService.logAction({ action: 'GROUP_CREATE', entityName: 'GROUP', entityId: g.id, description: `Yangi "${g.name}" guruhi yaratildi.` });
+    return g;
+  }
   async updateGroup(id: number, data: Partial<Group>) { 
     await this.groupRepo.update(id, data); 
+    await this.activityLogService.logAction({ action: 'GROUP_EDIT', entityName: 'GROUP', entityId: id, description: `Guruh parametrlari tahrirlandi.` });
     return this.findOneGroup(id);
   }
   async deleteGroup(id: number) { await this.groupRepo.delete(id); }
@@ -141,7 +146,10 @@ export class GroupsService implements OnModuleInit {
       status: EnrollmentStatus.ACTIVE,
       joinedDate: joinedDate
     });
-    return this.enrollmentRepo.save(newEnrollment);
+    const saved = await this.enrollmentRepo.save(newEnrollment);
+    const st = await this.studentRepo.findOne({ where: { id: studentId } });
+    await this.activityLogService.logAction({ action: 'STUDENT_ENROLL', entityName: 'GROUP', entityId: groupId, description: `Talaba "${st?.name || 'ID '+studentId}" guruhga biriktirildi.` });
+    return saved;
   }
 
   async enrollMultipleStudents(groupId: number, studentIds: number[], joinedDateStr?: string) {
@@ -151,6 +159,7 @@ export class GroupsService implements OnModuleInit {
         results.push(await this.enrollStudent(groupId, studentId, joinedDateStr));
       }
     }
+    await this.activityLogService.logAction({ action: 'STUDENT_ENROLL_MULTIPLE', entityName: 'GROUP', entityId: groupId, description: `${results.length} ta o'quvchilar guruhga ommaviy biriktirildi.` });
     return results;
   }
 
@@ -160,6 +169,8 @@ export class GroupsService implements OnModuleInit {
     });
     if (enrollment) {
       enrollment.status = EnrollmentStatus.DROPPED;
+      const st = await this.studentRepo.findOne({ where: { id: studentId } });
+      await this.activityLogService.logAction({ action: 'STUDENT_UNENROLL', entityName: 'GROUP', entityId: groupId, description: `Talaba "${st?.name || 'ID '+studentId}" guruhdan chetlashtirildi (Status DROPPED).` });
       return this.enrollmentRepo.save(enrollment);
     }
   }
@@ -170,6 +181,8 @@ export class GroupsService implements OnModuleInit {
     });
     if (!enrollment) throw new Error('Enrollment not found');
     enrollment.status = status;
+    const st = await this.studentRepo.findOne({ where: { id: studentId } });
+    await this.activityLogService.logAction({ action: 'STUDENT_STATUS_EDIT', entityName: 'GROUP', entityId: groupId, description: `Talaba "${st?.name || 'ID '+studentId}" holati "${status}" ga o'zgartirildi.` });
     return this.enrollmentRepo.save(enrollment);
   }
 
@@ -248,14 +261,24 @@ export class GroupsService implements OnModuleInit {
       ];
       
       for (const table of tables) {
-        await this.groupRepo.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`);
+        try {
+          // Double quotes for identifiers containing uppercase or reserved words
+          await this.groupRepo.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`);
+          console.log(`Cleared ${table}`);
+        } catch (e) {
+          console.warn(`Could not clear ${table}: ${e.message}`);
+        }
       }
       
       console.log('--- SYSTEM DATA CLEARED SUCCESSFULLY ---');
-      return { success: true, message: 'All data cleared' };
+      return { message: 'All data effectively cleared' };
     } catch (err) {
-      console.error('FAILED TO CLEAR DATA:', err);
+      console.error('CRITICAL CLEAR FAIL:', err.message);
       throw err;
     }
+  }
+
+  async getActivitiesForGroup(groupId: number) {
+    return this.activityLogService.findByEntity('GROUP', groupId);
   }
 }
