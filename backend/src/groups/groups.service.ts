@@ -9,6 +9,9 @@ import { Enrollment } from './entities/enrollment.entity';
 import { GroupStatus } from './enums/group-status.enum';
 import { EnrollmentStatus } from './enums/enrollment-status.enum';
 import { GroupPhase } from './entities/group-phase.entity';
+import { Student } from '../students/entities/student.entity';
+import { Payment } from '../payments/entities/payment.entity';
+import { Staff } from '../staff/entities/staff.entity';
 
 @Injectable()
 export class GroupsService implements OnModuleInit {
@@ -19,12 +22,14 @@ export class GroupsService implements OnModuleInit {
     @InjectRepository(Group) private readonly groupRepo: Repository<Group>,
     @InjectRepository(Enrollment) private readonly enrollmentRepo: Repository<Enrollment>,
     @InjectRepository(GroupPhase) private readonly phaseRepo: Repository<GroupPhase>,
+    @InjectRepository(Student) private readonly studentRepo: Repository<Student>,
+    @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
+    @InjectRepository(Staff) private readonly staffRepo: Repository<Staff>,
   ) {}
 
   async onModuleInit() {
     try {
       // One-time migration: ManyToMany -> Enrollment
-      // Check if old join table exists and has data
       const checkTable = await this.groupRepo.query(`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
@@ -69,7 +74,7 @@ export class GroupsService implements OnModuleInit {
         }
       }
     } catch (err) {
-      console.warn('Migration skipped or failed:', err.message);
+      // console.warn('Migration skipped or failed:', err.message);
     }
   }
 
@@ -111,36 +116,28 @@ export class GroupsService implements OnModuleInit {
   async deleteGroup(id: number) { await this.groupRepo.delete(id); }
 
   async enrollStudent(groupId: number, studentId: number) {
-    // Check if enrollment already exists (even if DROPPED)
     const existing = await this.enrollmentRepo.findOne({
-      where: { 
-        group: { id: groupId }, 
-        student: { id: studentId } 
-      },
+      where: { group: { id: groupId }, student: { id: studentId } },
       relations: ['student']
     });
-
     if (existing) {
       if (existing.status !== EnrollmentStatus.ACTIVE) {
         existing.status = EnrollmentStatus.ACTIVE;
-        existing.joinedDate = new Date(); // Reset joined date to now
+        existing.joinedDate = new Date();
         return this.enrollmentRepo.save(existing);
       }
       return existing;
     }
-
     const newEnrollment = this.enrollmentRepo.create({
       group: { id: groupId },
       student: { id: studentId },
       status: EnrollmentStatus.ACTIVE,
       joinedDate: new Date()
     });
-
     return this.enrollmentRepo.save(newEnrollment);
   }
 
   async unenrollStudent(groupId: number, studentId: number) {
-    // Repurposed to mark as DROPPED instead of hard delete
     const enrollment = await this.enrollmentRepo.findOne({
       where: { group: { id: groupId }, student: { id: studentId } }
     });
@@ -162,26 +159,16 @@ export class GroupsService implements OnModuleInit {
   async transferGroup(id: number, data: { teacherId: number, courseId: number, startDate: string }) {
     const group = await this.findOneGroup(id);
     if (!group) throw new Error('Group not found');
-
-    // 1. Close current phase
     const currentPhase = await this.phaseRepo.findOne({
       where: { group: { id }, endDate: IsNull() }
     });
-
     if (currentPhase) {
-      // Calculate end date (day before new start date)
       const newStart = new Date(data.startDate);
       const prevEnd = new Date(newStart);
       prevEnd.setDate(prevEnd.getDate() - 1);
-      
       currentPhase.endDate = prevEnd.toISOString().split('T')[0];
       await this.phaseRepo.save(currentPhase);
-    } else {
-      // If no phase exists (old group), create one for the previous state if possible
-      // But for simplicity, we'll just start fresh with the new one
     }
-
-    // 2. Create new phase
     const newPhase = this.phaseRepo.create({
       group: { id },
       teacher: { id: data.teacherId },
@@ -189,15 +176,9 @@ export class GroupsService implements OnModuleInit {
       startDate: data.startDate,
     });
     await this.phaseRepo.save(newPhase);
-
-    // 3. Update Group entity
     group.teacher = { id: data.teacherId } as any;
     group.course = { id: data.courseId } as any;
     group.startDate = data.startDate;
-    // We might need to recalculate endDate based on course duration, 
-    // but the user's manual transfer might have its own end date logic.
-    // For now, let's keep it simple.
-
     return this.groupRepo.save(group);
   }
 
@@ -207,12 +188,32 @@ export class GroupsService implements OnModuleInit {
       relations: ['enrollments']
     });
     if (!group) throw new Error('Group not found');
-
-    // Update group status and end date
     group.status = GroupStatus.COMPLETED;
     group.endDate = endDate;
     await this.groupRepo.save(group);
-
     return this.findOneGroup(id);
+  }
+
+  async clearAllData() {
+    console.log('--- CLEAR ALL DATA V5 START ---');
+    console.warn('--- CLEARING ALL SYSTEM DATA (CASCADE) ---');
+    try {
+      // TRUNCATE is much more robust for clearing entire tables
+      const tables = [
+        'payment', 'enrollment', 'group_phase', 'group', 
+        'student', 'staff', 'course', 'room', 'field',
+        'group_students_student'
+      ];
+      
+      for (const table of tables) {
+        await this.groupRepo.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`);
+      }
+      
+      console.log('--- SYSTEM DATA CLEARED SUCCESSFULLY ---');
+      return { success: true, message: 'All data cleared' };
+    } catch (err) {
+      console.error('FAILED TO CLEAR DATA:', err);
+      throw err;
+    }
   }
 }

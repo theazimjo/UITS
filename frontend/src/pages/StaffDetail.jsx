@@ -4,9 +4,9 @@ import {
   User, Phone, CreditCard, BookOpen,
   ChevronLeft, Calendar, Clock, MapPin, Trash2,
   Users, Search, CheckCircle2, AlertCircle,
-  ChevronRight, Percent
+  ChevronRight, Percent, TrendingUp, Wallet
 } from 'lucide-react';
-import { getStaffById, deleteStaff } from '../services/api';
+import { getStaffById, deleteStaff, getStaffSalary } from '../services/api';
 
 const StaffDetail = ({ fetchStaff }) => {
   const { id } = useParams();
@@ -15,40 +15,43 @@ const StaffDetail = ({ fetchStaff }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [salaryData, setSalaryData] = useState(null);
+  const [salaryLoading, setSalaryLoading] = useState(true);
 
   useEffect(() => {
-    fetchStaffDetail();
-  }, [id]);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const staffRes = await getStaffById(id);
+        setStaff(staffRes.data);
+        
+        setSalaryLoading(true);
+        const salaryRes = await getStaffSalary(id, currentMonth);
+        setSalaryData(salaryRes.data);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
+        setSalaryLoading(false);
+      }
+    };
+    fetchData();
+  }, [id, currentMonth]);
 
   const handleMonthChange = (direction) => {
-    const [year, month] = selectedMonth.split('-').map(Number);
+    const [year, month] = currentMonth.split('-').map(Number);
     const date = new Date(year, month - 1);
     date.setMonth(date.getMonth() + direction);
 
     const newYear = date.getFullYear();
     const newMonth = String(date.getMonth() + 1).padStart(2, '0');
-    setSelectedMonth(`${newYear}-${newMonth}`);
+    setCurrentMonth(`${newYear}-${newMonth}`);
   };
 
   const getMonthName = (monthStr) => {
     const [year, month] = monthStr.split('-').map(Number);
     return new Date(year, month - 1).toLocaleString('uz-UZ', { month: 'long', year: 'numeric' });
-  };
-
-  const fetchStaffDetail = async () => {
-    try {
-      setLoading(true);
-      const res = await getStaffById(id);
-      setStaff(res.data);
-    } catch (err) {
-      console.error('Error fetching staff detail:', err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleDelete = async () => {
@@ -59,47 +62,14 @@ const StaffDetail = ({ fetchStaff }) => {
     }
   };
 
-  const activeGroupsInMonth = staff?.groups?.filter(group => {
-    const groupStartMonth = group.startDate?.slice(0, 7);
-    const groupEndMonth = group.endDate?.slice(0, 7);
-    const isStarted = !groupStartMonth || selectedMonth >= groupStartMonth;
-    const isNotFinished = !groupEndMonth || selectedMonth <= groupEndMonth;
-    return isStarted && isNotFinished;
-  }) || [];
-
-  const calculateSalary = () => {
-    if (!staff) return { total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [] };
-
-    const breakdown = activeGroupsInMonth.map(group => {
-      const groupRevenue = group.payments
-        ?.filter(p => p.month === selectedMonth)
-        ?.reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
-      const groupKpi = (groupRevenue * (staff.kpiPercentage || 0)) / 100;
-
-      return { id: group.id, name: group.name, revenue: groupRevenue, kpi: groupKpi };
-    });
-
-    const totalRevenue = breakdown.reduce((sum, g) => sum + g.revenue, 0);
-    const totalKpi = breakdown.reduce((sum, g) => sum + g.kpi, 0);
-    const fixedPart = (staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') ? parseFloat(staff.fixedAmount) : 0;
-    const finalTotal = fixedPart + totalKpi;
-
-    return { total: finalTotal, revenue: totalRevenue, kpi: totalKpi, fixed: fixedPart, breakdown };
-  };
-
-  const salaryData = calculateSalary();
-
-  const allStudents = activeGroupsInMonth.flatMap(group =>
+  const allStudents = staff?.groups?.flatMap(group =>
     group.enrollments?.map(enrollment => ({
       ...enrollment.student,
       groupName: group.name,
       groupId: group.id,
-      enrollmentStatus: enrollment.status,
-      isPaid: group.payments?.some(p => p.student?.id === enrollment.student?.id && p.month === selectedMonth),
-      lastPayment: group.payments?.filter(p => p.student?.id === enrollment.student?.id)
-        .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))[0]
+      enrollmentStatus: enrollment.status
     }))
-  ).filter(Boolean);
+  ).filter(Boolean) || [];
 
   const filteredStudents = allStudents.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,21 +95,12 @@ const StaffDetail = ({ fetchStaff }) => {
 
   return (
     <div className="h-screen w-full bg-[url('https://images.unsplash.com/photo-1618123069754-cd64c230a169?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] overflow-hidden flex flex-col">
-      {/* Full Screen Content Wrapper */}
       <div className="flex-1 w-full h-full bg-white/80 dark:bg-[#1e1e1e]/90 backdrop-blur-3xl flex flex-col">
-
-        {/* macOS Title Bar */}
         <div className="h-12 bg-white/40 dark:bg-[#2d2d2d]/60 backdrop-blur-md border-b border-gray-200/50 dark:border-black/50 flex items-center px-4 justify-between shrink-0">
-
-          {/* Bo'sh joy (sarlavhani o'rtada saqlash uchun) */}
           <div className="w-20"></div>
-
-          {/* Window Title */}
           <div className="flex-1 text-center font-medium text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] truncate px-4">
             {staff.name} — Ma'lumotlar
           </div>
-
-          {/* Right Actions */}
           <div className="flex justify-end w-20">
             <button onClick={handleDelete} className="text-gray-500 hover:text-[#ff3b30] dark:text-gray-400 dark:hover:text-[#ff453a] transition-colors" title="O'chirish">
               <Trash2 size={16} />
@@ -147,14 +108,11 @@ const StaffDetail = ({ fetchStaff }) => {
           </div>
         </div>
 
-        {/* Toolbar (macOS Style) */}
         <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gray-200/50 dark:border-white/10 bg-white/30 dark:bg-white/5 shrink-0">
-
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/staff')} className="p-1.5 rounded-md bg-white/50 dark:bg-black/30 hover:bg-white dark:hover:bg-black/50 border border-gray-200/50 dark:border-white/10 shadow-sm text-gray-700 dark:text-gray-300 transition-all">
               <ChevronLeft size={18} />
             </button>
-
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium shadow-sm text-sm">
                 {staff.name.charAt(0)}
@@ -166,7 +124,6 @@ const StaffDetail = ({ fetchStaff }) => {
             </div>
           </div>
 
-          {/* macOS Segmented Control */}
           <div className="flex bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
             {[
               { id: 'overview', label: "Asosiy" },
@@ -190,22 +147,15 @@ const StaffDetail = ({ fetchStaff }) => {
               </button>
             ))}
           </div>
-
         </div>
 
-        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-6 lg:p-10 text-[#1d1d1f] dark:text-[#f5f5f7] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-
           <div className="max-w-7xl mx-auto h-full">
-            {/* OVERVIEW TAB */}
             {activeTab === 'overview' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                {/* Profile Card */}
                 <div className="lg:col-span-1 space-y-6">
                   <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-gray-200/50 dark:border-white/10 shadow-sm">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-5">Shaxsiy ma'lumotlar</h3>
-
                     <div className="space-y-5">
                       <div className="flex items-start gap-4">
                         <div className="p-2 bg-[#007aff]/10 text-[#007aff] rounded-lg"><Phone size={18} /></div>
@@ -222,23 +172,7 @@ const StaffDetail = ({ fetchStaff }) => {
                         </div>
                       </div>
                     </div>
-
-                    <div className="mt-6 pt-5 border-t border-gray-200/50 dark:border-white/10 space-y-3">
-                      {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
-                        <div className="flex justify-between items-center text-[14px]">
-                          <span className="text-gray-500 dark:text-gray-400">Asosiy maosh</span>
-                          <span className="font-semibold">{parseInt(staff.fixedAmount).toLocaleString()} UZS</span>
-                        </div>
-                      )}
-                      {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
-                        <div className="flex justify-between items-center text-[14px]">
-                          <span className="text-gray-500 dark:text-gray-400">KPI foizi</span>
-                          <span className="font-semibold">{staff.kpiPercentage}%</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm text-center">
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">Guruhlar</p>
@@ -250,26 +184,19 @@ const StaffDetail = ({ fetchStaff }) => {
                     </div>
                   </div>
                 </div>
-
-                {/* Groups Area */}
                 <div className="lg:col-span-2">
                   <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-gray-200/50 dark:border-white/10 shadow-sm min-h-full">
                     <h3 className="text-base font-semibold mb-6">Biriktirilgan guruhlar</h3>
-
                     {staff.groups?.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         {staff.groups.map(g => (
-                          <div
-                            key={g.id}
-                            onClick={() => navigate(`/groups/${g.id}`)}
-                            className="p-5 bg-white/70 dark:bg-white/5 border border-gray-200/50 dark:border-white/5 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/10 transition-colors shadow-sm"
-                          >
+                          <div key={g.id} onClick={() => navigate(`/groups/${g.id}`)} className="p-5 bg-white/70 dark:bg-white/5 border border-gray-200/50 dark:border-white/5 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/10 transition-colors shadow-sm">
                             <div className="flex justify-between items-start mb-4">
                               <div className="flex items-center gap-3">
                                 <div className="text-[#007aff]"><BookOpen size={18} /></div>
                                 <h4 className="font-medium text-[15px]">{g.name}</h4>
                               </div>
-                              <div className={`w-2.5 h-2.5 rounded-full ${g.status === 'ACTIVE' ? 'bg-[#34c759]' : g.status === 'WAITING' ? 'bg-[#ffcc00]' : 'bg-gray-400'}`} title={g.status} />
+                              <div className={`w-2.5 h-2.5 rounded-full ${g.status === 'ACTIVE' ? 'bg-[#34c759]' : g.status === 'WAITING' ? 'bg-[#ffcc00]' : 'bg-gray-400'}`} />
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{g.course?.name || 'Umumiy'}</p>
 

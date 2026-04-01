@@ -1,26 +1,30 @@
 import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, BadRequestException } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { EnrollmentStatus } from './enums/enrollment-status.enum';
 
 @Controller('groups')
 @UseGuards(JwtAuthGuard)
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {
-    console.log('--- GroupsController Initialized ---');
+    console.log('--- GroupsController V4 Initialized ---');
   }
+
+  // --- STATIC ACTION ROUTES (Must be BEFORE :id routes) ---
+  
+  @Post('action/clear-all-data')
+  async clearAllData() {
+    console.log('--- CLEAR ALL DATA ACTION CALLED ---');
+    return this.groupsService.clearAllData();
+  }
+
+  // --- COLLECTION ROUTES ---
 
   @Get()
   findAllGroups() { return this.groupsService.findAllGroups(); }
 
-  @Post(':id/action/transfer')
-  async transfer(
-    @Param('id') id: string, 
-    @Body() data: { teacherId: number, courseId: number, startDate: string }
-  ) {
-    console.log('--- TRANSFER ACTION CALLED VR3 ---');
-    console.log('Group ID:', id, 'Data:', data);
-    return this.groupsService.transferGroup(+id, data);
-  }
+  @Post()
+  createGroup(@Body() data: any) { return this.groupsService.createGroup(data); }
 
   @Get('fields')
   findAllFields() { return this.groupsService.findAllFields(); }
@@ -76,6 +80,18 @@ export class GroupsController {
     return this.groupsService.deleteRoom(+id); 
   }
 
+  // --- INSTANCE ACTION ROUTES ---
+
+  @Post(':id/action/transfer')
+  async transfer(
+    @Param('id') id: string, 
+    @Body() data: { teacherId: number, courseId: number, startDate: string }
+  ) {
+    console.log('--- TRANSFER ACTION CALLED V4 ---');
+    console.log('Group ID:', id, 'Data:', data);
+    return this.groupsService.transferGroup(+id, data);
+  }
+
   @Post(':id/enroll/:studentId')
   enrollStudent(@Param('id') id: string, @Param('studentId') studentId: string) {
     if (isNaN(+id) || isNaN(+studentId)) throw new BadRequestException('Invalid ID');
@@ -92,7 +108,7 @@ export class GroupsController {
   updateEnrollmentStatus(
     @Param('id') id: string, 
     @Param('studentId') studentId: string,
-    @Body('status') status: any
+    @Body('status') status: EnrollmentStatus
   ) {
     if (isNaN(+id) || isNaN(+studentId)) throw new BadRequestException('Invalid ID');
     return this.groupsService.updateEnrollmentStatus(+id, +studentId, status);
@@ -103,14 +119,13 @@ export class GroupsController {
     return this.groupsService.completeGroup(+id, endDate);
   }
 
+  // --- GENERIC INSTANCE ROUTES (Must be LAST) ---
+
   @Get(':id')
   findOneGroup(@Param('id') id: string) { 
     if (isNaN(+id)) return null;
     return this.groupsService.findOneGroup(+id); 
   }
-
-  @Post()
-  createGroup(@Body() data: any) { return this.groupsService.createGroup(data); }
 
   @Delete(':id')
   deleteGroup(@Param('id') id: string) { 

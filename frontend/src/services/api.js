@@ -22,7 +22,8 @@ export const deleteAllStudents = () => api.delete('/students/all/clear');
 
 export const getStaff = () => api.get('/staff');
 export const getStaffById = (id) => api.get(`/staff/${id}`);
-export const createStaff = (staff) => api.post('/staff', staff);
+export const getStaffSalary = (id, month) => api.get(`/staff/${id}/salary/${month}`);
+export const createStaff = (data) => api.post('/staff', data);
 export const deleteStaff = (id) => api.delete(`/staff/${id}`);
 
 export const getRoles = () => api.get('/roles');
@@ -38,8 +39,9 @@ export const deleteGroup = (id) => api.delete(`/groups/${id}`);
 export const enrollStudent = (groupId, studentId) => api.post(`/groups/${groupId}/enroll/${studentId}`);
 export const unenrollStudent = (groupId, studentId) => api.delete(`/groups/${groupId}/unenroll/${studentId}`);
 export const updateEnrollmentStatus = (groupId, studentId, status) => api.patch(`/groups/${groupId}/enrollment/${studentId}/status`, { status });
-export const completeGroup = (groupId, data) => api.post(`/groups/${groupId}/complete`, data);
+export const completeGroup = (id, data) => api.post(`/groups/${id}/complete`, data);
 export const transferGroup = (id, data) => api.post(`/groups/${id}/action/transfer`, data);
+export const clearAllData = () => api.post('/groups/action/clear-all-data');
 
 // Payments
 export const getPayments = () => api.get('/payments');

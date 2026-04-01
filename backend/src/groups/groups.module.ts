@@ -8,9 +8,17 @@ import { GroupsService } from './groups.service';
 import { GroupsController } from './groups.controller';
 import { Enrollment } from './entities/enrollment.entity';
 import { GroupPhase } from './entities/group-phase.entity';
+import { Student } from '../students/entities/student.entity';
+import { Payment } from '../payments/entities/payment.entity';
+import { Staff } from '../staff/entities/staff.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Field, Course, Room, Group, Enrollment, GroupPhase])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Field, Course, Room, Group, Enrollment, GroupPhase,
+      Student, Payment, Staff
+    ])
+  ],
   providers: [GroupsService],
   controllers: [GroupsController],
   exports: [GroupsService],

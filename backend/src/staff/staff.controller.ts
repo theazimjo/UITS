@@ -19,6 +19,12 @@ export class StaffController {
     return this.staffService.findOne(+id);
   }
 
+  @Get(':id/salary/:month')
+  async getSalary(@Param('id') id: string, @Param('month') month: string) {
+    if (isNaN(+id)) return null;
+    return this.staffService.calculateSalary(+id, month);
+  }
+
   @Post()
   create(@Body() staff: Partial<Staff>): Promise<Staff> {
     return this.staffService.create(staff);
