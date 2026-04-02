@@ -28,6 +28,12 @@ export class Payment {
   @Column({ default: 'PAID' })
   status: string; // PAID, PARTIAL, etc.
 
+  @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
+  discount: number;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
+  penalty: number;
+
   @Column({ nullable: true })
   collectedBy: string;
 }

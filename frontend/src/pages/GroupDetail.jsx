@@ -208,6 +208,16 @@ const GroupDetail = ({
     } catch (err) { console.error('Unenroll error:', err); }
   };
 
+  // ----- JAMI TUSHUM HISOBLASH (SHU GURUH BO'YICHA) -----
+  // Shu guruhdagi barcha o'quvchilar tomonidan jami tanlangan oyda to'langan summa
+  const calculateTotalRevenueThisMonth = () => {
+    if (!payments || payments.length === 0) return 0;
+    const currentMonthPayments = payments.filter(p => p.month === selectedMonth);
+    return currentMonthPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+  };
+
+  const totalRevenueThisMonth = calculateTotalRevenueThisMonth();
+
   if (loading) return (
     <div className="h-screen w-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#000000]">
       <div className="w-8 h-8 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin"></div>
@@ -230,7 +240,7 @@ const GroupDetail = ({
   );
 
   return (
-    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+    <div className="h-full w-full bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
 
       {/* macOS Title Bar Area */}
       <div className="h-12 border-b border-gray-200/50 dark:border-white/10 flex items-center px-4 justify-between shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md z-20">
@@ -372,9 +382,15 @@ const GroupDetail = ({
                     <span className="text-gray-500">Tugash</span>
                     <span className="font-medium text-[#1d1d1f] dark:text-white">{group.endDate}</span>
                   </div>
-                  <div className="flex justify-between py-2">
+                  <div className="flex justify-between py-2 border-b border-gray-200/50 dark:border-white/10">
                     <span className="text-gray-500">Oylik narx</span>
                     <span className="font-semibold text-[#34c759]">{parseInt(group.monthlyPrice || 0).toLocaleString()} UZS</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-[#ff9500] font-medium flex items-center gap-1">
+                      <CreditCard size={14} /> Shu oydagi tushum
+                    </span>
+                    <span className="font-semibold text-[#1d1d1f] dark:text-white">{totalRevenueThisMonth.toLocaleString()} UZS</span>
                   </div>
                 </div>
               </div>
@@ -392,9 +408,15 @@ const GroupDetail = ({
                   </span>
                   <button onClick={handleNextMonth} className="px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-white/10 border-l border-gray-200/50 dark:border-white/10"><ChevronRight size={14} className="text-gray-500" /></button>
                 </div>
-                <button onClick={() => setIsEnrollModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium bg-[#007aff] text-white shadow-sm hover:bg-[#0062cc] transition-colors w-full sm:w-auto justify-center">
-                  <UserPlus size={14} /> Qo'shish
-                </button>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 px-3 border-r border-gray-200/50 dark:border-white/10 hidden sm:block">
+                    Guruh tushumi: <span className="text-[#34c759] font-bold">{totalRevenueThisMonth.toLocaleString()} UZS</span>
+                  </div>
+                  <button onClick={() => setIsEnrollModalOpen(true)} className="flex-1 sm:flex-none flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium bg-[#007aff] text-white shadow-sm hover:bg-[#0062cc] transition-colors justify-center">
+                    <UserPlus size={14} /> Qo'shish
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-x-auto">
@@ -429,40 +451,19 @@ const GroupDetail = ({
                     }).map(en => {
                       const s = en.student; if (!s) return null;
 
-                      // Bu oy uchun to'g'ridan-to'g'ri to'lov bormi?
+                      // Shu oy uchun qilingan barcha to'lovlar (bir necha marta bo'lishi mumkin)
                       const stPayments = payments.filter(p => p.student?.id === s.id && p.month === selectedMonth);
                       const paidThisMonth = stPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
                       const fullPrice = parseFloat(group.monthlyPrice || 0);
-                      const isPaidDirectly = paidThisMonth >= fullPrice;
 
-                      // Jami to'lovlar (shu guruh uchun)
-                      const totalPaid = payments
-                        .filter(p => p.student?.id === s.id)
-                        .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-
-                      // Kerakli to'lov (oylar soni bo'yicha)
-                      const joinD = new Date(en.joinedDate);
-                      const curD = new Date(selectedMonth + "-01");
-
-                      // Nechanchi oyda o'qiyotganini hisoblash
-                      const monthsOfStudy = (curD.getFullYear() - joinD.getFullYear()) * 12 + (curD.getMonth() - joinD.getMonth()) + 1;
-                      const courseDuration = group.course?.duration || 1;
-
-                      // Kutilayotgan oylar soni (kurs davomiyligidan oshib ketmasligi kerak)
-                      const expectedMonths = Math.max(0, Math.min(monthsOfStudy, courseDuration));
-                      const totalExpected = expectedMonths * fullPrice;
-
-                      const isPaid = totalPaid >= totalExpected;
-
-                      // Boshlangan sana haqida ma'lumot
-                      const startDay = joinD.getDate();
-                      const startInfo = startDay !== 1 ? `${startDay}-sanada boshlagan` : "";
-
-                      let statusLabel = "";
-                      if (isPaid) {
-                        statusLabel = isPaidDirectly ? "TO'LANGAN" : "TO'LOV QOPLANGAN";
+                      // To'lov holatini hisoblash
+                      let paymentStatusHtml;
+                      if (paidThisMonth >= fullPrice) {
+                        paymentStatusHtml = <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#34c759]/10 text-[#34c759] border border-[#34c759]/20">To'langan</span>;
+                      } else if (paidThisMonth > 0) {
+                        paymentStatusHtml = <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#ffcc00]/10 text-[#d4a000] border border-[#ffcc00]/20">Qisman ({paidThisMonth.toLocaleString()})</span>;
                       } else {
-                        statusLabel = `KUTILMOQDA: ${(totalExpected - totalPaid).toLocaleString()}`;
+                        paymentStatusHtml = <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#ff3b30]/10 text-[#ff3b30] border border-[#ff3b30]/20">To'lanmagan</span>;
                       }
 
                       return (
@@ -485,13 +486,7 @@ const GroupDetail = ({
                             </select>
                           </td>
                           <td className="px-5 py-3">
-                            {paid >= full ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#34c759]/10 text-[#34c759] border border-[#34c759]/20">To'langan</span>
-                            ) : paid > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#ffcc00]/10 text-[#d4a000] border border-[#ffcc00]/20">Qisman ({paid.toLocaleString()})</span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#ff3b30]/10 text-[#ff3b30] border border-[#ff3b30]/20">To'lanmagan</span>
-                            )}
+                            {paymentStatusHtml}
                           </td>
                           <td className="px-5 py-3 text-right">
                             <button onClick={() => handleUnenroll(s.id)} className="p-1.5 text-gray-400 hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded-md transition-colors opacity-0 group-hover:opacity-100">

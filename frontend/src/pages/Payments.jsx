@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   CreditCard, Search, Plus, Trash2, Calendar,
   BookOpen, DollarSign, ChevronLeft, ChevronRight,
-  Filter
+  Filter, User, Percent, AlertTriangle, X
 } from 'lucide-react';
 import { getPayments, createPayment, deletePayment } from '../services/api';
 import Modal from '../components/common/Modal'; // Ensure this uses a matching macOS design if possible
@@ -25,10 +25,17 @@ const Payments = ({ students = [], groups = [] }) => {
     studentId: '',
     groupId: '',
     amount: '',
+    discount: '0',
+    penalty: '0',
     month: new Date().toISOString().substring(0, 7),
     paymentType: 'CASH',
     paymentDate: new Date().toISOString().split('T')[0]
   });
+
+  const [studentSearch, setStudentSearch] = useState('');
+  const [isStudentListOpen, setIsStudentListOpen] = useState(false);
+  const [isMultiSelect, setIsMultiSelect] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState([]); // [{id, name}]
 
   useEffect(() => {
     fetchPayments();
@@ -49,27 +56,56 @@ const Payments = ({ students = [], groups = [] }) => {
   const handleCreatePayment = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
-        ...formData,
-        student: { id: parseInt(formData.studentId) },
-        group: { id: parseInt(formData.groupId) },
-        amount: parseFloat(formData.amount)
-      };
-      await createPayment(payload);
+      if (isMultiSelect && selectedStudents.length > 0) {
+        // Bulk creation
+        const requests = selectedStudents.map(s => {
+          const payload = {
+            ...formData,
+            student: { id: parseInt(s.id) },
+            group: { id: parseInt(formData.groupId) },
+            amount: parseFloat(formData.amount),
+            discount: parseFloat(formData.discount || 0),
+            penalty: parseFloat(formData.penalty || 0)
+          };
+          return createPayment(payload);
+        });
+        await Promise.all(requests);
+      } else {
+        // Single creation
+        const payload = {
+          ...formData,
+          student: { id: parseInt(formData.studentId) },
+          group: { id: parseInt(formData.groupId) },
+          amount: parseFloat(formData.amount),
+          discount: parseFloat(formData.discount || 0),
+          penalty: parseFloat(formData.penalty || 0)
+        };
+        await createPayment(payload);
+      }
+
       await fetchPayments();
       setIsModalOpen(false);
-      setFormData({
-        studentId: '',
-        groupId: '',
-        amount: '',
-        month: new Date().toISOString().substring(0, 7),
-        paymentType: 'CASH',
-        paymentDate: new Date().toISOString().split('T')[0]
-      });
+      resetForm();
     } catch (err) {
       console.error('Error creating payment:', err);
       alert("Xatolik: To'lovni saqlashda muammo yuzaga keldi.");
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      studentId: '',
+      groupId: '',
+      amount: '',
+      discount: '0',
+      penalty: '0',
+      month: new Date().toISOString().substring(0, 7),
+      paymentType: 'CASH',
+      paymentDate: new Date().toISOString().split('T')[0]
+    });
+    setStudentSearch('');
+    setSelectedStudents([]);
+    setIsMultiSelect(false);
   };
 
   const handleDelete = async (id) => {
@@ -127,7 +163,15 @@ const Payments = ({ students = [], groups = [] }) => {
   );
 
   const selectedStudent = students.find(s => s.id === parseInt(formData.studentId));
-  const studentGroups = groups.filter(g => g.enrollments?.some(e => (e.studentId || e.student?.id) === parseInt(formData.studentId)));
+  const studentGroups = useMemo(() => {
+    if (isMultiSelect && selectedStudents.length > 0) {
+      // In multi-select mode, show groups that ANY of the selected students belong to
+      // or just show all groups for "testing" as the user requested
+      // Let's show all groups to keep it simple for testing
+      return groups;
+    }
+    return groups.filter(g => g.enrollments?.some(e => (e.studentId || e.student?.id) === parseInt(formData.studentId)));
+  }, [students, groups, formData.studentId, isMultiSelect, selectedStudents]);
 
   const getPaymentTypeLabel = (type) => {
     switch (type) {
@@ -202,7 +246,8 @@ const Payments = ({ students = [], groups = [] }) => {
                   <tr>
                     <th className="px-5 py-2.5 font-medium">O'quvchi</th>
                     <th className="px-5 py-2.5 font-medium">Guruh</th>
-                    <th className="px-5 py-2.5 font-medium">Summa</th>
+                    <th className="px-5 py-2.5 font-medium text-center">Asosiy / Chegirma / Jarima</th>
+                    <th className="px-5 py-2.5 font-medium">Jami To'langan</th>
                     <th className="px-5 py-2.5 font-medium">Sana va Tur</th>
                     <th className="px-5 py-2.5 font-medium text-right"></th>
                   </tr>
@@ -235,8 +280,23 @@ const Payments = ({ students = [], groups = [] }) => {
                           </div>
                         </td>
                         <td className="px-5 py-3">
+                          <div className="flex flex-col items-center gap-1.5 text-[11px] text-gray-500">
+                            <span>{parseInt(p.amount).toLocaleString()}</span>
+                            {parseFloat(p.discount) > 0 && (
+                              <span className="text-[#007aff] flex items-center gap-0.5">
+                                <Percent size={10} /> -{parseInt(p.discount).toLocaleString()}
+                              </span>
+                            )}
+                            {parseFloat(p.penalty) > 0 && (
+                              <span className="text-[#ff9500] flex items-center gap-0.5">
+                                <AlertTriangle size={10} /> +{parseInt(p.penalty).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3">
                           <div className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium bg-[#34c759]/10 text-[#34c759] border border-[#34c759]/20">
-                            {parseInt(p.amount).toLocaleString()} <span className="text-[9px] ml-0.5 opacity-80 uppercase">UZS</span>
+                            {(parseInt(p.amount) - parseFloat(p.discount || 0) + parseFloat(p.penalty || 0)).toLocaleString()} <span className="text-[9px] ml-0.5 opacity-80 uppercase">UZS</span>
                           </div>
                         </td>
                         <td className="px-5 py-3">
@@ -321,17 +381,124 @@ const Payments = ({ students = [], groups = [] }) => {
         <form onSubmit={handleCreatePayment} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
 
           <div className="space-y-3.5">
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">O'QUVCHI</label>
-              <select
-                value={formData.studentId}
-                onChange={e => setFormData({ ...formData, studentId: e.target.value, groupId: '' })}
-                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
-                required
-              >
-                <option value="">Tanlang...</option>
-                {students.map(s => <option key={s.id} value={s.id}>{s.name} {s.phone ? `(${s.phone})` : ''}</option>)}
-              </select>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400">O'QUVCHI QIDIRISH</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-400 font-medium">KO'P TANLASH</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMultiSelect(!isMultiSelect);
+                      setSelectedStudents([]);
+                      setFormData({ ...formData, studentId: '', groupId: '' });
+                      setStudentSearch('');
+                    }}
+                    className={`w-7 h-4 rounded-full transition-all relative ${isMultiSelect ? 'bg-[#34c759]' : 'bg-gray-300 dark:bg-white/10'}`}
+                  >
+                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isMultiSelect ? 'left-3.5' : 'left-0.5 shadow-sm'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Selected students chips for multi-select */}
+              {isMultiSelect && selectedStudents.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-gray-50 dark:bg-black/20 rounded-lg border border-dashed border-gray-300 dark:border-white/10">
+                  {selectedStudents.map(s => (
+                    <div key={s.id} className="flex items-center gap-1.5 px-2 py-1 bg-[#007aff]/10 text-[#007aff] rounded-md border border-[#007aff]/20 text-[11px] font-medium">
+                      <span>{s.name}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedStudents(prev => prev.filter(x => x.id !== s.id))}
+                        className="hover:text-[#ff3b30]"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <input
+                  type="text"
+                  placeholder={isMultiSelect ? "Bir necha o'quvchini qo'shing..." : "Ism yoki telefon orqali izlang..."}
+                  value={studentSearch}
+                  onChange={(e) => {
+                    setStudentSearch(e.target.value);
+                    setIsStudentListOpen(true);
+                  }}
+                  onFocus={() => setIsStudentListOpen(true)}
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md pl-8 pr-10 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                />
+                {!isMultiSelect && formData.studentId && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setFormData({ ...formData, studentId: '', groupId: '' });
+                      setStudentSearch('');
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#ff3b30]"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                {isMultiSelect && studentSearch && (
+                   <button 
+                    type="button" 
+                    onClick={() => setStudentSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Searchable Dropdown List */}
+              {isStudentListOpen && studentSearch.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1c1c1e] border border-gray-200 dark:border-white/10 rounded-md shadow-lg max-h-[180px] overflow-y-auto backdrop-blur-xl">
+                  {students.filter(s => 
+                    s.name?.toLowerCase().includes(studentSearch.toLowerCase()) || 
+                    s.phone?.includes(studentSearch)
+                  ).slice(0, 10).map(s => {
+                    const isAlreadySelected = selectedStudents.some(x => x.id === s.id);
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => {
+                          if (isMultiSelect) {
+                            if (!isAlreadySelected) {
+                              setSelectedStudents([...selectedStudents, { id: s.id, name: s.name }]);
+                            }
+                            setStudentSearch('');
+                          } else {
+                            setFormData({ ...formData, studentId: s.id.toString(), groupId: '' });
+                            setStudentSearch(s.name);
+                            setIsStudentListOpen(false);
+                          }
+                        }}
+                        className={`px-3 py-2 text-[13px] hover:bg-[#007aff] hover:text-white cursor-pointer border-b border-gray-100 dark:border-white/5 last:border-0 ${isAlreadySelected ? 'opacity-50 pointer-events-none grayscale' : ''}`}
+                      >
+                        <div className="font-medium">{s.name} {isAlreadySelected && '(Tanlangan)'}</div>
+                        <div className="text-[10px] opacity-70">{s.phone}</div>
+                      </div>
+                    );
+                  })}
+                  {students.filter(s => 
+                    s.name?.toLowerCase().includes(studentSearch.toLowerCase()) || 
+                    s.phone?.includes(studentSearch)
+                  ).length === 0 && (
+                    <div className="px-3 py-2 text-[12px] text-gray-500 italic">O'quvchi topilmadi</div>
+                  )}
+                </div>
+              )}
+              {!isMultiSelect && formData.studentId && !isStudentListOpen && (
+                <div className="mt-1 flex items-center gap-1.5 px-2 py-1 bg-[#34c759]/10 text-[#34c759] rounded-md border border-[#34c759]/20">
+                  <User size={12} />
+                  <span className="text-[11px] font-medium">Tanlandi: {students.find(s => s.id.toString() === formData.studentId)?.name}</span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -349,15 +516,15 @@ const Payments = ({ students = [], groups = [] }) => {
                 }}
                 className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner disabled:opacity-50"
                 required
-                disabled={!formData.studentId}
+                disabled={!isMultiSelect ? !formData.studentId : selectedStudents.length === 0}
               >
                 <option value="">Tanlang...</option>
                 {studentGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
-              {!formData.studentId && <p className="text-[10px] text-[#ffcc00] mt-1">Avval o'quvchini tanlang</p>}
+              {(!isMultiSelect ? !formData.studentId : selectedStudents.length === 0) && <p className="text-[10px] text-[#ffcc00] mt-1">Avval o'quvchi(lar)ni tanlang</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">SUMMA</label>
                 <div className="relative">
@@ -366,12 +533,46 @@ const Payments = ({ students = [], groups = [] }) => {
                     type="number"
                     value={formData.amount}
                     onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md pl-8 pr-3 py-2 text-[13px] font-medium text-[#34c759] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md pl-8 pr-3 py-2 text-[13px] font-semibold text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                     placeholder="250000"
                     required
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-[11px] font-medium text-[#007aff] mb-1">CHEGIRMA</label>
+                <div className="relative">
+                   <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#007aff]/50" size={14} />
+                   <input
+                    type="number"
+                    value={formData.discount}
+                    onChange={e => setFormData({ ...formData, discount: e.target.value })}
+                    className="w-full bg-[#007aff]/5 dark:bg-[#007aff]/10 border border-[#007aff]/20 rounded-md pl-8 pr-3 py-2 text-[13px] font-medium text-[#007aff] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-[#ff9500] mb-1">JARIMA</label>
+                <div className="relative">
+                   <AlertTriangle className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#ff9500]/50" size={14} />
+                   <input
+                    type="number"
+                    value={formData.penalty}
+                    onChange={e => setFormData({ ...formData, penalty: e.target.value })}
+                    className="w-full bg-[#ff9500]/5 dark:bg-[#ff9500]/10 border border-[#ff9500]/20 rounded-md pl-8 pr-3 py-2 text-[13px] font-medium text-[#ff9500] focus:ring-2 focus:ring-[#ff9500]/50 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-100/50 dark:bg-white/5 p-3 rounded-lg flex justify-between items-center">
+              <span className="text-[12px] font-medium text-gray-500">YIKUNIY TO'LOV:</span>
+              <span className="text-lg font-bold text-[#34c759]">
+                {(parseFloat(formData.amount || 0) - parseFloat(formData.discount || 0) + parseFloat(formData.penalty || 0)).toLocaleString()} UZS
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">HISOBOT OYI</label>
                 <input
@@ -383,9 +584,6 @@ const Payments = ({ students = [], groups = [] }) => {
                   required
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TO'LOV TURI</label>
                 <select
