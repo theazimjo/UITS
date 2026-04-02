@@ -116,8 +116,19 @@ export class GroupsService implements OnModuleInit {
   }
   async createGroup(data: Partial<Group>) { 
     const g = await this.groupRepo.save(data); 
+
+    if (data.teacher && data.course) {
+      const phase = this.phaseRepo.create({
+        group: { id: g.id },
+        teacher: { id: typeof data.teacher === 'number' ? data.teacher : (data.teacher as any).id },
+        course: { id: typeof data.course === 'number' ? data.course : (data.course as any).id },
+        startDate: data.startDate || new Date().toISOString().split('T')[0]
+      });
+      await this.phaseRepo.save(phase);
+    }
+
     await this.activityLogService.logAction({ action: 'GROUP_CREATE', entityName: 'GROUP', entityId: g.id, description: `Yangi "${g.name}" guruhi yaratildi.` });
-    return g;
+    return this.findOneGroup(g.id);
   }
   async updateGroup(id: number, data: Partial<Group>) { 
     await this.groupRepo.update(id, data); 
@@ -206,10 +217,11 @@ export class GroupsService implements OnModuleInit {
       startDate: data.startDate,
     });
     await this.phaseRepo.save(newPhase);
-    group.teacher = { id: data.teacherId } as any;
-    group.course = { id: data.courseId } as any;
-    group.startDate = data.startDate;
-    const updated = await this.groupRepo.save(group);
+    await this.groupRepo.update(id, {
+      teacher: { id: data.teacherId } as any,
+      course: { id: data.courseId } as any,
+      startDate: data.startDate
+    });
 
     // LOG HISTORY
     await this.activityLogService.logAction({
@@ -224,18 +236,22 @@ export class GroupsService implements OnModuleInit {
       }
     });
 
-    return updated;
+    return this.findOneGroup(id);
   }
 
   async completeGroup(id: number, endDate: string) {
-    const group = await this.groupRepo.findOne({ 
-      where: { id },
-      relations: ['enrollments']
+    await this.groupRepo.update(id, {
+      status: GroupStatus.COMPLETED,
+      endDate: endDate
     });
-    if (!group) throw new Error('Group not found');
-    group.status = GroupStatus.COMPLETED;
-    group.endDate = endDate;
-    await this.groupRepo.save(group);
+
+    const currentPhase = await this.phaseRepo.findOne({
+      where: { group: { id }, endDate: IsNull() }
+    });
+    if (currentPhase) {
+      currentPhase.endDate = endDate;
+      await this.phaseRepo.save(currentPhase);
+    }
 
     // LOG HISTORY
     await this.activityLogService.logAction({

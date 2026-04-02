@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, Search, Plus, Trash2, Calendar, 
-  User, BookOpen, DollarSign, ArrowRight, Download
+  User, BookOpen, DollarSign, ArrowRight, Download, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { getPayments, createPayment, deletePayment } from '../services/api';
 import Modal from '../components/common/Modal';
@@ -10,6 +10,7 @@ const Payments = ({ students = [], groups = [] }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     studentId: '',
@@ -72,7 +73,23 @@ const Payments = ({ students = [], groups = [] }) => {
     }
   };
 
-  const filteredPayments = payments.filter(p => 
+  const handlePrevMonth = () => {
+    const date = new Date(selectedMonth + '-01');
+    date.setMonth(date.getMonth() - 1);
+    setSelectedMonth(date.toISOString().substring(0, 7));
+  };
+
+  const handleNextMonth = () => {
+    const date = new Date(selectedMonth + '-01');
+    date.setMonth(date.getMonth() + 1);
+    setSelectedMonth(date.toISOString().substring(0, 7));
+  };
+
+  const formattedMonth = new Date(selectedMonth + '-01').toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' });
+
+  const currentMonthPayments = payments.filter(p => p.month === selectedMonth);
+
+  const filteredPayments = currentMonthPayments.filter(p => 
     p.student?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.group?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -96,10 +113,24 @@ const Payments = ({ students = [], groups = [] }) => {
         </div>
 
         <div className="flex items-center gap-4 relative z-10 font-bold">
+          
+          <div className="bg-white/5 border border-white/10 rounded-2xl flex items-center p-1.5 backdrop-blur-xl">
+            <button onClick={handlePrevMonth} className="p-3 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="px-6 py-2 flex flex-col items-center min-w-[160px]">
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black mb-1">Davr</span>
+              <span className="text-white font-bold tracking-wide">{formattedMonth}</span>
+            </div>
+            <button onClick={handleNextMonth} className="p-3 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
           <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 backdrop-blur-xl">
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Umumiy tushum</p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Oylik tushum</p>
             <p className="text-xl text-emerald-400 font-black">
-              {payments.reduce((acc, curr) => acc + parseFloat(curr.amount), 0).toLocaleString()} <span className="text-xs">UZS</span>
+              {currentMonthPayments.reduce((acc, curr) => acc + parseFloat(curr.amount), 0).toLocaleString()} <span className="text-xs">UZS</span>
             </p>
           </div>
           <button 

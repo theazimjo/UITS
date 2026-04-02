@@ -336,8 +336,11 @@ const GroupDetail = ({
         <button onClick={() => setActiveTab('students')} className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'students' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
           <Users size={18} /> O'quvchilar
         </button>
+        <button onClick={() => setActiveTab('timeline')} className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'timeline' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+          <ArrowRightCircle size={18} /> Timeline (Bosqichlar)
+        </button>
         <button onClick={() => setActiveTab('history')} className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-          <History size={18} /> Tarix
+          <History size={18} /> Jurnal (Tarix)
         </button>
       </div>
 
@@ -497,57 +500,56 @@ const GroupDetail = ({
           </div>
         )}
 
-        {activeTab === 'history' && (
+        {activeTab === 'timeline' && (
           <div className="space-y-6 animate-fade-in">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                <History size={22} className="text-indigo-400" /> Guruh tarixi
+                <ArrowRightCircle size={22} className="text-amber-400" /> Guruh bosqichlari
               </h3>
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+              <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/20">
                 {group.phases?.length || 0} bosqich
               </span>
             </div>
 
-            {/* Phases Timeline — O'tkazishlar tarixi */}
-            {group.phases?.length > 0 && (
+            {(!group.phases || group.phases.length === 0) ? (
+               <div className="bg-[#131520] border border-white/10 p-10 rounded-3xl shadow-xl text-center">
+                 <p className="text-gray-500 font-bold">Hech qanday bosqich ma'lumoti yo'q</p>
+               </div>
+            ) : (
               <div className="bg-[#131520] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
                 <div className="px-8 py-5 border-b border-white/5 bg-white/[0.01]">
                   <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.25em] flex items-center gap-2">
-                    <ArrowRightCircle size={14} /> O'qituvchilar va bosqichlar
+                    <ArrowRightCircle size={14} /> Ustozlar va yo'nalishlar almashinuvi
                   </h4>
                 </div>
                 <div className="divide-y divide-white/5">
                   {[...group.phases].sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((ph, i, arr) => (
                     <div key={ph.id} className="px-8 py-6 flex items-start gap-6 hover:bg-white/[0.02] transition-colors">
-                      {/* Step number */}
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-inner ${!ph.endDate
                           ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
                           : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                         }`}>
                         {i + 1}
                       </div>
-                      {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
                           <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${!ph.endDate
                               ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/20'
                               : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                             }`}>
-                            {!ph.endDate ? 'Joriy' : `${i + 1}-bosqich`}
+                            {!ph.endDate ? 'Joriy bosqich' : `${i + 1}-bosqich`}
                           </span>
-                          {i > 0 && <span className="text-[9px] text-amber-500/60 font-bold uppercase">← o'tkazilgan</span>}
+                          {i > 0 && <span className="text-[9px] text-amber-500/60 font-bold uppercase">← o'tkazildi</span>}
                         </div>
                         <p className="text-white font-bold text-[15px] mb-1">{ph.teacher?.name || 'Noma\'lum o\'qituvchi'}</p>
                         <p className="text-gray-500 text-[13px]">{ph.course?.name || 'Yo\'nalish belgilanmagan'}</p>
                       </div>
-                      {/* Dates */}
                       <div className="text-right shrink-0">
                         <p className="text-[11px] text-gray-400 font-mono font-bold">{ph.startDate}</p>
                         {ph.endDate ? (
                           <p className="text-[10px] text-amber-500/60 font-mono mt-1">→ {ph.endDate}</p>
                         ) : (
-                          <p className="text-[10px] text-indigo-400 font-bold mt-1">hozir</p>
+                          <p className="text-[10px] text-indigo-400 font-bold mt-1">Hozirgacha</p>
                         )}
                       </div>
                     </div>
@@ -555,12 +557,24 @@ const GroupDetail = ({
                 </div>
               </div>
             )}
+          </div>
+        )}
 
-            {/* Events Timeline */}
+        {activeTab === 'history' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                <History size={22} className="text-indigo-400" /> Guruh tarixi (Jurnal)
+              </h3>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                To'liq xronologik tarix
+              </span>
+            </div>
+
             <div className="bg-[#131520] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
               <div className="px-8 py-5 border-b border-white/5 bg-white/[0.01]">
                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] flex items-center gap-2">
-                  <Calendar size={14} /> Voqealar xronologiyasi
+                  <Calendar size={14} /> Voqealar jurnali
                 </h4>
               </div>
               <div className="p-6">
