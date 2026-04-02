@@ -27,7 +27,7 @@ const Login = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1618123069754-cd64c230a169?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1628156108168-cf890eb9385b?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
 
       {/* Oyna (Window) Container */}
       <div className="w-full max-w-[360px] animate-fade-in relative z-10">

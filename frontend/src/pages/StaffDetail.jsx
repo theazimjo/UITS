@@ -96,8 +96,8 @@ const StaffDetail = ({ fetchStaff }) => {
   );
 
   return (
-    <div className="h-screen w-full bg-[url('https://images.unsplash.com/photo-1618123069754-cd64c230a169?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] overflow-hidden flex flex-col">
-      <div className="flex-1 w-full h-full bg-white/80 dark:bg-[#1e1e1e]/90 backdrop-blur-3xl flex flex-col">
+    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+      <div className="flex-1 w-full h-full flex flex-col">
         <div className="h-12 bg-white/40 dark:bg-[#2d2d2d]/60 backdrop-blur-md border-b border-gray-200/50 dark:border-black/50 flex items-center px-4 justify-between shrink-0">
           <div className="w-20"></div>
           <div className="flex-1 text-center font-medium text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] truncate px-4">

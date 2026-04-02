@@ -70,8 +70,8 @@ function App() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b0d17]">
-      <div className="w-12 h-12 border-4 border-t-purple-600 rounded-full animate-spin"></div>
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black text-black dark:text-white">
+      <div className="w-12 h-12 border-4 border-[#007aff] border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
 
