@@ -107,13 +107,22 @@ const StaffDetail = ({ fetchStaff }) => {
         const paidThisMonth = payments.filter(p => p.month === currentMonth).reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
         const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
 
+        // QARZDORLIK VA OYLAR MANTIG'I (TUG'RILANDI)
         const joinD = new Date(enrollment.joinedDate);
         const curD = new Date(currentMonth + "-01");
-        const monthsOfStudy = (curD.getFullYear() - joinD.getFullYear()) * 12 + (curD.getMonth() - joinD.getMonth()) + 1;
-        const courseDuration = group.course?.duration || 1;
-        const expectedMonths = Math.max(0, Math.min(monthsOfStudy, courseDuration));
-        const totalExpected = expectedMonths * fullPrice;
 
+        // Farqni aniq hisoblash (Agar 1-kunidan bo'lsa, o'sha oyni hisoblaydi, agar tugash sanasi bo'lsa 1 oylikni 2 oy deb yubormaydi)
+        let monthsOfStudy = (curD.getFullYear() - joinD.getFullYear()) * 12 + (curD.getMonth() - joinD.getMonth());
+
+        // Agar o'sha oyda qo'shilgan bo'lsa yoki joriy oyda o'qiyotgan bo'lsa, kamida 1 oy hisoblanadi
+        if (monthsOfStudy <= 0) monthsOfStudy = 1;
+        else monthsOfStudy += 1;
+
+        // Agar guruh tugagan bo'lsa va joriy oy tugash oyidan o'tib ketgan bo'lsa, kurs muddatini saqlab qolish
+        const courseDuration = group.course?.duration || 1;
+        const expectedMonths = Math.min(monthsOfStudy, courseDuration); // Kurs muddatidan oshib ketmasligi kerak
+
+        const totalExpected = expectedMonths * fullPrice;
         const isPaid = totalPaid >= totalExpected;
         const isPaidDirectly = paidThisMonth >= fullPrice;
         const startDay = joinD.getDate();
@@ -136,15 +145,19 @@ const StaffDetail = ({ fetchStaff }) => {
 
   const activeStudentsCount = allStudents.filter(s => s.enrollmentStatus === 'ACTIVE').length;
 
+  // ===============================================
   // TUSHUM VA MAOSH HISOBLAGICH MANTIG'I
+  // ===============================================
   const calculateSalary = () => {
     if (!staff) return { total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [] };
 
     const breakdown = activeGroups.map(group => {
+      // 1. Shu guruhdagi JAMI o'quvchilar ushbu oyda (currentMonth) necha pul to'ladi?
       const groupRevenue = group.payments
         ?.filter(p => p.month === currentMonth)
         ?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
 
+      // 2. Tushumdan (Guruh Tushumi) o'qituvchining KPI foizini hisoblash
       const groupKpi = (groupRevenue * (parseFloat(staff.kpiPercentage) || 0)) / 100;
 
       return {
@@ -155,13 +168,18 @@ const StaffDetail = ({ fetchStaff }) => {
       };
     });
 
+    // 3. JAMI Tushum (Hamma guruhlardan)
     const totalRevenue = breakdown.reduce((sum, g) => sum + g.revenue, 0);
+
+    // 4. JAMI KPI summa (Hamma guruhlardan)
     const totalKpi = breakdown.reduce((sum, g) => sum + g.kpi, 0);
 
+    // 5. Fiks oylik (Fiks va Aralash rejimlar uchun)
     const fixedPart = (staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED')
       ? parseFloat(staff.fixedAmount || 0)
       : 0;
 
+    // 6. Yakuniy KPI va Total Maosh (Agar maosh turi faqat "FIXED" bo'lsa KPI qo'shilmaydi)
     const kpiPart = (staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') ? totalKpi : 0;
     const finalTotal = fixedPart + kpiPart;
 
@@ -238,8 +256,8 @@ const StaffDetail = ({ fetchStaff }) => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex-1 sm:flex-none relative px-4 py-1.5 text-[12px] font-medium rounded-md transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === tab.id
-                      ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                    ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
                     }`}
                 >
                   <span className={activeTab === tab.id ? 'text-[#007aff]' : 'opacity-70'}>{tab.icon}</span>
@@ -385,8 +403,13 @@ const StaffDetail = ({ fetchStaff }) => {
                       {filteredStudents.length > 0 ? filteredStudents.map((s, idx) => (
                         <tr key={`${s.id}-${idx}`} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors cursor-default">
                           <td className="px-5 py-3">
-                            <div className="font-medium text-[#1d1d1f] dark:text-white">{s.name}</div>
-                            <div className="text-[11px] text-gray-500 mt-0.5">{s.phone || '---'}</div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center font-medium text-[11px] text-[#1d1d1f] dark:text-white shadow-sm">{s.name?.substring(0, 1)}</div>
+                              <div>
+                                <div className="font-medium text-[#1d1d1f] dark:text-white">{s.name}</div>
+                                <div className="text-[11px] text-gray-500 mt-0.5">{s.phone || '---'}</div>
+                              </div>
+                            </div>
                           </td>
                           <td className="px-5 py-3 text-gray-600 dark:text-gray-300 font-medium">{s.groupName}</td>
                           <td className="px-5 py-3">
