@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, NotFoundException } from '@nestjs/common';
 import { StaffService } from './staff.service';
 import { Staff } from './entities/staff.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -28,6 +28,12 @@ export class StaffController {
   @Post()
   create(@Body() staff: Partial<Staff>): Promise<Staff> {
     return this.staffService.create(staff);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() data: Partial<Staff>): Promise<Staff> {
+    if (isNaN(+id)) throw new NotFoundException('Invalid ID');
+    return this.staffService.update(+id, data);
   }
 
   @Delete(':id')

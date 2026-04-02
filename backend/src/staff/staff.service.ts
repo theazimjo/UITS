@@ -145,6 +145,15 @@ export class StaffService {
     return this.staffRepository.save(staff);
   }
 
+  async update(id: number, data: Partial<Staff>): Promise<Staff> {
+    const staff = await this.staffRepository.findOne({ where: { id } });
+    if (!staff) throw new NotFoundException('Staff not found');
+    
+    // Merge new data and save
+    Object.assign(staff, data);
+    return this.staffRepository.save(staff);
+  }
+
   async remove(id: number): Promise<void> {
     await this.staffRepository.delete(id);
   }

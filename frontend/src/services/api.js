@@ -24,6 +24,7 @@ export const getStaff = () => api.get('/staff');
 export const getStaffById = (id) => api.get(`/staff/${id}`);
 export const getStaffSalary = (id, month) => api.get(`/staff/${id}/salary/${month}`);
 export const createStaff = (data) => api.post('/staff', data);
+export const updateStaff = (id, data) => api.patch(`/staff/${id}`, data);
 export const deleteStaff = (id) => api.delete(`/staff/${id}`);
 
 export const getRoles = () => api.get('/roles');

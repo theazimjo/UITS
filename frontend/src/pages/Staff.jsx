@@ -8,7 +8,14 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
   const navigate = useNavigate();
   const [activeRoleTab, setActiveRoleTab] = useState('Barchasi');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newStaff, setNewStaff] = useState({ name: '', roleId: '', phone: '' });
+  const [newStaff, setNewStaff] = useState({
+    name: '',
+    roleId: '',
+    phone: '',
+    salaryType: 'FIXED',
+    fixedAmount: '0',
+    kpiPercentage: '0'
+  });
   const [newRoleName, setNewRoleName] = useState('');
   const [showRoleInput, setShowRoleInput] = useState(false);
 
@@ -26,10 +33,28 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
 
   const onAddStaffSubmit = async (e) => {
     e.preventDefault();
-    await createStaff({ ...newStaff, role: { id: parseInt(newStaff.roleId) } });
-    setNewStaff({ name: '', roleId: '', phone: '' });
-    setIsModalOpen(false);
-    fetchStaff();
+    try {
+      const payload = {
+        ...newStaff,
+        role: { id: parseInt(newStaff.roleId) },
+        fixedAmount: parseFloat(newStaff.fixedAmount || 0),
+        kpiPercentage: parseFloat(newStaff.kpiPercentage || 0)
+      };
+      await createStaff(payload);
+      setNewStaff({
+        name: '',
+        roleId: '',
+        phone: '',
+        salaryType: 'FIXED',
+        fixedAmount: '0',
+        kpiPercentage: '0'
+      });
+      setIsModalOpen(false);
+      fetchStaff();
+    } catch (err) {
+      console.error('Error creating staff:', err);
+      alert("Xatolik: Xodimni saqlashda muammo yuzaga keldi.");
+    }
   };
 
   return (
@@ -212,6 +237,54 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
                   className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                   placeholder="+998 90 123 45 67"
                 />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 dark:border-white/5">
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-2">MAOSH SOZLAMALARI</label>
+              <div className="grid grid-cols-1 gap-3">
+                <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-lg border border-black/5 dark:border-white/10">
+                  {['FIXED', 'KPI', 'MIXED'].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setNewStaff({ ...newStaff, salaryType: type })}
+                      className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all ${newStaff.salaryType === type
+                        ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                      }`}
+                    >
+                      {type === 'FIXED' ? 'Fiks' : type === 'KPI' ? 'KPI' : 'Aralash'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {(newStaff.salaryType === 'FIXED' || newStaff.salaryType === 'MIXED') && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="block text-[10px] font-medium text-gray-400 mb-1 caps">FIKS SUMMA</label>
+                      <input
+                        type="number"
+                        value={newStaff.fixedAmount}
+                        onChange={(e) => setNewStaff({ ...newStaff, fixedAmount: e.target.value })}
+                        className="w-full bg-[#007aff]/5 dark:bg-[#007aff]/10 border border-[#007aff]/10 rounded-md px-3 py-2 text-[13px] font-medium text-[#007aff] outline-none"
+                        placeholder="0"
+                      />
+                    </div>
+                  )}
+                  {(newStaff.salaryType === 'KPI' || newStaff.salaryType === 'MIXED') && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="block text-[10px] font-medium text-gray-400 mb-1 caps">KPI (%)</label>
+                      <input
+                        type="number"
+                        value={newStaff.kpiPercentage}
+                        onChange={(e) => setNewStaff({ ...newStaff, kpiPercentage: e.target.value })}
+                        className="w-full bg-[#af52de]/5 dark:bg-[#af52de]/10 border border-[#af52de]/10 rounded-md px-3 py-2 text-[13px] font-medium text-[#af52de] outline-none"
+                        placeholder="0"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

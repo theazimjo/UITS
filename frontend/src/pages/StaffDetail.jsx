@@ -4,9 +4,10 @@ import {
   Phone, BookOpen,
   ChevronLeft, Calendar, Clock, MapPin, Trash2,
   Users, Search, CheckCircle2, AlertCircle,
-  ChevronRight, CreditCard, Percent, Briefcase
+  ChevronRight, CreditCard, Percent, Briefcase, Edit
 } from 'lucide-react';
-import { getStaffById, deleteStaff } from '../services/api';
+import { getStaffById, deleteStaff, updateStaff, getRoles } from '../services/api';
+import Modal from '../components/common/Modal';
 
 const StaffDetail = ({ fetchStaff }) => {
   const { id } = useParams();
@@ -17,12 +18,28 @@ const StaffDetail = ({ fetchStaff }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
 
+  // Edit state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [roles, setRoles] = useState([]);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    roleId: '',
+    phone: '',
+    salaryType: 'FIXED',
+    fixedAmount: '0',
+    kpiPercentage: '0'
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const staffRes = await getStaffById(id);
+        const [staffRes, rolesRes] = await Promise.all([
+          getStaffById(id),
+          getRoles()
+        ]);
         setStaff(staffRes.data);
+        setRoles(rolesRes.data);
       } catch (err) {
         console.error('Error fetching data:', err);
       } finally {
@@ -31,6 +48,40 @@ const StaffDetail = ({ fetchStaff }) => {
     };
     fetchData();
   }, [id, currentMonth]);
+
+  const handleEditClick = () => {
+    setEditFormData({
+      name: staff.name,
+      roleId: staff.role?.id?.toString() || '',
+      phone: staff.phone || '',
+      salaryType: staff.salaryType || 'FIXED',
+      fixedAmount: staff.fixedAmount?.toString() || '0',
+      kpiPercentage: staff.kpiPercentage?.toString() || '0'
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateStaff = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...editFormData,
+        role: { id: parseInt(editFormData.roleId) },
+        fixedAmount: parseFloat(editFormData.fixedAmount || 0),
+        kpiPercentage: parseFloat(editFormData.kpiPercentage || 0)
+      };
+      await updateStaff(id, payload);
+
+      // Refresh data
+      const staffRes = await getStaffById(id);
+      setStaff(staffRes.data);
+      setIsEditModalOpen(false);
+      if (fetchStaff) fetchStaff();
+    } catch (err) {
+      console.error('Error updating staff:', err);
+      alert("Xatolik: Ma'lumotlarni saqlashda xatolik yuzaga keldi.");
+    }
+  };
 
   const handleMonthChange = (direction) => {
     const [year, month] = currentMonth.split('-').map(Number);
@@ -224,7 +275,10 @@ const StaffDetail = ({ fetchStaff }) => {
           <div className="flex-1 text-center font-medium text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] truncate px-4">
             {staff.name} — Ma'lumotlar
           </div>
-          <div className="flex justify-end w-32">
+          <div className="flex justify-end w-32 gap-3 items-center">
+            <button onClick={handleEditClick} className="text-gray-500 hover:text-[#007aff] dark:text-gray-400 dark:hover:text-[#0a84ff] transition-colors" title="Tahrirlash">
+              <Edit size={16} />
+            </button>
             <button onClick={handleDelete} className="text-gray-500 hover:text-[#ff3b30] dark:text-gray-400 dark:hover:text-[#ff453a] transition-colors" title="O'chirish">
               <Trash2 size={16} />
             </button>
@@ -545,6 +599,109 @@ const StaffDetail = ({ fetchStaff }) => {
 
           </div>
         </div>
+
+        {/* EDIT MODAL */}
+        <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Xodimni tahrirlash">
+          <form onSubmit={handleUpdateStaff} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">F.I.SH</label>
+                <input
+                  type="text" required
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">LAVOZIM</label>
+                  <select
+                    required
+                    value={editFormData.roleId}
+                    onChange={(e) => setEditFormData({ ...editFormData, roleId: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  >
+                    <option value="" disabled>Tanlang...</option>
+                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TELEFON</label>
+                  <input
+                    type="tel"
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 dark:border-white/5">
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-2">MAOSH SOZLAMALARI</label>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-lg border border-black/5 dark:border-white/10">
+                    {['FIXED', 'KPI', 'MIXED'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setEditFormData({ ...editFormData, salaryType: type })}
+                        className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all ${editFormData.salaryType === type
+                          ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                          }`}
+                      >
+                        {type === 'FIXED' ? 'Fiks' : type === 'KPI' ? 'KPI' : 'Aralash'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {(editFormData.salaryType === 'FIXED' || editFormData.salaryType === 'MIXED') && (
+                      <div>
+                        <label className="block text-[10px] font-medium text-gray-400 mb-1">FIKS SUMMA</label>
+                        <input
+                          type="number"
+                          value={editFormData.fixedAmount}
+                          onChange={(e) => setEditFormData({ ...editFormData, fixedAmount: e.target.value })}
+                          className="w-full bg-[#007aff]/5 dark:bg-[#007aff]/10 border border-[#007aff]/10 rounded-md px-3 py-2 text-[13px] font-medium text-[#007aff] outline-none"
+                        />
+                      </div>
+                    )}
+                    {(editFormData.salaryType === 'KPI' || editFormData.salaryType === 'MIXED') && (
+                      <div>
+                        <label className="block text-[10px] font-medium text-gray-400 mb-1">KPI (%)</label>
+                        <input
+                          type="number"
+                          value={editFormData.kpiPercentage}
+                          onChange={(e) => setEditFormData({ ...editFormData, kpiPercentage: e.target.value })}
+                          className="w-full bg-[#af52de]/5 dark:bg-[#af52de]/10 border border-[#af52de]/10 rounded-md px-3 py-2 text-[13px] font-medium text-[#af52de] outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors"
+              >
+                Saqlash
+              </button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </div>
   );
