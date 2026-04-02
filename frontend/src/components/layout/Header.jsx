@@ -3,52 +3,52 @@ import { Search, Bell, User as UserIcon } from 'lucide-react';
 
 const Header = ({ currentUser }) => {
   return (
-    <header className="h-20 px-6 lg:px-10 flex items-center justify-between sticky top-0 z-30 bg-[#0b0d17]/80 backdrop-blur-md border-b border-white/10 transition-all">
+    <header className="h-14 px-6 flex items-center justify-between sticky top-0 z-30 bg-white/40 dark:bg-[#2d2d2d]/60 backdrop-blur-md border-b border-gray-200/50 dark:border-black/50 transition-all shrink-0">
 
       {/* Chap qism: Qidiruv */}
       <div className="flex items-center gap-6">
         <div className="relative group hidden md:block">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none">
-            <Search size={18} />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#007aff] transition-colors pointer-events-none">
+            <Search size={16} />
           </div>
           <input
             type="text"
-            placeholder="Tizim bo'ylab qidirish..."
-            className="pl-11 pr-4 py-2.5 bg-[#131520] border border-white/10 rounded-xl w-64 xl:w-80 focus:w-80 xl:focus:w-96 outline-none text-sm text-white placeholder-gray-500 transition-all duration-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent shadow-sm"
+            placeholder="Qidirish..."
+            className="pl-9 pr-4 py-1.5 bg-white/50 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md w-64 xl:w-80 outline-none text-[13px] text-gray-800 dark:text-white placeholder-gray-500 transition-all duration-200 focus:ring-2 focus:ring-[#007aff]/50 focus:border-transparent shadow-inner"
           />
         </div>
       </div>
 
       {/* O'ng qism: Amallar va Profil */}
-      <div className="flex items-center gap-4 sm:gap-6">
+      <div className="flex items-center gap-4">
 
         {/* Bildirishnomalar */}
-        <button className="relative p-2.5 bg-[#131520] border border-white/10 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+        <button className="relative p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 transition-colors">
           <Bell size={18} />
           {/* Yangi xabar uchun qizil nuqta */}
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#131520]"></span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ff3b30] rounded-full border-2 border-white dark:border-[#2d2d2d]"></span>
         </button>
 
         {/* Profil ma'lumotlari */}
-        <div className="flex items-center gap-3 pl-2 sm:pl-4 border-l border-white/10">
+        <div className="flex items-center gap-3 pl-4 border-l border-gray-300/50 dark:border-white/10">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-white leading-tight">
+            <p className="text-[13px] font-medium text-black dark:text-white leading-tight">
               {currentUser?.username || 'Foydalanuvchi'}
             </p>
-            <p className="text-xs text-emerald-400 font-medium mt-0.5 flex items-center justify-end gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <p className="text-[11px] text-[#34c759] font-medium mt-0.5 flex items-center justify-end gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#34c759] animate-pulse"></span>
               Faol
             </p>
           </div>
 
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 border border-white/10">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm border border-black/5">
             {currentUser?.username ? (
-              <span className="text-white font-bold text-sm">
+              <span className="text-white font-bold text-xs">
                 {currentUser.username.substring(0, 1).toUpperCase()}
               </span>
             ) : (
-              <UserIcon size={18} className="text-white" />
+              <UserIcon size={16} className="text-white" />
             )}
           </div>
         </div>

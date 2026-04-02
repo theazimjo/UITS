@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Phone, CreditCard, Percent, CheckCircle2, X, Users, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Phone, CreditCard, Percent, CheckCircle2, X, Users, ChevronRight, UserSquare2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createStaff, deleteStaff, createRole } from '../services/api';
-import Modal from '../components/common/Modal';
+import Modal from '../components/common/Modal'; // Modal needs a clean macOS style too if possible
 
 const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
   const navigate = useNavigate();
@@ -33,252 +33,284 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
   };
 
   return (
-    <div className="animate-fade-in p-6 lg:p-10 max-w-[1600px] mx-auto min-h-screen">
+    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
 
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">Xodimlar</h2>
-          <p className="text-sm text-gray-400 mt-2">O'qituvchilar va ma'muriyat boshqaruvini nazorat qilish</p>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-        >
-          <Plus size={18} /> Xodim qo'shish
-        </button>
-      </div>
+      {/* macOS Finder-style Toolbar */}
+      <div className="min-h-[56px] py-3 lg:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4 z-20">
 
-      {/* Tabs and Role Actions */}
-      <div className="flex flex-wrap items-center gap-2.5 mb-8">
-        {['Barchasi', ...roles.map(r => r.name)].map((roleName) => (
-          <button
-            key={roleName}
-            onClick={() => setActiveRoleTab(roleName)}
-            className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 border ${activeRoleTab === roleName
-              ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
-              : 'bg-[#131520] border-white/10 text-gray-400 hover:text-gray-200 hover:bg-white/5'
-              }`}
-          >
-            {roleName}
-          </button>
-        ))}
-
-        <div className="h-6 w-px bg-white/10 mx-2 hidden sm:block"></div>
-
-        {showRoleInput ? (
-          <div className="flex items-center gap-2 bg-[#131520] border border-white/10 p-1 rounded-xl animate-fade-in">
-            <input
-              type="text"
-              value={newRoleName}
-              onChange={(e) => setNewRoleName(e.target.value)}
-              className="bg-transparent px-3 py-1 text-sm text-white w-32 md:w-40 outline-none placeholder-gray-600"
-              placeholder="Yangi lavozim"
-              autoFocus
-            />
-            <button onClick={handleAddRole} className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500 hover:text-white transition-colors">
-              <CheckCircle2 size={16} />
-            </button>
-            <button onClick={() => setShowRoleInput(false)} className="p-1.5 bg-white/5 text-gray-400 rounded-lg hover:bg-rose-500 hover:text-white transition-colors">
-              <X size={16} />
-            </button>
+        {/* Title Area */}
+        <div className="flex-shrink-0 flex items-center gap-3">
+          <div className="p-1.5 bg-[#af52de] text-white rounded-md shadow-sm">
+            <UserSquare2 size={16} />
           </div>
-        ) : (
-          <button
-            onClick={() => setShowRoleInput(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20 transition-all"
-          >
-            <Plus size={16} /> Lavozim qo'shish
-          </button>
-        )}
-      </div>
-
-      {/* Data Table */}
-      <div className="bg-[#131520] border border-white/10 rounded-2xl overflow-hidden shadow-xl shadow-black/20">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-white/[0.02] border-b border-white/10 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                <th className="px-6 py-4">Xodim ma'lumotlari</th>
-                <th className="px-6 py-4">Aloqa</th>
-                <th className="px-6 py-4">Maosh Turi</th>
-                <th className="px-6 py-4">Oylik maosh / KPI</th>
-                <th className="px-6 py-4 text-right">Amallar</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredStaff.map((staff) => (
-                <tr 
-                  key={staff.id} 
-                  onClick={() => navigate(`/staff/${staff.id}`)}
-                  className="group hover:bg-white/[0.04] transition-all duration-300 cursor-pointer border-l-2 border-transparent hover:border-indigo-500"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                        {staff.name.substring(0, 1)}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-200 group-hover:text-indigo-300 transition-colors">
-                          {staff.name}
-                        </p>
-                        <p className="text-xs text-gray-500 font-medium mt-0.5">
-                          {staff.role?.name || 'Lavozim belgilanmagan'}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Phone size={14} className="text-indigo-400" />
-                      <span>{staff.phone || 'Kiritilmagan'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border
-                      ${staff.salaryType === 'FIXED' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                        staff.salaryType === 'KPI' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
-                      {staff.salaryType === 'FIXED' ? 'Fiks (Oylik)' : staff.salaryType === 'KPI' ? 'KPI (%)' : 'Aralash'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1.5">
-                      {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
-                        <div className="text-sm text-gray-300 font-medium flex items-center gap-2">
-                          <CreditCard size={14} className="text-gray-500" />
-                          {parseInt(staff.fixedAmount).toLocaleString()} <span className="text-xs text-gray-500">UZS</span>
-                        </div>
-                      )}
-                      {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
-                        <div className="text-sm text-emerald-400 font-medium flex items-center gap-2">
-                          <Percent size={14} className="text-emerald-500/70" />
-                          {staff.kpiPercentage}% <span className="text-xs text-emerald-500/50">KPI</span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end pr-2">
-                       <ChevronRight size={18} className="text-gray-600 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all" />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {/* Empty State */}
-              {filteredStaff.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <Users size={40} className="text-gray-600 mb-3" />
-                      <p className="text-gray-400 text-sm font-medium">Ushbu lavozimda xodimlar topilmadi</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* MODAL */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Yangi xodim qo'shish">
-        <form onSubmit={onAddStaffSubmit} className="space-y-5 p-1">
           <div>
-            <label className="text-sm font-medium text-gray-400 mb-1.5 block">F.I.SH</label>
-            <input
-              type="text" required
-              value={newStaff.name}
-              onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-              className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              placeholder="Masalan: Aliyev Vali"
-            />
+            <h2 className="text-[15px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-none">Xodimlar</h2>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Jami xodimlar: {filteredStaff.length} ta</p>
+          </div>
+        </div>
+
+        {/* Center/Right Actions Area */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
+
+          {/* Segmented Control for Roles */}
+          <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner overflow-x-auto scrollbar-hide w-full sm:w-auto">
+            {['Barchasi', ...roles.map(r => r.name)].map((roleName) => (
+              <button
+                key={roleName}
+                onClick={() => setActiveRoleTab(roleName)}
+                className={`relative px-4 py-1.5 text-[12px] font-medium rounded-md transition-all whitespace-nowrap ${activeRoleTab === roleName
+                  ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                  }`}
+              >
+                {roleName}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="text-sm font-medium text-gray-400 mb-1.5 block">Lavozimi</label>
-              <select
-                required
-                value={newStaff.roleId}
-                onChange={(e) => setNewStaff({ ...newStaff, roleId: e.target.value })}
-                className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+          <div className="h-6 w-px bg-gray-300 dark:bg-white/10 hidden sm:block"></div>
+
+          {/* Add Role / Add Staff */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {showRoleInput ? (
+              <div className="flex items-center gap-1 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 p-1 rounded-md backdrop-blur-md shadow-inner animate-fade-in w-full sm:w-auto">
+                <input
+                  type="text"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  className="bg-transparent px-2 py-0.5 text-[12px] text-[#1d1d1f] dark:text-[#f5f5f7] w-32 outline-none placeholder-gray-400"
+                  placeholder="Yangi lavozim"
+                  autoFocus
+                />
+                <button onClick={handleAddRole} className="p-1 text-[#34c759] hover:bg-[#34c759]/10 rounded transition-colors"><CheckCircle2 size={14} /></button>
+                <button onClick={() => setShowRoleInput(false)} className="p-1 text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded transition-colors"><X size={14} /></button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowRoleInput(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium text-[#007aff] hover:bg-[#007aff]/10 transition-colors border border-transparent"
               >
-                <option value="" disabled>Tanlang...</option>
-                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+                <Plus size={14} /> <span>Lavozim</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-[#007aff] hover:bg-[#0062cc] text-white border border-[#005bb5]"
+            >
+              <Plus size={14} />
+              <span>Xodim</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 p-6">
+        <div className="max-w-[1200px] mx-auto h-full flex flex-col">
+
+          {/* macOS Table Container */}
+          <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0 flex-1">
+
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
+                  <tr>
+                    <th className="px-5 py-2.5 font-medium">Xodim ma'lumotlari</th>
+                    <th className="px-5 py-2.5 font-medium">Aloqa</th>
+                    <th className="px-5 py-2.5 font-medium">Maosh Turi</th>
+                    <th className="px-5 py-2.5 font-medium">Summa / KPI</th>
+                    <th className="px-5 py-2.5 font-medium text-right"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                  {filteredStaff.length > 0 ? filteredStaff.map((staff) => (
+                    <tr
+                      key={staff.id}
+                      onClick={() => navigate(`/staff/${staff.id}`)}
+                      className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-pointer"
+                    >
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-[12px] shadow-sm">
+                            {staff.name.substring(0, 1).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7] group-hover:text-[#007aff] transition-colors">
+                              {staff.name}
+                            </p>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                              {staff.role?.name || 'Lavozim yo\'q'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 text-[12px]">
+                          <Phone size={13} className="text-gray-400" />
+                          <span>{staff.phone || 'Kiritilmagan'}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border
+                          ${staff.salaryType === 'FIXED' ? 'bg-[#007aff]/10 text-[#007aff] border-[#007aff]/20' :
+                            staff.salaryType === 'KPI' ? 'bg-[#34c759]/10 text-[#34c759] border-[#34c759]/20' :
+                              'bg-[#ff9500]/10 text-[#ff9500] border-[#ff9500]/20'}`}>
+                          {staff.salaryType === 'FIXED' ? 'Fiks (Oylik)' : staff.salaryType === 'KPI' ? 'Faqat KPI' : 'Aralash'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="space-y-1">
+                          {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
+                            <div className="text-[12px] text-[#1d1d1f] dark:text-[#f5f5f7] font-medium flex items-center gap-1.5">
+                              <CreditCard size={13} className="text-gray-400" />
+                              {parseInt(staff.fixedAmount).toLocaleString()} <span className="text-[9px] text-gray-500 uppercase">UZS</span>
+                            </div>
+                          )}
+                          {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
+                            <div className="text-[12px] text-[#34c759] font-medium flex items-center gap-1.5">
+                              <Percent size={13} className="text-[#34c759]" />
+                              {staff.kpiPercentage}% <span className="text-[9px] text-gray-500 uppercase">KPI</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-black/5 dark:hover:bg-white/10 text-gray-400 hover:text-[#1d1d1f] dark:hover:text-white rounded-md transition-colors opacity-0 group-hover:opacity-100">
+                          <ChevronRight size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="5" className="px-5 py-20 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-3">
+                            <Users size={24} className="text-gray-400" />
+                          </div>
+                          <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1">Xodimlar topilmadi</p>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400">"{activeRoleTab}" bo'limida xodimlar yo'q.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CREATE STAFF MODAL (Mac OS styling embedded for form) */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Yangi xodim">
+        <form onSubmit={onAddStaffSubmit} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+
+          <div className="space-y-3.5">
             <div>
-              <label className="text-sm font-medium text-gray-400 mb-1.5 block">Telefon raqam</label>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">F.I.SH</label>
               <input
-                type="tel"
-                value={newStaff.phone}
-                onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
-                className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder="+998 90 123 45 67"
+                type="text" required
+                value={newStaff.name}
+                onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                placeholder="Masalan: Aliyev Vali"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="text-sm font-medium text-gray-400 mb-2 block">Maosh turi</label>
-            <div className="flex bg-[#131520] border border-white/10 rounded-xl p-1 gap-1">
-              {[
-                { type: 'FIXED', label: 'Fiks (Oylik)' },
-                { type: 'KPI', label: 'KPI (%)' },
-                { type: 'MIXED', label: 'Aralash' }
-              ].map(({ type, label }) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setNewStaff({ ...newStaff, salaryType: type })}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${newStaff.salaryType === type
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
-                    }`}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">LAVOZIM</label>
+                <select
+                  required
+                  value={newStaff.roleId}
+                  onChange={(e) => setNewStaff({ ...newStaff, roleId: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                 >
-                  {label}
-                </button>
-              ))}
+                  <option value="" disabled>Tanlang...</option>
+                  {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TELEFON</label>
+                <input
+                  type="tel"
+                  value={newStaff.phone}
+                  onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  placeholder="+998 90 123 45 67"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1.5">MAOSH TURI</label>
+              <div className="flex bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
+                {[
+                  { type: 'FIXED', label: 'Fiks' },
+                  { type: 'KPI', label: 'Faqat KPI' },
+                  { type: 'MIXED', label: 'Aralash' }
+                ].map(({ type, label }) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setNewStaff({ ...newStaff, salaryType: type })}
+                    className={`flex-1 py-1 text-[12px] font-medium rounded-md transition-all ${newStaff.salaryType === type
+                      ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                      }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {(newStaff.salaryType === 'FIXED' || newStaff.salaryType === 'MIXED') ? (
+                <div className="animate-fade-in">
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">FIKS SUMMA (UZS)</label>
+                  <input
+                    type="number" required
+                    value={newStaff.fixedAmount}
+                    onChange={(e) => setNewStaff({ ...newStaff, fixedAmount: parseFloat(e.target.value) })}
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+              ) : <div></div>}
+
+              {(newStaff.salaryType === 'KPI' || newStaff.salaryType === 'MIXED') && (
+                <div className="animate-fade-in">
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">KPI ULUSHI (%)</label>
+                  <input
+                    type="number" required
+                    value={newStaff.kpiPercentage}
+                    onChange={(e) => setNewStaff({ ...newStaff, kpiPercentage: parseFloat(e.target.value) })}
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                    placeholder="0"
+                    min="0" max="100"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {(newStaff.salaryType === 'FIXED' || newStaff.salaryType === 'MIXED') && (
-              <div className="animate-fade-in">
-                <label className="text-sm font-medium text-gray-400 mb-1.5 block">Fiks summa (UZS)</label>
-                <input
-                  type="number" required
-                  value={newStaff.fixedAmount}
-                  onChange={(e) => setNewStaff({ ...newStaff, fixedAmount: parseFloat(e.target.value) })}
-                  className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-            )}
-            {(newStaff.salaryType === 'KPI' || newStaff.salaryType === 'MIXED') && (
-              <div className="animate-fade-in">
-                <label className="text-sm font-medium text-gray-400 mb-1.5 block">KPI ulushi (%)</label>
-                <input
-                  type="number" required
-                  value={newStaff.kpiPercentage}
-                  onChange={(e) => setNewStaff({ ...newStaff, kpiPercentage: parseFloat(e.target.value) })}
-                  className="w-full bg-[#131520] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder="0"
-                  min="0" max="100"
-                />
-              </div>
-            )}
+          <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors"
+            >
+              Saqlash
+            </button>
           </div>
-
-          <button
-            type="submit"
-            className="w-full py-3.5 mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20 text-base"
-          >
-            Ma'lumotlarni saqlash
-          </button>
         </form>
       </Modal>
     </div>

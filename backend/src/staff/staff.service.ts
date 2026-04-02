@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Staff } from './entities/staff.entity';
+import { Group } from '../groups/entities/group.entity';
 
 @Injectable()
 export class StaffService {
@@ -15,19 +16,32 @@ export class StaffService {
   }
 
   async findOne(id: number): Promise<Staff | null> {
-    return this.staffRepository.findOne({ 
+    const staff = await this.staffRepository.findOne({ 
       where: { id }, 
-      relations: [
-        'role', 
-        'groups', 
-        'groups.course', 
-        'groups.enrollments', 
-        'groups.enrollments.student',
-        'groups.payments',
-        'groups.payments.student',
-        'groups.phases'
-      ] 
+      relations: ['role'] 
     });
+
+    if (!staff) return null;
+
+    // Fetch all groups where staff is current teacher OR was a teacher in the past (phases)
+    const groups = await this.staffRepository.manager.find(Group, {
+      where: [
+        { teacher: { id } },
+        { phases: { teacher: { id } } }
+      ],
+      relations: [
+        'course', 
+        'enrollments', 
+        'enrollments.student',
+        'payments',
+        'payments.student',
+        'phases',
+        'phases.teacher'
+      ]
+    });
+
+    staff.groups = groups;
+    return staff;
   }
 
   async calculateSalary(id: number, month: string) {

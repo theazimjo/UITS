@@ -5,16 +5,25 @@ import Header from './Header';
 
 const Layout = ({ currentUser, onLogout }) => {
   return (
-    <div className="min-h-screen text-gray-100 flex font-sans overflow-hidden bg-[#07080e]">
-      <Sidebar onLogout={onLogout} />
-      <main className="flex-1 flex flex-col min-w-0 relative">
-        <Header currentUser={currentUser} />
-        <div className="flex-1 overflow-y-auto px-10 pb-10">
-          <Outlet />
+    <div className="h-screen w-full bg-[url('https://images.unsplash.com/photo-1628156108168-cf890eb9385b?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] overflow-hidden flex">
+      {/* macOS Desktop Blur Backdrop */}
+      <div className="absolute inset-0 bg-white/40 dark:bg-[#000000]/60 backdrop-blur-2xl z-0 pointer-events-none"></div>
+      
+      <div className="relative z-10 flex w-full h-full max-w-[1920px] mx-auto xl:px-4 xl:py-4 transition-all">
+        {/* Main Window Frame for XL screens (macOS Window effect) */}
+        <div className="flex w-full h-full xl:rounded-2xl overflow-hidden shadow-2xl xl:shadow-black/50 border-0 xl:border xl:border-white/20 dark:xl:border-white/10 bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-xl relative">
+          <Sidebar onLogout={onLogout} />
+          <main className="flex-1 flex flex-col min-w-0 h-full relative border-l border-white/30 dark:border-black/30">
+            <Header currentUser={currentUser} />
+            <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
+              <Outlet />
+            </div>
+          </main>
         </div>
-      </main>
+      </div>
     </div>
   );
 };
 
 export default Layout;
+

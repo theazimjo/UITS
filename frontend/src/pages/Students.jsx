@@ -34,7 +34,7 @@ const Students = ({ students, syncing, handleSync, setStudents }) => {
   );
 
   return (
-    <div className="h-full w-full bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
 
       {/* macOS Finder-style Toolbar */}
       <div className="min-h-[56px] py-3 sm:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4">

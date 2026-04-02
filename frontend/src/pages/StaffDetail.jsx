@@ -62,8 +62,61 @@ const StaffDetail = ({ fetchStaff }) => {
     }
   };
 
-  const allStudents = staff?.groups?.flatMap(group =>
-    group.enrollments?.map(enrollment => ({
+  const allStudents = staff?.groups?.filter(group => {
+    // Xodim O'qituvchi bo'lsa, tanlangan oydagi dars bergan guruhlarini aniq fazalar orqali aniqlaymiz:
+    if (staff.role?.name === 'TEACHER') {
+      const [year, monthNum] = currentMonth.split('-').map(Number);
+      const mStart = new Date(year, monthNum - 1, 1);
+      const mEnd = new Date(year, monthNum, 0);
+
+      // Phases orqali tekshirish: Ushbu xodim shu oylarda dars berganmi?
+      return group.phases?.some(p => {
+        if (p.teacher?.id !== staff.id) return false;
+        const pStart = new Date(p.startDate);
+        
+        // Agar phase-da tugash sanasi bo'lmasa, guruhning tugash sanasiga qaraymiz:
+        const effectiveEndDate = p.endDate || group.endDate;
+        const pEnd = effectiveEndDate ? new Date(effectiveEndDate) : new Date(8640000000000000);
+        
+        return pStart <= mEnd && pEnd >= mStart;
+      });
+    }
+    return true; 
+  }).flatMap(group =>
+    group.enrollments?.filter(enrollment => {
+      const joinedDate = new Date(enrollment.joinedDate);
+      const joinedMonth = joinedDate.toISOString().substring(0, 7);
+      
+      // 1-shart: O'quvchi ushbu tanlangan oydan keyin qo'shilmagan bo'lishi kerak
+      if (joinedMonth > currentMonth) return false;
+      
+      // 2-shart: Agar guruh o'tkazilgan bo'lsa, o'quvchi bu o'qituvchi ketishidan oldin qo'shilgan bo'lishi kerak
+      const teacherPhases = group.phases?.filter(p => p.teacher?.id === staff.id) || [];
+      if (teacherPhases.length > 0) {
+        const taughtThisStudent = teacherPhases.some(phase => {
+          const pEnd = phase.endDate ? new Date(phase.endDate) : new Date(8640000000000000);
+          return joinedDate <= pEnd;
+        });
+        if (!taughtThisStudent) return false;
+      } else if (group.teacher?.id !== staff.id) {
+         // Agar phase yo'q bo'lsa va hozirgi o'qituvchisi bu odam bo'lmasa, demak eski baza va xato
+         // Lekin agar oldin o'qitgan bo'lsa-yu, phase yozilmagan bo'lsa, shunchaki true qaytaramiz
+      }
+
+      // 3-shart: Chiqib ketgan yoki bitirgan o'quvchilarni faqat o'qigan oylarida ko'rsatish
+      if (enrollment.status !== 'ACTIVE' && enrollment.updatedAt) {
+        const leftMonth = new Date(enrollment.updatedAt).toISOString().substring(0, 7);
+        if (currentMonth > leftMonth) return false;
+      }
+
+      // 4-shart: Guruh tugagan bo'lsa, keyingi oylarda o'quvchini yashirish
+      if (group.endDate) {
+        const endMonth = group.endDate.substring(0, 7);
+        if (currentMonth > endMonth) return false;
+      }
+
+      return true;
+    }).map(enrollment => ({
       ...enrollment.student,
       groupName: group.name,
       enrollmentStatus: enrollment.status,
@@ -96,8 +149,8 @@ const StaffDetail = ({ fetchStaff }) => {
   );
 
   return (
-    <div className="h-screen w-full bg-[url('https://images.unsplash.com/photo-1618123069754-cd64c230a169?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] overflow-hidden flex flex-col">
-      <div className="flex-1 w-full h-full bg-white/80 dark:bg-[#1e1e1e]/90 backdrop-blur-3xl flex flex-col">
+    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+      <div className="flex-1 w-full h-full flex flex-col">
         <div className="h-12 bg-white/40 dark:bg-[#2d2d2d]/60 backdrop-blur-md border-b border-gray-200/50 dark:border-black/50 flex items-center px-4 justify-between shrink-0">
           <div className="w-20"></div>
           <div className="flex-1 text-center font-medium text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] truncate px-4">
