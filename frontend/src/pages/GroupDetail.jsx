@@ -408,6 +408,7 @@ const GroupDetail = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+<<<<<<< HEAD
                     {group.enrollments?.filter(en => {
                       // 1-shart: Kelajakda qo'shiladigan o'quvchilarni yashirish
                       const joinedMonth = new Date(en.joinedDate).toISOString().substring(0, 7);
@@ -427,6 +428,9 @@ const GroupDetail = ({
 
                       return true;
                     }).map(en => {
+=======
+                    {group.enrollments?.map(en => {
+>>>>>>> 4a3876e4634605a1aa53cdb4ed0f5d2edca8cd07
                       const s = en.student; if (!s) return null;
                       const stPayments = payments.filter(p => p.student?.id === s.id && p.month === selectedMonth);
                       const paid = stPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
