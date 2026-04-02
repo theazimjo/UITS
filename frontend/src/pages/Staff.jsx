@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Phone, CreditCard, Percent, CheckCircle2, X, Users, ChevronRight, UserSquare2 } from 'lucide-react';
+import { Plus, Phone, CheckCircle2, X, Users, ChevronRight, UserSquare2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createStaff, deleteStaff, createRole } from '../services/api';
-import Modal from '../components/common/Modal'; // Modal needs a clean macOS style too if possible
+import { createStaff, createRole } from '../services/api';
+import Modal from '../components/common/Modal';
 
 const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
   const navigate = useNavigate();
   const [activeRoleTab, setActiveRoleTab] = useState('Barchasi');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newStaff, setNewStaff] = useState({ name: '', roleId: '', phone: '', salaryType: 'FIXED', fixedAmount: 0, kpiPercentage: 0 });
+  const [newStaff, setNewStaff] = useState({ name: '', roleId: '', phone: '' });
   const [newRoleName, setNewRoleName] = useState('');
   const [showRoleInput, setShowRoleInput] = useState(false);
 
@@ -27,7 +27,7 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
   const onAddStaffSubmit = async (e) => {
     e.preventDefault();
     await createStaff({ ...newStaff, role: { id: parseInt(newStaff.roleId) } });
-    setNewStaff({ name: '', roleId: '', phone: '', salaryType: 'FIXED', fixedAmount: 0, kpiPercentage: 0 });
+    setNewStaff({ name: '', roleId: '', phone: '' });
     setIsModalOpen(false);
     fetchStaff();
   };
@@ -118,8 +118,6 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
                   <tr>
                     <th className="px-5 py-2.5 font-medium">Xodim ma'lumotlari</th>
                     <th className="px-5 py-2.5 font-medium">Aloqa</th>
-                    <th className="px-5 py-2.5 font-medium">Maosh Turi</th>
-                    <th className="px-5 py-2.5 font-medium">Summa / KPI</th>
                     <th className="px-5 py-2.5 font-medium text-right"></th>
                   </tr>
                 </thead>
@@ -151,30 +149,6 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
                           <span>{staff.phone || 'Kiritilmagan'}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border
-                          ${staff.salaryType === 'FIXED' ? 'bg-[#007aff]/10 text-[#007aff] border-[#007aff]/20' :
-                            staff.salaryType === 'KPI' ? 'bg-[#34c759]/10 text-[#34c759] border-[#34c759]/20' :
-                              'bg-[#ff9500]/10 text-[#ff9500] border-[#ff9500]/20'}`}>
-                          {staff.salaryType === 'FIXED' ? 'Fiks (Oylik)' : staff.salaryType === 'KPI' ? 'Faqat KPI' : 'Aralash'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="space-y-1">
-                          {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
-                            <div className="text-[12px] text-[#1d1d1f] dark:text-[#f5f5f7] font-medium flex items-center gap-1.5">
-                              <CreditCard size={13} className="text-gray-400" />
-                              {parseInt(staff.fixedAmount).toLocaleString()} <span className="text-[9px] text-gray-500 uppercase">UZS</span>
-                            </div>
-                          )}
-                          {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
-                            <div className="text-[12px] text-[#34c759] font-medium flex items-center gap-1.5">
-                              <Percent size={13} className="text-[#34c759]" />
-                              {staff.kpiPercentage}% <span className="text-[9px] text-gray-500 uppercase">KPI</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
                       <td className="px-5 py-3 text-right">
                         <button className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-black/5 dark:hover:bg-white/10 text-gray-400 hover:text-[#1d1d1f] dark:hover:text-white rounded-md transition-colors opacity-0 group-hover:opacity-100">
                           <ChevronRight size={16} />
@@ -183,7 +157,7 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="5" className="px-5 py-20 text-center">
+                      <td colSpan="3" className="px-5 py-20 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-3">
                             <Users size={24} className="text-gray-400" />
@@ -201,10 +175,9 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
         </div>
       </div>
 
-      {/* CREATE STAFF MODAL (Mac OS styling embedded for form) */}
+      {/* CREATE STAFF MODAL */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Yangi xodim">
         <form onSubmit={onAddStaffSubmit} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
-
           <div className="space-y-3.5">
             <div>
               <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">F.I.SH</label>
@@ -240,59 +213,6 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
                   placeholder="+998 90 123 45 67"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1.5">MAOSH TURI</label>
-              <div className="flex bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
-                {[
-                  { type: 'FIXED', label: 'Fiks' },
-                  { type: 'KPI', label: 'Faqat KPI' },
-                  { type: 'MIXED', label: 'Aralash' }
-                ].map(({ type, label }) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setNewStaff({ ...newStaff, salaryType: type })}
-                    className={`flex-1 py-1 text-[12px] font-medium rounded-md transition-all ${newStaff.salaryType === type
-                      ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
-                      }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {(newStaff.salaryType === 'FIXED' || newStaff.salaryType === 'MIXED') ? (
-                <div className="animate-fade-in">
-                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">FIKS SUMMA (UZS)</label>
-                  <input
-                    type="number" required
-                    value={newStaff.fixedAmount}
-                    onChange={(e) => setNewStaff({ ...newStaff, fixedAmount: parseFloat(e.target.value) })}
-                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
-                    placeholder="0"
-                    min="0"
-                  />
-                </div>
-              ) : <div></div>}
-
-              {(newStaff.salaryType === 'KPI' || newStaff.salaryType === 'MIXED') && (
-                <div className="animate-fade-in">
-                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">KPI ULUSHI (%)</label>
-                  <input
-                    type="number" required
-                    value={newStaff.kpiPercentage}
-                    onChange={(e) => setNewStaff({ ...newStaff, kpiPercentage: parseFloat(e.target.value) })}
-                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
-                    placeholder="0"
-                    min="0" max="100"
-                  />
-                </div>
-              )}
             </div>
           </div>
 

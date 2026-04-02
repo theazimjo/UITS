@@ -60,40 +60,68 @@ export class StaffService {
     // Filter groups where this staff is/was a teacher
     if (staff.groups) {
       for (const group of staff.groups) {
-        // Find phases for THIS staff in this month
-        const phases = group.phases?.filter(p => {
-          // If phase teacher matches this staff
-          const pTeacherId = p.teacher?.id || (p as any).teacherId;
-          const gTeacherId = group.teacher?.id || (group as any).teacherId;
-          
-          if (pTeacherId !== staff.id && gTeacherId !== staff.id) return false;
-          
-          const pStart = new Date(p.startDate);
-          const pEnd = p.endDate ? new Date(p.endDate) : new Date(8640000000000000); // Infinity
-          
-          // Overlap check
-          return pStart <= endDate && pEnd >= startDate;
-        }) || [];
+        // Check if this staff was teaching in this month
+        let isStaffTeaching = false;
+        
+        if (group.phases && group.phases.length > 0) {
+          isStaffTeaching = group.phases.some(p => {
+            const pTeacherId = p.teacher?.id;
+            if (pTeacherId !== staff.id) return false;
+            
+            const pStart = new Date(p.startDate);
+            const pEnd = p.endDate ? new Date(p.endDate) : new Date(8640000000000000);
+            return pStart <= endDate && pEnd >= startDate;
+          });
+        } else if (group.teacher?.id === staff.id) {
+          // Fallback for groups without phases: check current teacher and group dates
+          const gStart = new Date(group.startDate);
+          const gEnd = group.endDate ? new Date(group.endDate) : new Date(8640000000000000);
+          isStaffTeaching = gStart <= endDate && gEnd >= startDate;
+        }
 
-        if (phases.length > 0) {
-          const activeStudents = group.enrollments?.filter(e => e.status === 'ACTIVE').length || 0;
-          const coursePrice = Number(group.course?.monthlyPrice) || 0;
-          const kpiPerStudent = (coursePrice * (Number(staff.kpiPercentage) || 0)) / 100;
-          const kpiSalary = activeStudents * kpiPerStudent;
+        if (isStaffTeaching) {
+          const kpiPercentage = Number(staff.kpiPercentage) || 0;
+          const coursePrice = Number(group.monthlyPrice) || 0;
+          const courseDuration = Number(group.course?.duration) || 1;
+
+          // Faqat "To'langan" (yoki oldin qoplangan) o'quvchilarni hisoblash
+          const paidStudents = group.enrollments?.filter(en => {
+            if (en.status !== 'ACTIVE') return false;
+            
+            const joinD = new Date(en.joinedDate);
+            if (joinD > endDate) return false; // Hali qo'shilmagan
+
+            // Jami to'lovlar (shu guruh uchun)
+            const totalPaid = group.payments
+              ?.filter(p => p.student?.id === en.student?.id)
+              .reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+            
+            // O'qigan oylari soni (tanlangan oygacha)
+            const monthsOfStudy = (year - joinD.getFullYear()) * 12 + (monthNum - 1 - joinD.getMonth()) + 1;
+            const expectedMonths = Math.max(0, Math.min(monthsOfStudy, courseDuration));
+            const totalExpected = expectedMonths * coursePrice;
+
+            return totalPaid >= totalExpected;
+          }).length || 0;
+          
+          const earnedRevenue = paidStudents * coursePrice;
+          const kpiSalary = (earnedRevenue * kpiPercentage) / 100;
 
           if (staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') {
             totalSalary += kpiSalary;
             totalKpi += kpiSalary;
           }
-          totalRevenue += coursePrice * activeStudents;
+          totalRevenue += earnedRevenue;
 
           groupBreakdown.push({
             groupId: group.id,
             groupName: group.name,
-            students: activeStudents,
-            coursePrice,
+            students: paidStudents,
+            totalRevenue: earnedRevenue,
             kpiSalary,
-            phases: phases.map(p => ({ start: p.startDate, end: p.endDate }))
+            phases: (group.phases && group.phases.length > 0)
+              ? group.phases.filter(p => p.teacher?.id === staff.id).map(p => ({ start: p.startDate, end: p.endDate }))
+              : [{ start: group.startDate, end: group.endDate }]
           });
         }
       }

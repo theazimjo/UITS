@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  User, Phone, CreditCard, BookOpen,
+  Phone, BookOpen,
   ChevronLeft, Calendar, Clock, MapPin, Trash2,
   Users, Search, CheckCircle2, AlertCircle,
-  ChevronRight, Percent, TrendingUp, Wallet
+  ChevronRight
 } from 'lucide-react';
-import { getStaffById, deleteStaff, getStaffSalary } from '../services/api';
+import { getStaffById, deleteStaff } from '../services/api';
 
 const StaffDetail = ({ fetchStaff }) => {
   const { id } = useParams();
@@ -16,8 +16,6 @@ const StaffDetail = ({ fetchStaff }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [salaryData, setSalaryData] = useState(null);
-  const [salaryLoading, setSalaryLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,15 +23,10 @@ const StaffDetail = ({ fetchStaff }) => {
         setLoading(true);
         const staffRes = await getStaffById(id);
         setStaff(staffRes.data);
-
-        setSalaryLoading(true);
-        const salaryRes = await getStaffSalary(id, currentMonth);
-        setSalaryData(salaryRes.data);
       } catch (err) {
         console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
-        setSalaryLoading(false);
       }
     };
     fetchData();
@@ -63,21 +56,16 @@ const StaffDetail = ({ fetchStaff }) => {
   };
 
   const allStudents = staff?.groups?.filter(group => {
-    // Xodim O'qituvchi bo'lsa, tanlangan oydagi dars bergan guruhlarini aniq fazalar orqali aniqlaymiz:
     if (staff.role?.name === 'TEACHER') {
       const [year, monthNum] = currentMonth.split('-').map(Number);
       const mStart = new Date(year, monthNum - 1, 1);
       const mEnd = new Date(year, monthNum, 0);
 
-      // Phases orqali tekshirish: Ushbu xodim shu oylarda dars berganmi?
       return group.phases?.some(p => {
         if (p.teacher?.id !== staff.id) return false;
         const pStart = new Date(p.startDate);
-        
-        // Agar phase-da tugash sanasi bo'lmasa, guruhning tugash sanasiga qaraymiz:
         const effectiveEndDate = p.endDate || group.endDate;
         const pEnd = effectiveEndDate ? new Date(effectiveEndDate) : new Date(8640000000000000);
-        
         return pStart <= mEnd && pEnd >= mStart;
       });
     }
@@ -86,11 +74,8 @@ const StaffDetail = ({ fetchStaff }) => {
     group.enrollments?.filter(enrollment => {
       const joinedDate = new Date(enrollment.joinedDate);
       const joinedMonth = joinedDate.toISOString().substring(0, 7);
-      
-      // 1-shart: O'quvchi ushbu tanlangan oydan keyin qo'shilmagan bo'lishi kerak
       if (joinedMonth > currentMonth) return false;
       
-      // 2-shart: Agar guruh o'tkazilgan bo'lsa, o'quvchi bu o'qituvchi ketishidan oldin qo'shilgan bo'lishi kerak
       const teacherPhases = group.phases?.filter(p => p.teacher?.id === staff.id) || [];
       if (teacherPhases.length > 0) {
         const taughtThisStudent = teacherPhases.some(phase => {
@@ -98,29 +83,43 @@ const StaffDetail = ({ fetchStaff }) => {
           return joinedDate <= pEnd;
         });
         if (!taughtThisStudent) return false;
-      } else if (group.teacher?.id !== staff.id) {
-         // Agar phase yo'q bo'lsa va hozirgi o'qituvchisi bu odam bo'lmasa, demak eski baza va xato
-         // Lekin agar oldin o'qitgan bo'lsa-yu, phase yozilmagan bo'lsa, shunchaki true qaytaramiz
       }
-
-      // 3-shart: Chiqib ketgan yoki bitirgan o'quvchilarni faqat o'qigan oylarida ko'rsatish
       if (enrollment.status !== 'ACTIVE' && enrollment.updatedAt) {
         const leftMonth = new Date(enrollment.updatedAt).toISOString().substring(0, 7);
         if (currentMonth > leftMonth) return false;
       }
-
-      // 4-shart: Guruh tugagan bo'lsa, keyingi oylarda o'quvchini yashirish
       if (group.endDate) {
         const endMonth = group.endDate.substring(0, 7);
         if (currentMonth > endMonth) return false;
       }
-
       return true;
     }).map(enrollment => ({
       ...enrollment.student,
       groupName: group.name,
       enrollmentStatus: enrollment.status,
-      isPaid: group.payments?.some(p => p.student?.id === enrollment.student?.id && p.month === currentMonth),
+      ...(() => {
+        const fullPrice = group.monthlyPrice || 0;
+        const payments = group.payments?.filter(p => p.student?.id === enrollment.student?.id) || [];
+        const paidThisMonth = payments.filter(p => p.month === currentMonth).reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+        const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+        
+        const joinD = new Date(enrollment.joinedDate);
+        const curD = new Date(currentMonth + "-01");
+        const monthsOfStudy = (curD.getFullYear() - joinD.getFullYear()) * 12 + (curD.getMonth() - joinD.getMonth()) + 1;
+        const courseDuration = group.course?.duration || 1;
+        const expectedMonths = Math.max(0, Math.min(monthsOfStudy, courseDuration));
+        const totalExpected = expectedMonths * fullPrice;
+        
+        const isPaid = totalPaid >= totalExpected;
+        const isPaidDirectly = paidThisMonth >= fullPrice;
+        const startDay = joinD.getDate();
+        
+        return {
+          isPaid,
+          statusLabel: isPaid ? (isPaidDirectly ? "To'langan" : "To'lov qoplangan") : `To'lanmagan (${(totalExpected - totalPaid).toLocaleString()})`,
+          startInfo: startDay !== 1 ? `${startDay}-sanada boshlagan` : ""
+        };
+      })(),
       lastPayment: group.payments?.filter(p => p.student?.id === enrollment.student?.id)
         .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())[0]
     }))
@@ -183,8 +182,7 @@ const StaffDetail = ({ fetchStaff }) => {
             <div className="flex bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
               {[
                 { id: 'overview', label: "Asosiy" },
-                { id: 'students', label: "O'quvchilar", count: allStudents.length },
-                { id: 'salary', label: "Maosh" }
+                { id: 'students', label: "O'quvchilar", count: allStudents.length }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -204,7 +202,6 @@ const StaffDetail = ({ fetchStaff }) => {
               ))}
             </div>
 
-            {/* Unified Month Picker */}
             <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
               <button onClick={() => handleMonthChange(-1)} className="p-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-500 hover:text-black"><ChevronLeft size={16} /></button>
               <span className="px-4 text-[12px] font-bold min-w-[110px] text-center uppercase tracking-tight">{getMonthName(currentMonth)}</span>
@@ -226,13 +223,6 @@ const StaffDetail = ({ fetchStaff }) => {
                         <div>
                           <p className="text-[12px] text-gray-500 dark:text-gray-400">Telefon</p>
                           <p className="text-[14px] font-medium">{staff.phone || '—'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-4">
-                        <div className="p-2 bg-[#34c759]/10 text-[#34c759] rounded-lg"><CreditCard size={18} /></div>
-                        <div>
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400">Maosh turi</p>
-                          <p className="text-[14px] font-medium">{staff.salaryType === 'FIXED' ? 'Fiks (Oylik)' : staff.salaryType === 'KPI' ? 'KPI (%)' : 'Aralash'}</p>
                         </div>
                       </div>
                     </div>
@@ -292,78 +282,8 @@ const StaffDetail = ({ fetchStaff }) => {
               </div>
             )}
 
-            {/* SALARY TAB */}
-            {activeTab === 'salary' && (
-              <div className="space-y-8 animate-fade-in">
-                {/* macOS Finder-like Toolbar for Month Selection */}
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Maosh hisoblagich</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Guruhlar tushumi</p>
-                    <h3 className="text-2xl font-semibold">{(salaryData?.totalRevenue || 0).toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
-                  </div>
-
-                  {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
-                    <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">KPI ({staff.kpiPercentage}%)</p>
-                      <h3 className="text-2xl font-semibold text-[#007aff]">{(salaryData?.totalKpi || 0).toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
-                    </div>
-                  )}
-
-                  {(staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED') && (
-                    <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">O'zgarmas oylik</p>
-                      <h3 className="text-2xl font-semibold text-gray-500">{(salaryData?.fixedAmount || 0).toLocaleString()} <span className="text-xs text-gray-400 font-normal">UZS</span></h3>
-                    </div>
-                  )}
-
-                  <div className="bg-emerald-500/10 backdrop-blur-md rounded-2xl p-5 border border-emerald-500/20 shadow-sm">
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1.5 font-bold uppercase tracking-wider">Jami maosh</p>
-                    <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{(salaryData?.totalSalary || 0).toLocaleString()} <span className="text-xs font-normal">UZS</span></h3>
-                  </div>
-                </div>
-
-                {/* Data Table */}
-                <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
-                  <table className="w-full text-left text-[14px]">
-                    <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10">
-                      <tr>
-                        <th className="px-6 py-4 font-medium">Guruh nomi</th>
-                        <th className="px-6 py-4 font-medium">O'quvchilar</th>
-                        <th className="px-6 py-4 font-medium">Guruh tushumi</th>
-                        {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
-                          <th className="px-6 py-4 font-medium text-right">O'qituvchi ulushi (KPI)</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                      {salaryData?.groupBreakdown?.length > 0 ? salaryData.groupBreakdown.map((group) => (
-                        <tr key={group.groupId} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4 font-medium">{group.groupName}</td>
-                          <td className="px-6 py-4 text-gray-500">{group.students} ta</td>
-                          <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{(group.students * group.coursePrice).toLocaleString()} UZS</td>
-                          {(staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') && (
-                            <td className="px-6 py-4 font-medium text-[#007aff] text-right">{group.kpiSalary.toLocaleString()} UZS</td>
-                          )}
-                        </tr>
-                      )) : (
-                        <tr>
-                          <td colSpan="4" className="px-6 py-10 text-center text-gray-400 text-[13px]">Ushbu oyda ma'lumot yo'q</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* STUDENTS TAB */}
             {activeTab === 'students' && (
               <div className="h-full flex flex-col space-y-6 animate-fade-in">
-                {/* Finder Search Bar & Month Picker */}
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                   <div className="relative w-full sm:w-80">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -377,7 +297,6 @@ const StaffDetail = ({ fetchStaff }) => {
                   </div>
                 </div>
 
-                {/* Students List Table */}
                 <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex-1">
                   <div className="overflow-x-auto h-full">
                     <table className="w-full text-left text-[14px]">
@@ -404,15 +323,15 @@ const StaffDetail = ({ fetchStaff }) => {
                               }
                             </td>
                             <td className="px-6 py-3.5">
-                              {student.isPaid ? (
-                                <div className="flex items-center gap-2 text-[#34c759]">
-                                  <CheckCircle2 size={16} /> <span className="text-[13px]">To'langan</span>
+                              <div className="flex flex-col">
+                                <div className={`flex items-center gap-2 ${student.isPaid ? 'text-[#34c759]' : 'text-[#ff3b30]'}`}>
+                                  {student.isPaid ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                                  <span className="text-[13px] font-medium">{student.statusLabel}</span>
                                 </div>
-                              ) : (
-                                <div className="flex items-center gap-2 text-[#ff3b30]">
-                                  <AlertCircle size={16} /> <span className="text-[13px]">To'lanmagan</span>
-                                </div>
-                              )}
+                                {student.startInfo && (
+                                  <span className="text-[11px] text-gray-500 mt-0.5 ml-6">{student.startInfo}</span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )) : (
@@ -430,7 +349,6 @@ const StaffDetail = ({ fetchStaff }) => {
               </div>
             )}
           </div>
-
         </div>
       </div>
     </div>

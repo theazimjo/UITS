@@ -408,7 +408,6 @@ const GroupDetail = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-<<<<<<< HEAD
                     {group.enrollments?.filter(en => {
                       // 1-shart: Kelajakda qo'shiladigan o'quvchilarni yashirish
                       const joinedMonth = new Date(en.joinedDate).toISOString().substring(0, 7);
@@ -428,13 +427,43 @@ const GroupDetail = ({
 
                       return true;
                     }).map(en => {
-=======
-                    {group.enrollments?.map(en => {
->>>>>>> 4a3876e4634605a1aa53cdb4ed0f5d2edca8cd07
                       const s = en.student; if (!s) return null;
+
+                      // Bu oy uchun to'g'ridan-to'g'ri to'lov bormi?
                       const stPayments = payments.filter(p => p.student?.id === s.id && p.month === selectedMonth);
-                      const paid = stPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-                      const full = parseFloat(group.monthlyPrice || 0);
+                      const paidThisMonth = stPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+                      const fullPrice = parseFloat(group.monthlyPrice || 0);
+                      const isPaidDirectly = paidThisMonth >= fullPrice;
+
+                      // Jami to'lovlar (shu guruh uchun)
+                      const totalPaid = payments
+                        .filter(p => p.student?.id === s.id)
+                        .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+                      // Kerakli to'lov (oylar soni bo'yicha)
+                      const joinD = new Date(en.joinedDate);
+                      const curD = new Date(selectedMonth + "-01");
+
+                      // Nechanchi oyda o'qiyotganini hisoblash
+                      const monthsOfStudy = (curD.getFullYear() - joinD.getFullYear()) * 12 + (curD.getMonth() - joinD.getMonth()) + 1;
+                      const courseDuration = group.course?.duration || 1;
+
+                      // Kutilayotgan oylar soni (kurs davomiyligidan oshib ketmasligi kerak)
+                      const expectedMonths = Math.max(0, Math.min(monthsOfStudy, courseDuration));
+                      const totalExpected = expectedMonths * fullPrice;
+
+                      const isPaid = totalPaid >= totalExpected;
+
+                      // Boshlangan sana haqida ma'lumot
+                      const startDay = joinD.getDate();
+                      const startInfo = startDay !== 1 ? `${startDay}-sanada boshlagan` : "";
+
+                      let statusLabel = "";
+                      if (isPaid) {
+                        statusLabel = isPaidDirectly ? "TO'LANGAN" : "TO'LOV QOPLANGAN";
+                      } else {
+                        statusLabel = `KUTILMOQDA: ${(totalExpected - totalPaid).toLocaleString()}`;
+                      }
 
                       return (
                         <tr key={en.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-default">
