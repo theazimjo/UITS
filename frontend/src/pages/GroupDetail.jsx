@@ -46,7 +46,8 @@ const GroupDetail = ({
     teacherId: '',
     sohaId: '',
     courseId: '',
-    startDate: new Date().toISOString().split('T')[0]
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: ''
   });
 
   const getGroupStatusDetails = (status) => {
@@ -99,6 +100,20 @@ const GroupDetail = ({
       }
     }
   }, [editFormData.startDate, editFormData.courseId, courses]);
+  
+  useEffect(() => {
+    if (transferFormData.startDate && transferFormData.courseId) {
+      const course = courses.find(c => c.id === parseInt(transferFormData.courseId));
+      if (course) {
+        const start = new Date(transferFormData.startDate);
+        const end = new Date(start.setMonth(start.getMonth() + parseInt(course.duration)));
+        setTransferFormData(prev => ({
+          ...prev,
+          endDate: end.toISOString().split('T')[0]
+        }));
+      }
+    }
+  }, [transferFormData.startDate, transferFormData.courseId, courses]);
 
   const fetchGroup = async (silent = false) => {
     try {
@@ -106,6 +121,11 @@ const GroupDetail = ({
       const res = await getGroupById(id);
       const g = res.data;
       setGroup(g);
+
+      // If the group is COMPLETED, default the view to the end date so students are visible
+      if (!silent && g.status === 'COMPLETED' && g.endDate) {
+        setSelectedMonth(g.endDate.substring(0, 7));
+      }
 
       setEditFormData({
         name: g.name,
@@ -126,7 +146,8 @@ const GroupDetail = ({
         teacherId: g.teacher?.id || '',
         sohaId: g.course?.field?.id || '',
         courseId: g.course?.id || '',
-        startDate: new Date().toISOString().split('T')[0]
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: ''
       });
 
       const actRes = await getGroupActivities(id);
@@ -170,7 +191,8 @@ const GroupDetail = ({
       await transferGroup(id, {
         teacherId: parseInt(transferFormData.teacherId),
         courseId: parseInt(transferFormData.courseId),
-        startDate: transferFormData.startDate
+        startDate: transferFormData.startDate,
+        endDate: transferFormData.endDate
       });
       await fetchGroup();
       if (fetchGroups) fetchGroups();
@@ -411,6 +433,9 @@ const GroupDetail = ({
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 px-3 border-r border-gray-200/50 dark:border-white/10 hidden sm:block">
+                    O'quvchilar: <span className="text-[#007aff] font-bold">{group.enrollments?.length || 0} ta</span>
+                  </div>
+                  <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 px-3 border-r border-gray-200/50 dark:border-white/10 hidden sm:block">
                     Guruh tushumi: <span className="text-[#34c759] font-bold">{totalRevenueThisMonth.toLocaleString()} UZS</span>
                   </div>
                   <button onClick={() => setIsEnrollModalOpen(true)} className="flex-1 sm:flex-none flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium bg-[#007aff] text-white shadow-sm hover:bg-[#0062cc] transition-colors justify-center">
@@ -431,25 +456,42 @@ const GroupDetail = ({
                   </thead>
                   <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
                     {group.enrollments?.filter(en => {
+                      if (!en.joinedDate) return true;
+                      
                       // 1-shart: Kelajakda qo'shiladigan o'quvchilarni yashirish
-                      const joinedMonth = new Date(en.joinedDate).toISOString().substring(0, 7);
-                      if (joinedMonth > selectedMonth) return false;
+                      try {
+                        const joinedMonth = new Date(en.joinedDate).toISOString().substring(0, 7);
+                        if (joinedMonth > selectedMonth) return false;
+                      } catch (e) {
+                         console.warn("Invalid joinedDate", en.joinedDate);
+                         return true; // Xato bo'lsa ko'rsatamiz
+                      }
 
                       // 2-shart: Chiqib ketgan yoki bitirgan o'quvchilarni faqat o'qigan oylarida ko'rsatish
                       if (en.status !== 'ACTIVE' && en.updatedAt) {
-                        const leftMonth = new Date(en.updatedAt).toISOString().substring(0, 7);
-                        if (selectedMonth > leftMonth) return false;
+                        try {
+                          const leftMonth = new Date(en.updatedAt).toISOString().substring(0, 7);
+                          if (selectedMonth > leftMonth) return false;
+                        } catch (e) {}
                       }
 
-                      // 3-shart: Guruh tugagan bo'lsa, keyingi oylarda o'quvchilarni ko'rsatmaslik
-                      if (group.endDate) {
+                      // 3-shart (YUMSHATILGAN): Guruh TUGATILGAN bo'lsa, keyingi oylarda o'quvchilarni ko'rsatmaslik
+                      if (group.status === 'COMPLETED' && group.endDate) {
                         const endMonth = group.endDate.substring(0, 7);
                         if (selectedMonth > endMonth) return false;
                       }
 
                       return true;
                     }).map(en => {
-                      const s = en.student; if (!s) return null;
+                      const s = en.student; 
+                      if (!s) {
+                        console.error('Enrollment without student:', en.id);
+                        return (
+                          <tr key={en.id} className="text-gray-400 italic">
+                            <td colSpan="4" className="px-5 py-3">O'quvchi ma'lumoti topilmadi (ID: {en.studentId || 'Noma\'lum'})</td>
+                          </tr>
+                        );
+                      }
 
                       // Shu oy uchun qilingan barcha to'lovlar (bir necha marta bo'lishi mumkin)
                       const stPayments = payments.filter(p => p.student?.id === s.id && p.month === selectedMonth);
@@ -703,7 +745,8 @@ const GroupDetail = ({
           <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">YANGI SOHA</label><select value={transferFormData.sohaId} onChange={e => setTransferFormData({ ...transferFormData, sohaId: e.target.value, courseId: '' })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required><option value="">Tanlang...</option>{fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
           <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">YANGI YO'NALISH</label><select value={transferFormData.courseId} onChange={e => setTransferFormData({ ...transferFormData, courseId: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required disabled={!transferFormData.sohaId}><option value="">Tanlang...</option>{courses.filter(c => (c.field?.id || c.fieldId) == transferFormData.sohaId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
           <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">YANGI O'QITUVCHI</label><select value={transferFormData.teacherId} onChange={e => setTransferFormData({ ...transferFormData, teacherId: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required><option value="">Tanlang...</option>{staffList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
-          <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">SANA</label><input type="date" value={transferFormData.startDate} onChange={e => setTransferFormData({ ...transferFormData, startDate: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required /></div>
+          <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">BOSHLANISH SANASI</label><input type="date" value={transferFormData.startDate} onChange={e => setTransferFormData({ ...transferFormData, startDate: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required /></div>
+          <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TUGASH SANASI (AVTOMATIK)</label><input type="date" value={transferFormData.endDate} readOnly className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-gray-500 dark:text-gray-400 outline-none cursor-not-allowed" /></div>
 
           <div className="flex gap-2 pt-3 border-t border-gray-200/50 dark:border-white/10">
             <button type="button" onClick={() => setIsTransferModalOpen(false)} className="flex-1 py-1.5 text-[12px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors">Bekor qilish</button>

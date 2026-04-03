@@ -2,9 +2,11 @@ import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, BadReques
 import { GroupsService } from './groups.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EnrollmentStatus } from './enums/enrollment-status.enum';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('groups')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {
     console.log('--- GroupsController V4 Initialized ---');
@@ -12,6 +14,7 @@ export class GroupsController {
 
   // --- STATIC ACTION ROUTES (Must be BEFORE :id routes) ---
   
+  @Roles('admin')
   @Post('action/clear-all-data')
   async clearAllData() {
     console.log('--- CLEAR ALL DATA ACTION CALLED ---');
@@ -85,7 +88,7 @@ export class GroupsController {
   @Post(':id/action/transfer')
   async transfer(
     @Param('id') id: string, 
-    @Body() data: { teacherId: number, courseId: number, startDate: string }
+    @Body() data: { teacherId: number, courseId: number, startDate: string, endDate: string }
   ) {
     console.log('--- TRANSFER ACTION CALLED V4 ---');
     console.log('Group ID:', id, 'Data:', data);
@@ -149,6 +152,7 @@ export class GroupsController {
     return this.groupsService.findOneGroup(+id); 
   }
 
+  @Roles('admin')
   @Delete(':id')
   deleteGroup(@Param('id') id: string) { 
     if (isNaN(+id)) return null;

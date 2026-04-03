@@ -10,7 +10,7 @@ export class Payment {
   @ManyToOne(() => Student, { eager: true })
   student: Student;
 
-  @ManyToOne(() => Group, { eager: true })
+  @ManyToOne(() => Group, { eager: true, onDelete: 'CASCADE' })
   group: Group;
 
   @Column({ type: 'decimal', precision: 15, scale: 2 })

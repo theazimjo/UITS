@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, DataSource } from 'typeorm';
 import { Field } from './entities/field.entity';
 import { Course } from './entities/course.entity';
 import { Room } from './entities/room.entity';
@@ -27,56 +27,14 @@ export class GroupsService implements OnModuleInit {
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Staff) private readonly staffRepo: Repository<Staff>,
     private readonly activityLogService: ActivityLogService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async onModuleInit() {
-    try {
-      // One-time migration: ManyToMany -> Enrollment
-      const checkTable = await this.groupRepo.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_name = 'group_students_student'
-        );
-      `);
-
-      if (checkTable[0].exists) {
-        const data = await this.groupRepo.query('SELECT * FROM group_students_student');
-        if (data.length > 0) {
-          console.log(`Migrating ${data.length} enrollments...`);
-          for (const row of data) {
-            const exists = await this.enrollmentRepo.findOne({
-              where: { 
-                group: { id: row.groupId }, 
-                student: { id: row.studentId } 
-              }
-            });
-            if (!exists) {
-              await this.enrollmentRepo.save({
-                group: { id: row.groupId },
-                student: { id: row.studentId },
-                status: EnrollmentStatus.ACTIVE
-              });
-            }
-          }
-          console.log('Migration completed.');
-        }
-      }
-      
-      // Phase Migration
-      const groups = await this.groupRepo.find({ relations: ['phases', 'teacher', 'course'] });
-      for (const group of groups) {
-        if (!group.phases || group.phases.length === 0) {
-          const initialPhase = this.phaseRepo.create({
-            group: { id: group.id },
-            teacher: { id: group.teacher?.id },
-            course: { id: group.course?.id },
-            startDate: group.startDate,
-          });
-          await this.phaseRepo.save(initialPhase);
-        }
-      }
-    } catch (err) {
-      // console.warn('Migration skipped or failed:', err.message);
+    // Initialization and legacy migrations moved to InitialMigrationService
+    const g13 = await this.findOneGroup(13).catch(() => null);
+    if (g13) {
+      console.log(`[DEBUG] Group 13: status=${g13.status}, enrollments=${g13.enrollments?.length}, endDate=${g13.endDate}`);
     }
   }
 
@@ -101,7 +59,7 @@ export class GroupsService implements OnModuleInit {
   // Groups
   async findAllGroups() { 
     return this.groupRepo.find({ 
-      relations: ['course', 'room', 'teacher', 'course.field', 'enrollments', 'enrollments.student'] 
+      relations: ['course', 'room', 'teacher', 'course.field', 'enrollments', 'enrollments.student', 'phases'] 
     }); 
   }
   async findOneGroup(id: number) { 
@@ -135,7 +93,16 @@ export class GroupsService implements OnModuleInit {
     await this.activityLogService.logAction({ action: 'GROUP_EDIT', entityName: 'GROUP', entityId: id, description: `Guruh parametrlari tahrirlandi.` });
     return this.findOneGroup(id);
   }
-  async deleteGroup(id: number) { await this.groupRepo.delete(id); }
+  async deleteGroup(id: number) { 
+    // Clear legacy many-to-many join table if it exists
+    await this.groupRepo.query('DELETE FROM "group_students_student" WHERE "groupId" = $1', [id]).catch(() => {});
+    // Clear other potential legacy tables
+    await this.groupRepo.query('DELETE FROM "group_timeline" WHERE "groupId" = $1', [id]).catch(() => {});
+    
+    // Perform standard delete (related entities with cascades like Payment, Enrollment, GroupPhase will be handled by DB)
+    await this.groupRepo.delete(id); 
+    await this.activityLogService.logAction({ action: 'GROUP_DELETE', entityName: 'GROUP', entityId: id, description: `ID ${id} bo'lgan guruh butunlay o'chirildi.` });
+  }
 
   async enrollStudent(groupId: number, studentId: number, joinedDateStr?: string) {
     const joinedDate = joinedDateStr ? new Date(joinedDateStr) : new Date();
@@ -197,72 +164,81 @@ export class GroupsService implements OnModuleInit {
     return this.enrollmentRepo.save(enrollment);
   }
 
-  async transferGroup(id: number, data: { teacherId: number, courseId: number, startDate: string }) {
-    const group = await this.findOneGroup(id);
-    if (!group) throw new Error('Group not found');
-    const currentPhase = await this.phaseRepo.findOne({
-      where: { group: { id }, endDate: IsNull() }
-    });
-    if (currentPhase) {
-      const newStart = new Date(data.startDate);
-      const prevEnd = new Date(newStart);
-      prevEnd.setDate(prevEnd.getDate() - 1);
-      currentPhase.endDate = prevEnd.toISOString().split('T')[0];
-      await this.phaseRepo.save(currentPhase);
-    }
-    const newPhase = this.phaseRepo.create({
-      group: { id },
-      teacher: { id: data.teacherId },
-      course: { id: data.courseId },
-      startDate: data.startDate,
-    });
-    await this.phaseRepo.save(newPhase);
-    await this.groupRepo.update(id, {
-      teacher: { id: data.teacherId } as any,
-      course: { id: data.courseId } as any,
-      startDate: data.startDate
-    });
+  async transferGroup(id: number, data: { teacherId: number, courseId: number, startDate: string, endDate: string }) {
+    return this.dataSource.transaction(async (manager) => {
+      const group = await manager.findOne(Group, { where: { id } });
+      if (!group) throw new Error('Group not found');
 
-    // LOG HISTORY
-    await this.activityLogService.logAction({
-      action: 'GROUP_TRANSFER',
-      entityName: 'GROUP',
-      entityId: id,
-      description: `Guruh boshqa o'qituvchi/yo'nalishga o'tkazildi.`,
-      details: {
-        teacherId: data.teacherId,
-        courseId: data.courseId,
-        startDate: data.startDate
+      const currentPhase = await manager.findOne(GroupPhase, {
+        where: { group: { id }, endDate: IsNull() }
+      });
+
+      if (currentPhase) {
+        const newStart = new Date(data.startDate);
+        const prevEnd = new Date(newStart);
+        prevEnd.setDate(prevEnd.getDate() - 1);
+        currentPhase.endDate = prevEnd.toISOString().split('T')[0];
+        await manager.save(GroupPhase, currentPhase);
       }
-    });
 
-    return this.findOneGroup(id);
+      const newPhase = manager.create(GroupPhase, {
+        group: { id },
+        teacher: { id: data.teacherId },
+        course: { id: data.courseId },
+        startDate: data.startDate,
+      });
+      await manager.save(GroupPhase, newPhase);
+
+      await manager.update(Group, id, {
+        teacher: { id: data.teacherId } as any,
+        course: { id: data.courseId } as any,
+        startDate: data.startDate,
+        endDate: data.endDate
+      });
+
+      // LOG HISTORY
+      await this.activityLogService.logAction({
+        action: 'GROUP_TRANSFER',
+        entityName: 'GROUP',
+        entityId: id,
+        description: `Guruh boshqa o'qituvchi/yo'nalishga o'tkazildi.`,
+        details: {
+          teacherId: data.teacherId,
+          courseId: data.courseId,
+          startDate: data.startDate
+        }
+      });
+
+      return this.findOneGroup(id);
+    });
   }
 
   async completeGroup(id: number, endDate: string) {
-    await this.groupRepo.update(id, {
-      status: GroupStatus.COMPLETED,
-      endDate: endDate
-    });
+    return this.dataSource.transaction(async (manager) => {
+      await manager.update(Group, id, {
+        status: GroupStatus.COMPLETED,
+        endDate: endDate
+      });
 
-    const currentPhase = await this.phaseRepo.findOne({
-      where: { group: { id }, endDate: IsNull() }
-    });
-    if (currentPhase) {
-      currentPhase.endDate = endDate;
-      await this.phaseRepo.save(currentPhase);
-    }
+      const currentPhase = await manager.findOne(GroupPhase, {
+        where: { group: { id }, endDate: IsNull() }
+      });
+      if (currentPhase) {
+        currentPhase.endDate = endDate;
+        await manager.save(GroupPhase, currentPhase);
+      }
 
-    // LOG HISTORY
-    await this.activityLogService.logAction({
-      action: 'GROUP_COMPLETE',
-      entityName: 'GROUP',
-      entityId: id,
-      description: `Guruh faoliyati yakunlandi.`,
-      details: { endDate }
-    });
+      // LOG HISTORY
+      await this.activityLogService.logAction({
+        action: 'GROUP_COMPLETE',
+        entityName: 'GROUP',
+        entityId: id,
+        description: `Guruh faoliyati yakunlandi.`,
+        details: { endDate }
+      });
 
-    return this.findOneGroup(id);
+      return this.findOneGroup(id);
+    });
   }
 
   async clearAllData() {

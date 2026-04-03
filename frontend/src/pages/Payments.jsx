@@ -183,6 +183,18 @@ const Payments = ({ students = [], groups = [] }) => {
     }
   };
 
+  const getGroupMinMonth = (groupId) => {
+    const g = groups.find(x => x.id === parseInt(groupId));
+    if (!g) return '';
+    if (g.phases && g.phases.length > 0) {
+      const startDates = g.phases.map(p => p.startDate).filter(Boolean);
+      if (startDates.length > 0) {
+        return startDates.sort()[0].substring(0, 7);
+      }
+    }
+    return g.startDate?.substring(0, 7) || '';
+  };
+
   return (
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
 
@@ -507,7 +519,7 @@ const Payments = ({ students = [], groups = [] }) => {
                 value={formData.groupId}
                 onChange={e => {
                   const g = groups.find(x => x.id === parseInt(e.target.value));
-                  const minMonth = g?.startDate?.substring(0, 7) || '';
+                  const minMonth = getGroupMinMonth(e.target.value);
                   let newMonth = formData.month;
                   if (minMonth && newMonth < minMonth) {
                     newMonth = minMonth;
@@ -578,7 +590,7 @@ const Payments = ({ students = [], groups = [] }) => {
                 <input
                   type="month"
                   value={formData.month}
-                  min={groups.find(g => g.id === parseInt(formData.groupId))?.startDate?.substring(0, 7)}
+                  min={getGroupMinMonth(formData.groupId)}
                   onChange={e => setFormData({ ...formData, month: e.target.value })}
                   className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                   required

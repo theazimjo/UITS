@@ -21,7 +21,7 @@ export class Enrollment {
   })
   status: EnrollmentStatus;
 
-  @CreateDateColumn()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   joinedDate: Date;
 
   @UpdateDateColumn()

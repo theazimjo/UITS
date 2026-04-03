@@ -12,6 +12,7 @@ import { Student } from '../students/entities/student.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
+import { InitialMigrationService } from '../activity-log/initial-migration.service';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     ]),
     ActivityLogModule,
   ],
-  providers: [GroupsService],
+  providers: [GroupsService, InitialMigrationService],
   controllers: [GroupsController],
   exports: [GroupsService],
 })

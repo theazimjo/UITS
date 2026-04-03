@@ -6,7 +6,7 @@ import {
   Users, Search, CheckCircle2, AlertCircle,
   ChevronRight, CreditCard, Percent, Briefcase, Edit
 } from 'lucide-react';
-import { getStaffById, deleteStaff, updateStaff, getRoles } from '../services/api';
+import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary } from '../services/api';
 import Modal from '../components/common/Modal';
 
 const StaffDetail = ({ fetchStaff }) => {
@@ -17,6 +17,7 @@ const StaffDetail = ({ fetchStaff }) => {
   const [activeTab, setActiveTab] = useState('overview'); // overview, students, salary
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [salaryData, setSalaryData] = useState({ total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [] });
 
   // Edit state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,12 +35,14 @@ const StaffDetail = ({ fetchStaff }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [staffRes, rolesRes] = await Promise.all([
+        const [staffRes, rolesRes, salaryRes] = await Promise.all([
           getStaffById(id),
-          getRoles()
+          getRoles(),
+          getStaffSalary(id, currentMonth)
         ]);
         setStaff(staffRes.data);
         setRoles(rolesRes.data);
+        setSalaryData(salaryRes.data);
       } catch (err) {
         console.error('Error fetching data:', err);
       } finally {
@@ -199,51 +202,7 @@ const StaffDetail = ({ fetchStaff }) => {
   // ===============================================
   // TUSHUM VA MAOSH HISOBLAGICH MANTIG'I
   // ===============================================
-  const calculateSalary = () => {
-    if (!staff) return { total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [] };
-
-    const breakdown = activeGroups.map(group => {
-      // 1. Shu guruhdagi JAMI o'quvchilar ushbu oyda (currentMonth) necha pul to'ladi?
-      const groupRevenue = group.payments
-        ?.filter(p => p.month === currentMonth)
-        ?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
-
-      // 2. Tushumdan (Guruh Tushumi) o'qituvchining KPI foizini hisoblash
-      const groupKpi = (groupRevenue * (parseFloat(staff.kpiPercentage) || 0)) / 100;
-
-      return {
-        id: group.id,
-        name: group.name,
-        revenue: groupRevenue,
-        kpi: groupKpi
-      };
-    });
-
-    // 3. JAMI Tushum (Hamma guruhlardan)
-    const totalRevenue = breakdown.reduce((sum, g) => sum + g.revenue, 0);
-
-    // 4. JAMI KPI summa (Hamma guruhlardan)
-    const totalKpi = breakdown.reduce((sum, g) => sum + g.kpi, 0);
-
-    // 5. Fiks oylik (Fiks va Aralash rejimlar uchun)
-    const fixedPart = (staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED')
-      ? parseFloat(staff.fixedAmount || 0)
-      : 0;
-
-    // 6. Yakuniy KPI va Total Maosh (Agar maosh turi faqat "FIXED" bo'lsa KPI qo'shilmaydi)
-    const kpiPart = (staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') ? totalKpi : 0;
-    const finalTotal = fixedPart + kpiPart;
-
-    return {
-      total: finalTotal,
-      revenue: totalRevenue,
-      kpi: kpiPart,
-      fixed: fixedPart,
-      breakdown
-    };
-  };
-
-  const salaryData = calculateSalary();
+  // Salary data is now fetched from backend via salaryData state
 
   // YUKLANISH VA TOPILMASLIK HOLATLARI
   if (loading) return (
