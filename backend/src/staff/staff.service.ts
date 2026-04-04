@@ -35,6 +35,7 @@ export class StaffService {
         'enrollments.student',
         'payments',
         'payments.student',
+        'payments.teacher',
         'phases',
         'phases.teacher'
       ]
@@ -61,7 +62,15 @@ export class StaffService {
     const groupBreakdown: any[] = [];
 
     if (staff.groups) {
-      for (const group of staff.groups) {
+      // Ensure unique groups (TypeORM OR query might return duplicates)
+      const uniqueGroups = Array.from(new Map(staff.groups.map(g => [g.id, g])).values());
+
+      for (const group of uniqueGroups) {
+        // Calculate Revenue from payments MADE BY THIS TEACHER THIS MONTH for THIS GROUP
+        const groupRevenue = group.payments
+          ?.filter(p => p.month === month && p.teacher?.id === id)
+          ?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+
         // Check if this staff was teaching in this month (Phases)
         const isStaffTeaching = group.phases?.some(p => {
           if (p.teacher?.id !== staff.id) return false;
@@ -70,14 +79,8 @@ export class StaffService {
           return pStart <= endDate && pEnd >= startDate;
         }) || (group.teacher?.id === staff.id && (new Date(group.startDate) <= endDate));
 
-        if (isStaffTeaching) {
+        if (groupRevenue > 0 || isStaffTeaching) {
           const kpiPercentage = Number(staff.kpiPercentage) || 0;
-          
-          // Calculate Revenue from payments made THIS MONTH for THIS GROUP
-          const groupRevenue = group.payments
-            ?.filter(p => p.month === month)
-            ?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
-          
           const groupKpi = (groupRevenue * kpiPercentage) / 100;
 
           if (staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') {

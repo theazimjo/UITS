@@ -21,6 +21,7 @@ import Groups from './pages/Groups';
 import GroupDetail from './pages/GroupDetail';
 import Payments from './pages/Payments';
 import StaffDetail from './pages/StaffDetail';
+import StudentDetail from './pages/StudentDetail';
 
 // Icons
 import { Wallet } from 'lucide-react';
@@ -110,6 +111,12 @@ function App() {
                 getStudents().then(res => setStudents(res.data)); 
                 setSyncing(false); 
               }} 
+            />
+          } />
+          
+          <Route path="/students/:id" element={
+            <StudentDetail 
+              fetchStudents={() => getStudents().then(res => setStudents(res.data))} 
             />
           } />
           

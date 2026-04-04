@@ -34,6 +34,12 @@ export class PaymentsController {
     return this.paymentsService.findByStudentAndGroup(+studentId, +groupId);
   }
 
+  @Get('student/:id')
+  findByStudent(@Param('id') id: string) {
+    if (isNaN(+id)) throw new BadRequestException('Invalid student ID');
+    return this.paymentsService.findByStudent(+id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     if (isNaN(+id)) throw new BadRequestException('Invalid ID');

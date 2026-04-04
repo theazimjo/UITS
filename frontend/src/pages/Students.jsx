@@ -1,8 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React from 'react';
 import { RefreshCw, Trash2, Phone, Users, ChevronRight, Fingerprint, Search, ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getStudents, deleteAllStudents } from '../services/api';
 
+const { useState, useMemo, useEffect } = React;
+
 const Students = ({ students, syncing, handleSync, setStudents }) => {
+  const navigate = useNavigate();
   // Qidiruv va Sahifalash state'lari
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,7 +114,7 @@ const Students = ({ students, syncing, handleSync, setStudents }) => {
                 <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
                   {paginatedStudents.length > 0 ? (
                     paginatedStudents.map((student) => (
-                      <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-default">
+                      <tr key={student.id} onClick={() => navigate(`/students/${student.id}`)} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-pointer">
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-3">
                             {student.photo ? (

@@ -158,8 +158,10 @@ const StaffDetail = ({ fetchStaff }) => {
       ...(() => {
         const fullPrice = group.monthlyPrice || 0;
         const payments = group.payments?.filter(p => p.student?.id === enrollment.student?.id) || [];
-        const paidThisMonth = payments.filter(p => p.month === currentMonth).reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+        const monthlyPayments = payments.filter(p => p.month === currentMonth);
+        const paidThisMonth = monthlyPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
         const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+        const collectedByMe = monthlyPayments.some(p => p.teacher?.id === staff.id);
 
         // QARZDORLIK VA OYLAR MANTIG'I (TUG'RILANDI)
         const joinD = new Date(enrollment.joinedDate);
@@ -183,7 +185,10 @@ const StaffDetail = ({ fetchStaff }) => {
 
         return {
           isPaid,
-          statusLabel: isPaid ? (isPaidDirectly ? "To'langan" : "To'lov qoplangan") : `To'lanmagan (${(totalExpected - totalPaid).toLocaleString()})`,
+          collectedByMe,
+          statusLabel: isPaid 
+            ? (paidThisMonth > 0 ? "To'langan" : "Avvaldan to'langan")
+            : `To'lanmagan (${(totalExpected - totalPaid).toLocaleString()} UZS)`,
           startInfo: startDay !== 1 ? `${startDay}-sanada boshlagan` : ""
         };
       })(),
@@ -435,6 +440,11 @@ const StaffDetail = ({ fetchStaff }) => {
                               <div className={`flex items-center gap-1.5 text-[12px] font-medium ${s.isPaid ? 'text-[#34c759]' : 'text-[#ff3b30]'}`}>
                                 {s.isPaid ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
                                 {s.statusLabel}
+                                {s.collectedByMe && (
+                                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#007aff]/10 text-[#007aff] text-[9px] font-bold border border-[#007aff]/20">
+                                    Sizdan
+                                  </span>
+                                )}
                               </div>
                               {s.startInfo && <span className="text-[10px] text-gray-500 ml-5 mt-0.5">{s.startInfo}</span>}
                             </div>

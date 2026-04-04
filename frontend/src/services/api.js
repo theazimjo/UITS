@@ -15,6 +15,7 @@ api.interceptors.request.use((config) => {
 export const login = (credentials) => api.post('/auth/login', credentials);
 
 export const getStudents = () => api.get('/students');
+export const getStudentById = (id) => api.get(`/students/${id}`);
 export const syncStudents = () => api.post('/students/sync');
 export const createStudent = (student) => api.post('/students', student);
 export const deleteStudent = (id) => api.delete(`/students/${id}`);
@@ -49,6 +50,7 @@ export const clearAllData = () => api.post('/groups/action/clear-all-data');
 export const getPayments = () => api.get('/payments');
 export const getPaymentsByGroup = (groupId) => api.get(`/payments/group/${groupId}`);
 export const getPaymentsByStudentAndGroup = (studentId, groupId) => api.get(`/payments/student/${studentId}/group/${groupId}`);
+export const getPaymentsByStudent = (studentId) => api.get(`/payments/student/${studentId}`);
 export const createPayment = (data) => api.post('/payments', data);
 export const deletePayment = (id) => api.delete(`/payments/${id}`);
 

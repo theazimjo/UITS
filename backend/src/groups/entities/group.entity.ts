@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { Course } from './course.entity';
 import { Room } from './room.entity';
 import { Staff } from '../../staff/entities/staff.entity';
@@ -33,13 +33,25 @@ export class Group {
   @Column({ type: 'decimal', precision: 15, scale: 2 })
   monthlyPrice: number;
 
+  @Column({ nullable: true })
+  courseId: number;
+
   @ManyToOne(() => Course, (course) => course.groups, { eager: true })
+  @JoinColumn({ name: 'courseId' })
   course: Course;
 
+  @Column({ nullable: true })
+  roomId: number;
+
   @ManyToOne(() => Room, (room) => room.groups, { eager: true })
+  @JoinColumn({ name: 'roomId' })
   room: Room;
 
+  @Column({ nullable: true })
+  teacherId: number;
+
   @ManyToOne(() => Staff, { eager: true })
+  @JoinColumn({ name: 'teacherId' })
   teacher: Staff;
 
   @OneToMany(() => Enrollment, (enrollment) => enrollment.group)

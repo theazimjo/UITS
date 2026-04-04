@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
 import { Group } from '../../groups/entities/group.entity';
+import { Staff } from '../../staff/entities/staff.entity';
 
 @Entity()
 export class Payment {
@@ -12,6 +13,9 @@ export class Payment {
 
   @ManyToOne(() => Group, { eager: true, onDelete: 'CASCADE' })
   group: Group;
+
+  @ManyToOne(() => Staff, { eager: true, nullable: true })
+  teacher: Staff;
 
   @Column({ type: 'decimal', precision: 15, scale: 2 })
   amount: number;

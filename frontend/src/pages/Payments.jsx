@@ -108,6 +108,28 @@ const Payments = ({ students = [], groups = [] }) => {
     setIsMultiSelect(false);
   };
 
+  const getTeacherForMonth = (groupId, month) => {
+    if (!groupId || !month) return "Noma'lum";
+    const group = groups.find(g => g.id === parseInt(groupId));
+    if (!group) return "Noma'lum";
+    if (!group.phases || group.phases.length === 0) return group.teacher?.name || "Noma'lum";
+
+    // Convert month (YYYY-MM) to comparison date (end of that month)
+    const [year, monthNum] = month.split('-').map(Number);
+    const monthEnd = new Date(year, monthNum, 0).toISOString().split('T')[0];
+
+    // Find phases that started before or during the month
+    const relevantPhases = group.phases
+      .filter(p => p.startDate <= monthEnd)
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()); // Latest first
+
+    if (relevantPhases.length > 0) {
+      return relevantPhases[0].teacher?.name || group.teacher?.name || "Noma'lum";
+    }
+
+    return group.teacher?.name || "Noma'lum";
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm('Haqiqatdan ham bu to\'lovni o\'chirishni xohlaysizmi?')) {
       try {
@@ -257,7 +279,7 @@ const Payments = ({ students = [], groups = [] }) => {
                 <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
                   <tr>
                     <th className="px-5 py-2.5 font-medium">O'quvchi</th>
-                    <th className="px-5 py-2.5 font-medium">Guruh</th>
+                    <th className="px-5 py-2.5 font-medium">Guruh / O'qituvchi</th>
                     <th className="px-5 py-2.5 font-medium text-center">Asosiy / Chegirma / Jarima</th>
                     <th className="px-5 py-2.5 font-medium">Jami To'langan</th>
                     <th className="px-5 py-2.5 font-medium">Sana va Tur</th>
@@ -286,9 +308,15 @@ const Payments = ({ students = [], groups = [] }) => {
                           </div>
                         </td>
                         <td className="px-5 py-3">
-                          <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 text-[12px]">
-                            <BookOpen size={14} className="text-gray-400" />
-                            <span>{p.group?.name}</span>
+                          <div className="flex flex-col gap-1 text-[12px]">
+                            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                              <BookOpen size={14} className="text-gray-400" />
+                              <span>{p.group?.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 text-[10px]">
+                              <User size={12} className="text-gray-400" />
+                              <span>{p.teacher?.name || "Noma'lum"}</span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-5 py-3">
@@ -533,6 +561,15 @@ const Payments = ({ students = [], groups = [] }) => {
                 <option value="">Tanlang...</option>
                 {studentGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
+              {formData.groupId && (
+                <div className="mt-1 flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-black/20 rounded-md border border-gray-200/50 dark:border-white/10">
+                  <User size={12} className="text-gray-400" />
+                  <div className="text-[11px] leading-tight">
+                    O'qituvchi nomi: <span className="text-[#007aff] font-bold">{getTeacherForMonth(formData.groupId, formData.month)}</span>
+                    <p className="text-gray-500 mt-1">To'lov tanlangan oydagi o'qituvchiga avtomatik biriktiriladi (tarixiy maosh hisobi uchun).</p>
+                  </div>
+                </div>
+              )}
               {(!isMultiSelect ? !formData.studentId : selectedStudents.length === 0) && <p className="text-[10px] text-[#ffcc00] mt-1">Avval o'quvchi(lar)ni tanlang</p>}
             </div>
 

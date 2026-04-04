@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ChevronLeft, Users, Clock, MapPin, Calendar,
   BookOpen, Plus, Trash2, Search, UserPlus,
@@ -121,10 +121,22 @@ const GroupDetail = ({
       const res = await getGroupById(id);
       const g = res.data;
       setGroup(g);
+      
+      // Default enrollment date to group start date for convenience
+      if (g.startDate) {
+        setEnrollDate(g.startDate);
+      }
 
       // If the group is COMPLETED, default the view to the end date so students are visible
       if (!silent && g.status === 'COMPLETED' && g.endDate) {
         setSelectedMonth(g.endDate.substring(0, 7));
+      } else if (!silent && g.startDate) {
+        // If viewing an active/waiting group, and today is before start, show start month
+        const todayMonth = new Date().toISOString().substring(0, 7);
+        const startMonth = g.startDate.substring(0, 7);
+        if (startMonth > todayMonth) {
+          setSelectedMonth(startMonth);
+        }
       }
 
       setEditFormData({
@@ -456,10 +468,9 @@ const GroupDetail = ({
                       if (!en.joinedDate) return true;
                       
                       // 1-shart: Kelajakda qo'shiladigan o'quvchilarni yashirish
-                      try {
-                        const joinedMonth = new Date(en.joinedDate).toISOString().substring(0, 7);
-                        if (joinedMonth > selectedMonth) return false;
-                      } catch (e) { console.warn("Invalid joinedDate", en.joinedDate); }
+                      // String qiyoslashi robustroq (timezone muammosiz)
+                      const joinedMonth = en.joinedDate.substring(0, 7);
+                      if (joinedMonth > selectedMonth) return false;
 
                       // 2-shart: Chiqib ketgan yoki bitirgan o'quvchilarni faqat o'qigan oylarida ko'rsatish
                       if (en.status !== 'ACTIVE' && en.updatedAt) {
@@ -499,7 +510,9 @@ const GroupDetail = ({
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center font-medium text-[11px] text-[#1d1d1f] dark:text-white shadow-sm">{s.name?.substring(0, 1)}</div>
-                              <p className="font-medium text-[#1d1d1f] dark:text-white">{s.name}</p>
+                              <Link to={`/students/${s.id}`} className="font-medium text-[#007aff] hover:underline transition-all">
+                                {s.name}
+                              </Link>
                             </div>
                           </td>
                           <td className="px-5 py-3">

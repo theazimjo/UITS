@@ -55,7 +55,11 @@ export class GroupsService implements OnModuleInit {
   // Groups
   async findAllGroups() { 
     return this.groupRepo.find({ 
-      relations: ['course', 'room', 'teacher', 'course.field', 'enrollments', 'enrollments.student', 'phases'] 
+      relations: [
+        'course', 'room', 'teacher', 'course.field', 
+        'enrollments', 'enrollments.student', 
+        'phases', 'phases.teacher', 'phases.course'
+      ] 
     }); 
   }
   async findOneGroup(id: number) { 
@@ -68,15 +72,21 @@ export class GroupsService implements OnModuleInit {
       ] 
     }); 
   }
-  async createGroup(data: Partial<Group>) { 
-    const g = await this.groupRepo.save(data); 
+  async createGroup(data: any): Promise<Group | null> { 
+    const group = new Group();
+    Object.assign(group, data);
+    if (data.courseId) group.courseId = data.courseId;
+    if (data.roomId) group.roomId = data.roomId;
+    if (data.teacherId) group.teacherId = data.teacherId;
+    
+    const g = await this.groupRepo.save(group); 
 
-    if (data.teacher && data.course) {
+    if (g.teacherId && g.courseId) {
       const phase = this.phaseRepo.create({
         group: { id: g.id },
-        teacher: { id: typeof data.teacher === 'number' ? data.teacher : (data.teacher as any).id },
-        course: { id: typeof data.course === 'number' ? data.course : (data.course as any).id },
-        startDate: data.startDate || new Date().toISOString().split('T')[0]
+        teacherId: g.teacherId,
+        courseId: g.courseId,
+        startDate: g.startDate || new Date().toISOString().split('T')[0]
       });
       await this.phaseRepo.save(phase);
     }
@@ -84,8 +94,19 @@ export class GroupsService implements OnModuleInit {
     await this.activityLogService.logAction({ action: 'GROUP_CREATE', entityName: 'GROUP', entityId: g.id, description: `Yangi "${g.name}" guruhi yaratildi.` });
     return this.findOneGroup(g.id);
   }
-  async updateGroup(id: number, data: Partial<Group>) { 
-    await this.groupRepo.update(id, data); 
+
+  async updateGroup(id: number, data: any): Promise<Group | null> { 
+    const group = await this.groupRepo.findOne({ where: { id } });
+    if (!group) return null;
+    
+    // Explicitly update IDs if provided in data
+    if (data.teacherId) group.teacherId = data.teacherId;
+    if (data.courseId) group.courseId = data.courseId;
+    if (data.roomId) group.roomId = data.roomId;
+    
+    Object.assign(group, data);
+    await this.groupRepo.save(group);
+    
     await this.activityLogService.logAction({ action: 'GROUP_EDIT', entityName: 'GROUP', entityId: id, description: `Guruh parametrlari tahrirlandi.` });
     return this.findOneGroup(id);
   }
@@ -185,12 +206,11 @@ export class GroupsService implements OnModuleInit {
       });
       await manager.save(GroupPhase, newPhase);
 
-      await manager.update(Group, id, {
-        teacher: { id: data.teacherId } as any,
-        course: { id: data.courseId } as any,
-        startDate: data.startDate,
-        endDate: data.endDate
-      });
+      group.teacherId = data.teacherId;
+      group.courseId = data.courseId;
+      group.startDate = data.startDate;
+      group.endDate = data.endDate;
+      await manager.save(Group, group);
 
       // LOG HISTORY
       await this.activityLogService.logAction({
@@ -216,6 +236,7 @@ export class GroupsService implements OnModuleInit {
         endDate: endDate
       });
 
+      // Close current phase
       const currentPhase = await manager.findOne(GroupPhase, {
         where: { group: { id }, endDate: IsNull() }
       });
@@ -223,6 +244,12 @@ export class GroupsService implements OnModuleInit {
         currentPhase.endDate = endDate;
         await manager.save(GroupPhase, currentPhase);
       }
+
+      // Update all ACTIVE enrollments to GRADUATED
+      await manager.update(Enrollment, 
+        { group: { id }, status: EnrollmentStatus.ACTIVE }, 
+        { status: EnrollmentStatus.GRADUATED }
+      );
 
       // LOG HISTORY
       await this.activityLogService.logAction({
