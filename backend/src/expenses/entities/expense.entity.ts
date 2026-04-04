@@ -14,6 +14,9 @@ export class Expense {
   @Column()
   category: string; // Rent, Utility, Marketing, Equipment, Other
 
+  @Column({ default: 'Naqd' })
+  paymentType: string; // Naqd, Karta, O'tkazma, Click/Payme
+
   @Column({ type: 'date' })
   date: string;
 

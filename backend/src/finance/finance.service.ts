@@ -79,7 +79,7 @@ export class FinanceService {
         amount: Number(item.amount),
         date: item.paymentDate,
         category: 'O\'quv to\'lovi',
-        comment: item.paymentType
+        paymentType: item.paymentType
       })),
       ...staffExpenses.map(item => ({
         id: `staff_${item.id}`,
@@ -88,7 +88,8 @@ export class FinanceService {
         amount: Number(item.amount),
         date: item.date,
         category: 'Xodimlar',
-        comment: item.comment
+        comment: item.comment,
+        paymentType: item.type // 'Salary', 'Bonus', etc. or could be mapped to payment medium
       })),
       ...generalExpenses.map(item => ({
         id: `gen_${item.id}`,
@@ -97,7 +98,8 @@ export class FinanceService {
         amount: Number(item.amount),
         date: item.date,
         category: item.category,
-        comment: item.comment
+        comment: item.comment,
+        paymentType: item.paymentType
       })),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
