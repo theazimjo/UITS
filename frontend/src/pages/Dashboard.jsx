@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { clearAllData, getDashboardAttendanceStats } from '../services/api';
 import toast from 'react-hot-toast';
 import { 
-  Users, Wallet, UserCheck, BookOpen, TrendingUp, 
+  Users, Wallet, UserCheck, Banknote, TrendingUp, 
   Trash2, ShieldAlert, AlertCircle, ExternalLink
 } from 'lucide-react';
 import Modal from '../components/common/Modal';
@@ -11,7 +11,14 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [attStats, setAttStats] = useState({ expected: 0, arrived: 0, percentage: 0, students: [] });
+  const [attStats, setAttStats] = useState({ 
+    expected: 0, 
+    arrived: 0, 
+    percentage: 0, 
+    students: [],
+    expectedMonthlyRevenue: 0,
+    todayRevenue: 0
+  });
   const [loadingAtt, setLoadingAtt] = useState(true);
 
   useEffect(() => {
@@ -30,6 +37,12 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     }
   };
 
+  const formatCurrency = (val) => {
+    const num = parseFloat(val);
+    if (isNaN(num)) return '0 UZS';
+    return new Intl.NumberFormat('uz-UZ', { style: 'decimal' }).format(num) + ' UZS';
+  };
+
   const stats = [
     {
       label: 'Bugun kutilgan',
@@ -41,27 +54,27 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
       onClick: () => setIsStatsModalOpen(true)
     },
     {
-      label: 'Guruhlar soni',
-      value: groupsCount || 0,
-      icon: <BookOpen size={24} />,
-      color: 'indigo',
-      sub: "Barcha faol guruhlar",
-      trend: 'neutral'
-    },
-    {
-      label: 'Jami xodimlar',
-      value: staffCount,
+      label: 'Xodimlar soni',
+      value: staffCount || 0,
       icon: <Users size={24} />,
-      color: 'emerald',
-      sub: 'Hamma faol holatda',
+      color: 'indigo',
+      sub: "Barcha faol ustoz va xodimlar",
       trend: 'neutral'
     },
     {
-      label: 'Oylik tushum',
-      value: '$4,250',
+      label: 'Kutilayotgan tushum (oylik)',
+      value: loadingAtt ? '...' : formatCurrency(attStats.expectedMonthlyRevenue),
       icon: <Wallet size={24} />,
       color: 'purple',
-      sub: '92% reja bajarildi',
+      sub: `Shu oy uchun kutilmoqda`,
+      trend: 'neutral'
+    },
+    {
+      label: 'Bugun tushgan tushum',
+      value: loadingAtt ? '...' : formatCurrency(attStats.todayRevenue),
+      icon: <Banknote size={24} />,
+      color: 'emerald',
+      sub: 'Bugungi kassa',
       trend: 'up'
     },
   ];
@@ -174,36 +187,42 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
 
           <div className="space-y-2">
             {attStats.students && attStats.students.length > 0 ? (
-              attStats.students.sort((a,b) => a.status === 'absent' ? -1 : 1).map((s) => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center overflow-hidden border border-gray-300 dark:border-white/20">
-                      {s.photo ? (
-                        <img src={s.photo} alt={s.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Users size={16} className="text-gray-400" />
-                      )}
+              attStats.students
+                .sort((a, b) => (a.status === 'present' ? -1 : 1))
+                .map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center overflow-hidden border border-gray-300 dark:border-white/20">
+                        {s.photo ? (
+                          <img src={s.photo} alt={s.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Users size={16} className="text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
+                        <p className="text-[11px] text-gray-500">{s.groupName}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[14px] font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
-                      <p className="text-[11px] text-gray-500">{s.groupName}</p>
+                    <div className="text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          s.status === 'present' 
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 shadow-sm' 
+                            : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                        }`}>
+                          {s.status_display}
+                        </span>
+                        {(s.arrivedAt || s.leftAt) && (
+                          <div className="flex flex-col items-end mr-1">
+                            {s.arrivedAt && <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">K: {s.arrivedAt}</span>}
+                            {s.leftAt && <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Ch: {s.leftAt}</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      s.status === 'present' 
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
-                        : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                    }`}>
-                      {s.status_display}
-                    </span>
-                    <div className="mt-1 space-y-0.5">
-                      {s.arrivedAt && <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">K: {s.arrivedAt}</p>}
-                      {s.leftAt && <p className="text-[11px] font-medium text-gray-400">Ch: {s.leftAt}</p>}
-                    </div>
-                  </div>
-                </div>
-              ))
+                ))
             ) : (
               <div className="text-center py-8 text-gray-500">
                 O'quvchilar ro'yxati bo'sh

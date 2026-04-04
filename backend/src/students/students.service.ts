@@ -78,46 +78,36 @@ export class StudentsService {
       return { recent_attendance: [] };
     }
 
-    const targetDate = dateStr ? new Date(dateStr) : new Date();
-    const year = targetDate.getFullYear();
-    const month = targetDate.getMonth();
-    
-    const employeeId = await this.findCorrectEmployeeID(student.externalId);
-    
-    if (!employeeId) {
+    try {
+      // Much more efficient: single call to student-specific API
+      // X-Employee-ID header 1 is usually enough for individual student lookup
+      const response = await axios.get(`https://schoolmanage.uz/api/student/${student.externalId}`, {
+        headers: { 'X-Employee-ID': '1' },
+        httpsAgent,
+      });
+
+      const records = response.data.recent_attendance || [];
+      const targetDate = dateStr ? new Date(dateStr) : new Date();
+      const month = targetDate.getMonth();
+      const year = targetDate.getFullYear();
+
+      // Filter for the requested month/year to match current UI expectations
+      const filteredRecords = records.filter(rec => {
+        const d = new Date(rec.date);
+        return d.getMonth() === month && d.getFullYear() === year;
+      }).map(rec => ({
+        date: rec.date,
+        status: rec.status,
+        status_display: rec.status_display || (rec.status?.toLowerCase() === 'present' ? 'Kelgan' : 'Kelmagan'),
+        arrived_at: rec.arrived_at,
+        left_at: rec.left_at
+      }));
+
+      return { recent_attendance: filteredRecords };
+    } catch (e) {
+      console.error(`Error fetching student attendance for ${student.name}:`, e.message);
       return { recent_attendance: [] };
     }
-
-    // Fetch all days of the month in parallel using massive socket pool
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const attendancePromises: Promise<{ date: string; data: any }>[] = [];
-
-    for (let day = 1; day <= lastDay; day++) {
-      const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      attendancePromises.push(
-        axios.get(`https://schoolmanage.uz/api/teacher/classroom/?date=${date}`, {
-          headers: { 'X-Employee-ID': employeeId },
-          httpsAgent, // MaxSockets: 100
-        }).then(res => ({ date, data: res.data })).catch(() => ({ date, data: null }))
-      );
-    }
-
-    const results = await Promise.all(attendancePromises);
-    const recent_attendance = results.map(res => {
-      const dayData = res.data?.students?.find(s => s.hikvision_id === student.externalId || s.id.toString() === student.externalId);
-      if (dayData) {
-        return {
-          date: res.date,
-          status: dayData.today_status,
-          status_display: dayData.today_status === 'present' ? 'Kelgan' : 'Kelmagan',
-          arrived_at: dayData.arrived_at,
-          left_at: dayData.left_at
-        };
-      }
-      return null;
-    }).filter(Boolean);
-
-    return { recent_attendance };
   }
 
   async create(student: Partial<Student>): Promise<Student> {
