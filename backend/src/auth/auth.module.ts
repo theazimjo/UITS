@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Staff } from '../staff/entities/staff.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../users/users.module';
@@ -10,6 +12,7 @@ import { JwtStrategy } from './jwt.strategy';
   imports: [
     UsersModule,
     PassportModule,
+    TypeOrmModule.forFeature([Staff]),
     JwtModule.register({
       secret: 'super-secret-key', // In production use environment variables
       signOptions: { expiresIn: '1d' },

@@ -30,4 +30,10 @@ export class Staff {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ unique: true, nullable: true })
+  username: string;
+
+  @Column({ nullable: true })
+  password: string;
 }

@@ -6,8 +6,10 @@ import { StaffService } from './staff.service';
 import { StaffController } from './staff.controller';
 import { RolesController } from './roles.controller';
 
+import { StaffPayment } from './entities/staff-payment.entity';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Staff, Role])],
+  imports: [TypeOrmModule.forFeature([Staff, Role, StaffPayment])],
   providers: [StaffService],
   controllers: [StaffController, RolesController],
   exports: [StaffService],

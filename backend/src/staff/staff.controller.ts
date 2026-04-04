@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, NotFoundException } from '@nestjs/common';
 import { StaffService } from './staff.service';
 import { Staff } from './entities/staff.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,10 +21,14 @@ export class StaffController {
     return this.staffService.findOne(+id);
   }
 
-  @Get(':id/salary/:month')
-  async getSalary(@Param('id') id: string, @Param('month') month: string) {
-    if (isNaN(+id)) return null;
+  @Get(':id/salary')
+  calculateSalary(@Param('id') id: string, @Query('month') month: string) {
     return this.staffService.calculateSalary(+id, month);
+  }
+
+  @Post(':id/payments')
+  addPayment(@Param('id') id: string, @Body() data: any) {
+    return this.staffService.addPayment(+id, data);
   }
 
   @Roles('admin')

@@ -22,6 +22,8 @@ import GroupDetail from './pages/GroupDetail';
 import Payments from './pages/Payments';
 import StaffDetail from './pages/StaffDetail';
 import StudentDetail from './pages/StudentDetail';
+import Finance from './pages/Finance';
+import Settings from './pages/Settings';
 
 // Icons
 import { Wallet } from 'lucide-react';
@@ -163,6 +165,8 @@ function App() {
           <Route path="/payments" element={
             <Payments students={students} groups={groups} />
           } />
+          <Route path="/finance" element={<Finance />} />
+          <Route path="/settings" element={<Settings />} />
           
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>

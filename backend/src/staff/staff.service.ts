@@ -3,12 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Staff } from './entities/staff.entity';
 import { Group } from '../groups/entities/group.entity';
+import { StaffPayment, StaffPaymentType } from './entities/staff-payment.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class StaffService {
   constructor(
     @InjectRepository(Staff)
     private readonly staffRepository: Repository<Staff>,
+    @InjectRepository(StaffPayment)
+    private readonly staffPaymentRepository: Repository<StaffPayment>,
   ) {}
 
   async findAll(): Promise<Staff[]> {
@@ -99,18 +103,57 @@ export class StaffService {
       }
     }
 
+    // Get payments for this staff in this month
+    const payments = await this.staffPaymentRepository.find({
+      where: { staff: { id }, month }
+    });
+
+    const totalPaid = payments
+      .filter(p => p.type === StaffPaymentType.SALARY)
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+    const bonusAmount = payments
+      .filter(p => p.type === StaffPaymentType.BONUS)
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+    const holidayAmount = payments
+      .filter(p => p.type === StaffPaymentType.HOLIDAY)
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+    const baseSalary = totalFixed + totalKpi;
+    const remaining = baseSalary - totalPaid;
+
     return {
-      total: totalFixed + totalKpi,
+      total: baseSalary,
       revenue: totalRevenue,
       kpi: totalKpi,
       fixed: totalFixed,
+      paid: totalPaid,
+      remaining: remaining,
+      bonus: bonusAmount,
+      holiday: holidayAmount,
+      payments: payments,
       breakdown: groupBreakdown,
       month,
       staffName: staff.name
     };
   }
 
+  async addPayment(staffId: number, data: Partial<StaffPayment>): Promise<StaffPayment> {
+    const staff = await this.staffRepository.findOne({ where: { id: staffId } });
+    if (!staff) throw new NotFoundException('Staff not found');
+
+    const payment = this.staffPaymentRepository.create({
+      ...data,
+      staff
+    });
+    return this.staffPaymentRepository.save(payment);
+  }
+
   async create(staff: Partial<Staff>): Promise<Staff> {
+    if (staff.password) {
+      staff.password = await bcrypt.hash(staff.password, 10);
+    }
     return this.staffRepository.save(staff);
   }
 
@@ -119,6 +162,9 @@ export class StaffService {
     if (!staff) throw new NotFoundException('Staff not found');
     
     // Merge new data and save
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
     Object.assign(staff, data);
     return this.staffRepository.save(staff);
   }

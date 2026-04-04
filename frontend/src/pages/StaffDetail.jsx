@@ -6,7 +6,7 @@ import {
   Users, Search, CheckCircle2, AlertCircle,
   ChevronRight, CreditCard, Percent, Briefcase, Edit
 } from 'lucide-react';
-import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary } from '../services/api';
+import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment } from '../services/api';
 import Modal from '../components/common/Modal';
 
 const StaffDetail = ({ fetchStaff }) => {
@@ -28,8 +28,24 @@ const StaffDetail = ({ fetchStaff }) => {
     phone: '',
     salaryType: 'FIXED',
     fixedAmount: '0',
-    kpiPercentage: '0'
+    kpiPercentage: '0',
+    username: '',
+    password: ''
   });
+
+  // Payment state
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: '',
+    month: currentMonth,
+    type: 'SALARY', // SALARY, BONUS, HOLIDAY
+    date: new Date().toISOString().split('T')[0],
+    comment: ''
+  });
+
+  // Calendar & Detail states
+  const [isDayDetailModalOpen, setIsDayDetailModalOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(null); // format: YYYY-MM-DD
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,7 +75,9 @@ const StaffDetail = ({ fetchStaff }) => {
       phone: staff.phone || '',
       salaryType: staff.salaryType || 'FIXED',
       fixedAmount: staff.fixedAmount?.toString() || '0',
-      kpiPercentage: staff.kpiPercentage?.toString() || '0'
+      kpiPercentage: staff.kpiPercentage?.toString() || '0',
+      username: staff.username || '',
+      password: ''
     });
     setIsEditModalOpen(true);
   };
@@ -71,7 +89,9 @@ const StaffDetail = ({ fetchStaff }) => {
         ...editFormData,
         role: { id: parseInt(editFormData.roleId) },
         fixedAmount: parseFloat(editFormData.fixedAmount || 0),
-        kpiPercentage: parseFloat(editFormData.kpiPercentage || 0)
+        kpiPercentage: parseFloat(editFormData.kpiPercentage || 0),
+        username: editFormData.username || null,
+        password: editFormData.password || undefined
       };
       await updateStaff(id, payload);
 
@@ -96,9 +116,70 @@ const StaffDetail = ({ fetchStaff }) => {
     setCurrentMonth(`${newYear}-${newMonth}`);
   };
 
+  const getCalendarDays = () => {
+    const [year, month] = currentMonth.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1).getDay(); // 0-6 (Sun-Sat)
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Adjust firstDay to start from Monday (1=Mon, 2=Tue, ..., 0=Sun)
+    const startingDay = firstDay === 0 ? 6 : firstDay - 1;
+    
+    const days = [];
+    // Padding for early days
+    for (let i = 0; i < startingDay; i++) {
+      days.push(null);
+    }
+    // Real days
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dayStr = `${currentMonth}-${String(i).padStart(2, '0')}`;
+      days.push(dayStr);
+    }
+    return days;
+  };
+
+  const currentMonthPayments = salaryData.payments || [];
+
+  const getDayPayments = (dayStr) => {
+    return currentMonthPayments.filter(p => {
+      // payment date might be YYYY-MM-DD
+      const pDate = p.date.split('T')[0];
+      return pDate === dayStr;
+    });
+  };
+
+  const handleDayClick = (dayStr) => {
+    if (!dayStr) return;
+    setSelectedDay(dayStr);
+    setIsDayDetailModalOpen(true);
+  };
+
   const getMonthName = (monthStr) => {
     const [year, month] = monthStr.split('-').map(Number);
     return new Date(year, month - 1).toLocaleString('uz-UZ', { month: 'long', year: 'numeric' });
+  };
+
+  const handleAddPayment = async (e) => {
+    e.preventDefault();
+    try {
+      await addStaffPayment(id, {
+        ...paymentFormData,
+        amount: parseFloat(paymentFormData.amount)
+      });
+      setIsPaymentModalOpen(false);
+      setPaymentFormData({
+        amount: '',
+        month: currentMonth,
+        type: 'SALARY',
+        date: new Date().toISOString().split('T')[0],
+        comment: ''
+      });
+      // Refresh salary data
+      const salaryRes = await getStaffSalary(id, currentMonth);
+      setSalaryData(salaryRes.data);
+    } catch (err) {
+      console.error('Error adding payment:', err);
+      alert("Xatolik: To'lovni saqlashda xato yuzaga keldi.");
+    }
   };
 
   const handleDelete = async () => {
@@ -506,63 +587,285 @@ const StaffDetail = ({ fetchStaff }) => {
 
                   {/* Yakuniy summa */}
                   <div className="bg-gradient-to-br from-[#007aff] to-[#005bb5] rounded-xl p-5 shadow-md border border-[#004a94] relative overflow-hidden flex flex-col justify-center">
-                    <p className="text-[10px] font-bold text-blue-200 mb-1.5 uppercase tracking-wider">Hisoblangan Yakuniy Maosh</p>
+                    <p className="text-[10px] font-bold text-blue-200 mb-1.5 uppercase tracking-wider">Hisoblangan Oylik (JAMI)</p>
                     <h3 className="text-3xl font-bold text-white">
                       {salaryData.total.toLocaleString()} <span className="text-[12px] text-blue-200 font-normal">UZS</span>
                     </h3>
-                    <p className="text-[10px] text-blue-100 mt-2 opacity-80">Joriy oy uchun o'qituvchi haqqi</p>
+                    <p className="text-[10px] text-blue-100 mt-2 opacity-80">Fiks + KPI foizi</p>
+                  </div>
+
+                  {/* To'lab berildi */}
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm relative overflow-hidden group">
+                    <div className="absolute -right-3 -top-3 text-[#34c759] opacity-[0.08] group-hover:opacity-20 transition-opacity"><CheckCircle2 size={80} /></div>
+                    <p className="text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">To'lab berildi</p>
+                    <h3 className="text-2xl font-bold text-[#34c759]">
+                      {salaryData.paid.toLocaleString()} <span className="text-[11px] text-gray-400 font-normal">UZS</span>
+                    </h3>
+                    <p className="text-[10px] text-gray-500 mt-2">Joriy oy uchun to'langan oylik</p>
+                  </div>
+
+                  {/* Qoldi (Qarz) */}
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm relative overflow-hidden group">
+                    <div className="absolute -right-3 -top-3 text-[#ff3b30] opacity-[0.08] group-hover:opacity-20 transition-opacity"><AlertCircle size={80} /></div>
+                    <p className="text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Qoldi (Qarz)</p>
+                    <h3 className="text-2xl font-bold text-[#ff3b30]">
+                      {salaryData.remaining.toLocaleString()} <span className="text-[11px] text-gray-400 font-normal">UZS</span>
+                    </h3>
+                    <p className="text-[10px] text-gray-500 mt-2">To'lanishi kerak bo'lgan qoldiq</p>
                   </div>
                 </div>
 
-                {/* Breakdown Data Table */}
-                <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden mt-6">
-                  <div className="px-5 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/20">
-                    <h3 className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white">Guruhlar bo'yicha tushumlar tafsiloti</h3>
+                <div className="flex justify-end gap-3 items-center">
+                  {(salaryData.bonus > 0 || salaryData.holiday > 0) && (
+                    <div className="text-[11px] flex gap-3 text-gray-500 mr-auto font-medium">
+                      {salaryData.bonus > 0 && <span className="bg-[#af52de]/10 text-[#af52de] px-2 py-1 rounded-md border border-[#af52de]/20">Bonus: {salaryData.bonus.toLocaleString()} UZS</span>}
+                      {salaryData.holiday > 0 && <span className="bg-[#ff9500]/10 text-[#ff9500] px-2 py-1 rounded-md border border-[#ff9500]/20">Bayram: {salaryData.holiday.toLocaleString()} UZS</span>}
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#007aff] hover:bg-[#0062cc] text-white rounded-lg text-[13px] font-medium transition-all shadow-sm border border-[#005bb5]"
+                  >
+                    <CreditCard size={16} />
+                    Oylik to'lash
+                  </button>
+                </div>
+
+                {/* CALENDAR SECTION */}
+                <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden p-6 mt-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-[15px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2">
+                      <Calendar size={18} className="text-[#007aff]" />
+                      To'lovlar kalendari — {getMonthName(currentMonth)}
+                    </h3>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#34c759]"></div> Oylik
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#af52de]"></div> Bonus/Bayram
+                      </div>
+                    </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-[13px]">
-                      <thead className="bg-gray-50/80 dark:bg-white/5 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10">
-                        <tr>
-                          <th className="px-5 py-3 font-medium">Guruh nomi</th>
-                          <th className="px-5 py-3 font-medium text-right">Shu oydagi Tushum</th>
-                          <th className="px-5 py-3 font-medium text-right">O'qituvchi ulushi (KPI)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                        {salaryData.breakdown.length > 0 ? salaryData.breakdown.map((g) => (
-                          <tr key={g.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-default">
-                            <td className="px-5 py-3.5 font-medium text-[#1d1d1f] dark:text-white flex items-center gap-2">
-                              <BookOpen size={14} className="text-[#007aff]" /> {g.name}
-                            </td>
-                            <td className="px-5 py-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
-                              {g.revenue > 0 ? `${g.revenue.toLocaleString()} UZS` : <span className="text-gray-400 italic">Tushum yo'q</span>}
-                            </td>
-                            <td className="px-5 py-3.5 text-right font-semibold text-[#007aff]">
-                              {g.kpi > 0 ? `${g.kpi.toLocaleString()} UZS` : <span className="text-gray-400 italic font-normal">---</span>}
-                            </td>
-                          </tr>
-                        )) : (
-                          <tr>
-                            <td colSpan="3" className="px-5 py-16 text-center text-gray-500">
-                              <CreditCard size={32} className="mx-auto mb-3 opacity-30" />
-                              <p className="text-[14px]">Ushbu oyda faol guruhlar yo'q</p>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                      {/* Table Footer with Summary */}
-                      {salaryData.breakdown.length > 0 && (
-                        <tfoot className="bg-gray-50/80 dark:bg-white/5 border-t border-gray-200/50 dark:border-white/10 font-semibold">
-                          <tr>
-                            <td className="px-5 py-4 text-[#1d1d1f] dark:text-white">Jami</td>
-                            <td className="px-5 py-4 text-right text-[#1d1d1f] dark:text-white">{salaryData.revenue.toLocaleString()} UZS</td>
-                            <td className="px-5 py-4 text-right text-[#007aff]">{salaryData.kpi.toLocaleString()} UZS</td>
-                          </tr>
-                        </tfoot>
-                      )}
-                    </table>
+
+                  <div className="grid grid-cols-7 gap-px bg-gray-200/50 dark:bg-white/10 border border-gray-200/50 dark:border-white/10 rounded-xl overflow-hidden">
+                    {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sha', 'Ya'].map(d => (
+                      <div key={d} className="bg-gray-50 dark:bg-black/40 py-2.5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">{d}</div>
+                    ))}
+                    {getCalendarDays().map((day, idx) => {
+                      const dayPayments = day ? getDayPayments(day) : [];
+                      const dayTotal = dayPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+                      const isToday = day === new Date().toISOString().split('T')[0];
+
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={() => handleDayClick(day)}
+                          className={`min-h-[85px] p-2 bg-white dark:bg-black/20 transition-all ${day ? 'cursor-pointer hover:bg-[#007aff]/5 dark:hover:bg-[#007aff]/10 group' : 'bg-gray-50/50 dark:bg-black/40'}`}
+                        >
+                          {day && (
+                            <div className="h-full flex flex-col justify-between">
+                              <span className={`text-[12px] font-semibold ${isToday ? 'h-6 w-6 flex items-center justify-center bg-[#007aff] text-white rounded-full' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {day.split('-')[2]}
+                              </span>
+                              {dayTotal > 0 && (
+                                <div className="space-y-1 mt-auto">
+                                  {dayPayments.map((p, i) => (
+                                    <div 
+                                      key={i} 
+                                      className={`text-[9px] px-1.5 py-0.5 rounded truncate font-medium ${
+                                        p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
+                                      }`}
+                                    >
+                                      {p.amount.toLocaleString()}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
+
+                {/* SEQUENTIAL LIST SECTION */}
+                <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden mt-6">
+                  <div className="px-5 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10">
+                    <h3 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">To'lovlar tarixi (Linear)</h3>
+                  </div>
+                  <div className="divide-y divide-gray-200/30 dark:divide-white/5">
+                    {currentMonthPayments.length > 0 ? (
+                      [...currentMonthPayments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((p, idx) => (
+                        <div key={idx} className="px-5 py-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                              p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
+                            }`}>
+                              <CreditCard size={20} />
+                            </div>
+                            <div>
+                              <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
+                                {p.type === 'SALARY' ? "Maosh to'lovi" : p.type === 'BONUS' ? 'Bonus' : 'Bayram puli'} 
+                                <span className="ml-2 text-[11px] font-normal text-gray-400">{new Date(p.date).toLocaleDateString('uz-UZ')}</span>
+                              </p>
+                              {p.comment && <p className="text-[11px] text-gray-500 mt-1 italic">"{p.comment}"</p>}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-[15px] font-bold ${p.type === 'SALARY' ? 'text-[#34c759]' : 'text-[#af52de]'}`}>
+                              {p.amount.toLocaleString()} <span className="text-[11px] font-normal opacity-60">UZS</span>
+                            </p>
+                            <p className="text-[10px] text-gray-400">Tranzaksiya: #{p.id}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-12 text-center text-gray-500">
+                        <Clock size={32} className="mx-auto mb-3 opacity-20" />
+                        <p className="text-[13px]">Ushbu oyda hali to'lovlar mavjud emas.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* PAYMENT MODAL */}
+                <Modal 
+                  isOpen={isPaymentModalOpen} 
+                  onClose={() => setIsPaymentModalOpen(false)} 
+                  title={`${staff?.name} — Maosh to'lash`}
+                >
+                  <form onSubmit={handleAddPayment} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+                    <div className="space-y-3.5">
+                      <div>
+                        <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TO'LOV SUMMASI (UZS)</label>
+                        <input
+                          type="number" required
+                          value={paymentFormData.amount}
+                          onChange={(e) => setPaymentFormData({ ...paymentFormData, amount: e.target.value })}
+                          className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[14px] font-semibold text-[#007aff] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">OY (QAYSI OY UCHUN)</label>
+                          <input
+                            type="month" required
+                            value={paymentFormData.month}
+                            onChange={(e) => setPaymentFormData({ ...paymentFormData, month: e.target.value })}
+                            className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">SANA</label>
+                          <input
+                            type="date" required
+                            value={paymentFormData.date}
+                            onChange={(e) => setPaymentFormData({ ...paymentFormData, date: e.target.value })}
+                            className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-2">TO'LOV TURI</label>
+                        <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-lg border border-black/5 dark:border-white/10">
+                          {[
+                            { id: 'SALARY', name: 'Oylik' },
+                            { id: 'BONUS', name: 'Bonus' },
+                            { id: 'HOLIDAY', name: 'Bayram' }
+                          ].map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => setPaymentFormData({ ...paymentFormData, type: t.id })}
+                              className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all ${paymentFormData.type === t.id
+                                ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                }`}
+                            >
+                              {t.name}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-1.5 text-[10px] text-gray-400">
+                          {paymentFormData.type === 'SALARY' 
+                            ? "* Bu to'lov hisoblangan oylik maoshdan (qarzdorlikdan) ayiriladi." 
+                            : "* Bu to'lov qo'shimcha rag'batlantirish bo'lib, oylik maosh qarzdorligiga ta'sir qilmaydi."}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">IZOH</label>
+                        <textarea
+                          value={paymentFormData.comment}
+                          onChange={(e) => setPaymentFormData({ ...paymentFormData, comment: e.target.value })}
+                          className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner min-h-[60px]"
+                          placeholder="To'lov haqida qo'shimcha ma'lumot..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setIsPaymentModalOpen(false)}
+                        className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+                      >
+                        Bekor qilish
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors"
+                      >
+                        To'lovni tasdiqlash
+                      </button>
+                    </div>
+                  </form>
+                </Modal>
+
+                {/* DAY DETAIL MODAL */}
+                <Modal 
+                  isOpen={isDayDetailModalOpen} 
+                  onClose={() => setIsDayDetailModalOpen(false)} 
+                  title={`${selectedDay ? new Date(selectedDay).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' }) : ''} — To'lovlar`}
+                >
+                  <div className="space-y-4">
+                    {selectedDay && getDayPayments(selectedDay).length > 0 ? (
+                      getDayPayments(selectedDay).map((p, idx) => (
+                        <div key={idx} className="bg-gray-50 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-xl p-4 shadow-sm border-l-4 border-l-[#007aff]">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
+                            }`}>
+                              {p.type === 'SALARY' ? "Oylik" : p.type === 'BONUS' ? 'Bonus' : 'Bayram'}
+                            </span>
+                            <span className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">{Number(p.amount).toLocaleString()} UZS</span>
+                          </div>
+                          {p.comment && (
+                            <div className="mt-3 p-2.5 bg-white dark:bg-white/5 rounded-lg border border-black/5 dark:border-white/5 italic text-[12px] text-gray-600 dark:text-gray-400">
+                              "{p.comment}"
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-10 text-center text-gray-500">
+                        <AlertCircle size={32} className="mx-auto mb-3 opacity-20" />
+                        <p className="text-[14px]">Ushbu kunda to'lovlar mavjud emas.</p>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setIsDayDetailModalOpen(false)}
+                      className="w-full py-2.5 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-xl text-[13px] font-bold transition-all mt-4"
+                    >
+                      Yopish
+                    </button>
+                  </div>
+                </Modal>
               </div>
             )}
 
@@ -649,6 +952,32 @@ const StaffDetail = ({ fetchStaff }) => {
                         />
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 dark:border-white/5">
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-2">LOGIN MA'LUMOTLARI (SHAXSIY KABINET)</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-medium text-gray-400 mb-1">LOGIN</label>
+                    <input
+                      type="text"
+                      placeholder="teacher_login"
+                      value={editFormData.username}
+                      onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
+                      className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-medium text-gray-400 mb-1">YANGI PAROL</label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={editFormData.password}
+                      onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                      className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                    />
                   </div>
                 </div>
               </div>
