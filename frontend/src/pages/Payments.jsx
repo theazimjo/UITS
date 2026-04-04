@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   CreditCard, Search, Plus, Trash2, Calendar,
   BookOpen, DollarSign, ChevronLeft, ChevronRight,
-  Filter, User, Percent, AlertTriangle, X
+  Filter, User, Percent, AlertTriangle, X, CheckCircle
 } from 'lucide-react';
 import { getPayments, createPayment, deletePayment } from '../services/api';
 import Modal from '../components/common/Modal'; // Ensure this uses a matching macOS design if possible
@@ -216,6 +216,15 @@ const Payments = ({ students = [], groups = [] }) => {
     }
     return g.startDate?.substring(0, 7) || '';
   };
+
+  const existingPayment = useMemo(() => {
+    if (isMultiSelect || !formData.studentId || !formData.groupId || !formData.month) return null;
+    return payments.find(p => 
+      p.student?.id === parseInt(formData.studentId) && 
+      p.group?.id === parseInt(formData.groupId) && 
+      p.month === formData.month
+    );
+  }, [payments, formData.studentId, formData.groupId, formData.month, isMultiSelect]);
 
   return (
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
@@ -620,9 +629,8 @@ const Payments = ({ students = [], groups = [] }) => {
                 {(parseFloat(formData.amount || 0) - parseFloat(formData.discount || 0) + parseFloat(formData.penalty || 0)).toLocaleString()} UZS
               </span>
             </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="col-span-2 sm:col-span-1">
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">HISOBOT OYI</label>
                 <input
                   type="month"
@@ -632,6 +640,28 @@ const Payments = ({ students = [], groups = [] }) => {
                   className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                   required
                 />
+                
+                {/* Real-time Payment Status Feedback */}
+                {formData.studentId && formData.groupId && formData.month && !isMultiSelect && (
+                  <div className={`mt-1.5 p-1.5 rounded border text-[10px] font-medium flex items-center gap-1.5 transition-all
+                    ${existingPayment 
+                      ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400' 
+                      : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-600 dark:text-yellow-400'
+                    }`}
+                  >
+                    {existingPayment ? (
+                      <>
+                        <CheckCircle size={12} />
+                        <span>Ushbu oy uchun {parseInt(existingPayment.amount).toLocaleString()} UZS to'langan</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle size={12} />
+                        <span>Ushbu oy uchun hali to'lov kiritilmagan</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TO'LOV TURI</label>
