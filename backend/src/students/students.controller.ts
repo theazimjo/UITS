@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { Student } from './entities/student.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -22,6 +22,12 @@ export class StudentsController {
   findOne(@Param('id') id: string): Promise<Student | null> {
     if (isNaN(+id)) return Promise.resolve(null);
     return this.studentsService.findOne(+id);
+  }
+
+  @Get(':id/attendance')
+  getAttendance(@Param('id') id: string, @Query('date') date?: string) {
+    if (isNaN(+id)) return { recent_attendance: [] };
+    return this.studentsService.getExternalAttendance(+id, date);
   }
 
   @Post()

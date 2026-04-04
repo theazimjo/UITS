@@ -1,24 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { clearAllData } from '../services/api';
+import { clearAllData, getDashboardAttendanceStats } from '../services/api';
 import toast from 'react-hot-toast';
 import { 
   Users, Wallet, UserCheck, BookOpen, TrendingUp, 
-  Trash2, ShieldAlert, AlertCircle 
+  Trash2, ShieldAlert, AlertCircle, ExternalLink
 } from 'lucide-react';
 import Modal from '../components/common/Modal';
 
 const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [attStats, setAttStats] = useState({ expected: 0, arrived: 0, percentage: 0, students: [] });
+  const [loadingAtt, setLoadingAtt] = useState(true);
+
+  useEffect(() => {
+    fetchAttStats();
+  }, []);
+
+  const fetchAttStats = async () => {
+    try {
+      setLoadingAtt(true);
+      const res = await getDashboardAttendanceStats();
+      setAttStats(res.data);
+    } catch (e) {
+      console.error('Error fetching dashboard stats:', e);
+    } finally {
+      setLoadingAtt(false);
+    }
+  };
 
   const stats = [
     {
-      label: 'Jami talabalar',
-      value: studentsCount,
-      icon: <Users size={24} />,
+      label: 'Bugun kutilgan',
+      value: loadingAtt ? '...' : `${attStats.arrived} / ${attStats.expected}`,
+      icon: <UserCheck size={24} />,
       color: 'blue',
-      sub: "+3 tasi o'tgan haftada",
-      trend: 'up'
+      sub: `${attStats.percentage}% davomat ko'rsatkichi`,
+      trend: attStats.percentage >= 80 ? 'up' : 'neutral',
+      onClick: () => setIsStatsModalOpen(true)
     },
     {
       label: 'Guruhlar soni',
@@ -31,7 +51,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     {
       label: 'Jami xodimlar',
       value: staffCount,
-      icon: <UserCheck size={24} />,
+      icon: <Users size={24} />,
       color: 'emerald',
       sub: 'Hamma faol holatda',
       trend: 'neutral'
@@ -79,7 +99,8 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
         {stats.map((stat, i) => (
           <div
             key={i}
-            className={`bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group hover:-translate-y-1 shadow-sm ${colorStyles[stat.color].border}`}
+            onClick={stat.onClick}
+            className={`bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group hover:-translate-y-1 shadow-sm ${colorStyles[stat.color].border} ${stat.onClick ? 'cursor-pointer' : ''}`}
           >
             <div className="flex justify-between items-start mb-6">
               <div className="space-y-1">
@@ -91,19 +112,22 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-4 border-t border-gray-200/50 dark:border-white/5">
-              {stat.trend === 'up' ? (
-                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[#34c759]/10 text-[#34c759]">
-                  <TrendingUp size={12} strokeWidth={3} />
-                </div>
-              ) : (
-                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-500/10 text-gray-400">
-                  <TrendingUp size={12} strokeWidth={3} />
-                </div>
-              )}
-              <span className="text-[11px] font-medium text-gray-500">
-                {stat.sub}
-              </span>
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200/50 dark:border-white/5">
+              <div className="flex items-center gap-2">
+                {stat.trend === 'up' ? (
+                  <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[#34c759]/10 text-[#34c759]">
+                    <TrendingUp size={12} strokeWidth={3} />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-500/10 text-gray-400">
+                    <TrendingUp size={12} strokeWidth={3} />
+                  </div>
+                )}
+                <span className="text-[11px] font-medium text-gray-500">
+                  {stat.sub}
+                </span>
+              </div>
+              {stat.onClick && <ExternalLink size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />}
             </div>
           </div>
         ))}
@@ -132,6 +156,62 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
           </button>
         </div>
       </div>
+
+      {/* Stats Detail Modal */}
+      <Modal
+        isOpen={isStatsModalOpen}
+        onClose={() => setIsStatsModalOpen(false)}
+        title="Bugungi kutilgan davomat (to'liq ro'yxat)"
+      >
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
+            <div>
+              <p className="text-[12px] text-blue-600 dark:text-blue-400 font-medium">Umumiy ko'rsatkich</p>
+              <h3 className="text-xl font-bold text-blue-700 dark:text-blue-300">{attStats.arrived} / {attStats.expected} <span className="text-sm font-medium ml-1">({attStats.percentage}%)</span></h3>
+            </div>
+            <UserCheck className="text-blue-500" size={32} />
+          </div>
+
+          <div className="space-y-2">
+            {attStats.students && attStats.students.length > 0 ? (
+              attStats.students.sort((a,b) => a.status === 'absent' ? -1 : 1).map((s) => (
+                <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center overflow-hidden border border-gray-300 dark:border-white/20">
+                      {s.photo ? (
+                        <img src={s.photo} alt={s.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Users size={16} className="text-gray-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
+                      <p className="text-[11px] text-gray-500">{s.groupName}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      s.status === 'present' 
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                        : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                    }`}>
+                      {s.status_display}
+                    </span>
+                    <div className="mt-1 space-y-0.5">
+                      {s.arrivedAt && <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">K: {s.arrivedAt}</p>}
+                      {s.leftAt && <p className="text-[11px] font-medium text-gray-400">Ch: {s.leftAt}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                O'quvchilar ro'yxati bo'sh
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       {/* Confirmation Modal */}
       <Modal 

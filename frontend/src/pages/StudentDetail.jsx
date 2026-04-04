@@ -2,23 +2,40 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ChevronLeft, User, Phone, MapPin, Calendar,
-  BookOpen, Trash2, Search, Info, Edit2, 
-  CreditCard, ArrowRight, History, CheckCircle, 
+  BookOpen, Trash2, Search, Info, Edit2,
+  CreditCard, ArrowRight, History, CheckCircle, RefreshCw,
   ChevronRight, Fingerprint, GraduationCap, Building
 } from 'lucide-react';
-import { getStudentById, getPaymentsByStudent } from '../services/api';
+import { getStudentById, getPaymentsByStudent, getStudentAttendance } from '../services/api';
 
 const StudentDetail = ({ fetchStudents }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [attLoading, setAttLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
+  const [viewDate, setViewDate] = useState(new Date());
+  const [attCache, setAttCache] = useState({});
 
   useEffect(() => {
     fetchStudentData();
   }, [id]);
+
+  // Speculative pre-fetching: load current month attendance in background as soon as student is ready
+  useEffect(() => {
+    if (student && !attCache[`${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`]) {
+      fetchAttendanceData();
+    }
+  }, [student]);
+
+  useEffect(() => {
+    if (activeTab === 'attendance') {
+      fetchAttendanceData();
+    }
+  }, [viewDate, activeTab]);
 
   const fetchStudentData = async () => {
     try {
@@ -33,6 +50,34 @@ const StudentDetail = ({ fetchStudents }) => {
       console.error('Error fetching student data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAttendanceData = async () => {
+    // Format manually to avoid timezone shift
+    const year = viewDate.getFullYear();
+    const month = String(viewDate.getMonth() + 1).padStart(2, '0');
+    const cacheKey = `${year}-${month}`;
+
+    // Check cache first
+    if (attCache[cacheKey]) {
+      setAttendance(attCache[cacheKey]);
+      return;
+    }
+
+    try {
+      setAttLoading(true);
+      setAttendance([]); // Clear old data to avoid confusion
+      const dateStr = `${year}-${month}-01`;
+
+      const attRes = await getStudentAttendance(id, dateStr);
+      const data = attRes.data?.recent_attendance || [];
+      setAttendance(data);
+      setAttCache(prev => ({ ...prev, [cacheKey]: data }));
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+    } finally {
+      setAttLoading(false);
     }
   };
 
@@ -52,8 +97,8 @@ const StudentDetail = ({ fetchStudents }) => {
   );
 
   return (
-    <div className="h-full w-full bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
-      
+    <div className="h-full w-full overflow-y-auto bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] scroll-smooth">
+
       {/* macOS Title Bar Area */}
       <div className="h-12 border-b border-gray-200/50 dark:border-white/10 flex items-center px-4 justify-between shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md z-20">
         <div className="flex items-center w-32">
@@ -105,7 +150,8 @@ const StudentDetail = ({ fetchStudents }) => {
           {[
             { id: 'info', label: 'Ma\'lumot', icon: <Info size={14} /> },
             { id: 'groups', label: 'Guruhlar', icon: <BookOpen size={14} /> },
-            { id: 'payments', label: 'To\'lovlar', icon: <CreditCard size={14} /> }
+            { id: 'payments', label: 'To\'lovlar', icon: <CreditCard size={14} /> },
+            { id: 'attendance', label: 'Davomat', icon: <History size={14} /> }
           ].map(t => (
             <button
               key={t.id}
@@ -123,9 +169,9 @@ const StudentDetail = ({ fetchStudents }) => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+      <div className="p-6">
         <div className="max-w-[1000px] mx-auto">
-          
+
           {/* TAB 1: INFO */}
           {activeTab === 'info' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
@@ -205,10 +251,10 @@ const StudentDetail = ({ fetchStudents }) => {
                             const isGroupCompleted = en.group?.status === 'COMPLETED';
                             const isActive = en.status === 'ACTIVE';
                             const isGraduated = en.status === 'GRADUATED';
-                            
+
                             let label = en.status;
                             let colorClass = 'bg-gray-100 text-gray-500 border-gray-200';
-                            
+
                             if (isActive && isGroupCompleted) {
                               label = 'Bitirgan';
                               colorClass = 'bg-[#007aff]/10 text-[#007aff] border-[#007aff]/20';
@@ -279,6 +325,129 @@ const StudentDetail = ({ fetchStudents }) => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* TAB 4: ATTENDANCE */}
+          {activeTab === 'attendance' && (
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden animate-fade-in p-6 relative">
+              {attLoading && (
+                <div className="absolute inset-0 bg-white/40 dark:bg-black/40 backdrop-blur-[2px] z-30 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <RefreshCw className="animate-spin text-[#007aff]" size={30} />
+                    <p className="text-[13px] font-medium text-[#1d1d1f] dark:text-white">Ma'lumotlar yuklanmoqda...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Statistics Summary at Top */}
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white">Davomat Kalendari</h3>
+                  <p className="text-[12px] text-gray-500">Oylik davomat tarixi va vaqtlari</p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="bg-gradient-to-br from-[#34c759]/10 to-[#34c759]/5 border border-[#34c759]/20 rounded-2xl px-5 py-2 flex items-center gap-3 shadow-sm transition-all hover:shadow-md">
+                    <div className="w-2 h-2 rounded-full bg-[#34c759] animate-pulse" />
+                    <div>
+                      <p className="text-[#34c759] text-[10px] font-bold uppercase tracking-tight opacity-80 leading-none mb-1">Kelgan kunlar</p>
+                      <p className="text-xl font-bold text-[#1d1d1f] dark:text-white leading-none">
+                        {attendance.filter(a => a.status === 'present').length}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center bg-gray-100 dark:bg-white/5 rounded-full p-1 border border-gray-200 dark:border-white/10 shadow-inner">
+                    <button onClick={() => setViewDate(new Date(viewDate.setMonth(viewDate.getMonth() - 1)))} className="p-1 hover:bg-white dark:hover:bg-white/10 rounded-full transition-all text-gray-600 dark:text-gray-400">
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="px-4 text-[13px] font-bold text-[#1d1d1f] dark:text-white min-w-[120px] text-center">
+                      {viewDate.toLocaleString('uz-UZ', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button onClick={() => setViewDate(new Date(viewDate.setMonth(viewDate.getMonth() + 1)))} className="p-1 hover:bg-white dark:hover:bg-white/10 rounded-full transition-all text-gray-600 dark:text-gray-400">
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-px bg-gray-200/50 dark:bg-white/5 rounded-xl border border-gray-200/50 dark:border-white/10 overflow-hidden">
+                {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sha', 'Yak'].map(day => (
+                  <div key={day} className="bg-gray-50/50 dark:bg-white/5 py-2 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    {day}
+                  </div>
+                ))}
+                {(() => {
+                  const days = [];
+                  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+                  const lastDay = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+
+                  // Empty slots before first day
+                  let startingDay = firstDay.getDay();
+                  startingDay = startingDay === 0 ? 6 : startingDay - 1; // Adjust to start from Monday
+
+                  for (let i = 0; i < startingDay; i++) {
+                    days.push(<div key={`empty-${i}`} className="bg-white/30 dark:bg-black/10 h-24" />);
+                  }
+
+                  for (let d = 1; d <= lastDay.getDate(); d++) {
+                    const currentDayStr = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const att = attendance.find(a => a.date === currentDayStr);
+
+                    let bgClass = "bg-white/60 dark:bg-white/5";
+                    let statusColor = "bg-transparent";
+
+                    if (att) {
+                      if (att.status === 'present') {
+                        statusColor = "bg-[#34c759]";
+                      } else {
+                        statusColor = "bg-[#ff3b30]";
+                      }
+                    } else if (new Date(currentDayStr) < new Date() && firstDay.getDay() !== 0) {
+                      // Optionally mark past days without data as absent
+                      // statusColor = "bg-gray-200 dark:bg-gray-700";
+                    }
+
+                    const isToday = new Date().toDateString() === new Date(currentDayStr).toDateString();
+
+                    days.push(
+                      <div key={d} className={`${bgClass} h-24 p-2 border-t border-l border-gray-100/50 dark:border-white/5 relative group transition-all hover:z-10 hover:shadow-xl hover:scale-[1.02] cursor-default`}>
+                        <span className={`text-[12px] font-medium ${isToday ? 'bg-[#007aff] text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-gray-500'}`}>
+                          {d}
+                        </span>
+
+                        {att && (
+                          <div className="mt-2 flex flex-col gap-1">
+                            <div className={`w-1.5 h-1.5 rounded-full ${statusColor} shadow-[0_0_8px] ${att.status === 'present' ? 'shadow-[#34c759]/50' : 'shadow-[#ff3b30]/50'}`} />
+                            <p className="text-[9px] font-bold text-gray-700 dark:text-gray-300">{att.arrived_at || '---'}</p>
+                            <p className="text-[9px] text-gray-400">{att.left_at || '---'}</p>
+                          </div>
+                        )}
+
+                        {/* Tooltip on hover */}
+                        {att && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-black/80 backdrop-blur-md text-white text-[10px] p-2 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-20 shadow-2xl border border-white/10">
+                            <p className="font-bold border-b border-white/10 mb-1 pb-1">{att.status_display || att.status}</p>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Kelgan:</span>
+                              <span className="font-mono">{att.arrived_at || '---'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Ketgan:</span>
+                              <span className="font-mono">{att.left_at || '---'}</span>
+                            </div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-black/80" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return days;
+                })()}
+              </div>
+
+              {/* Calendar Grid */}
             </div>
           )}
 

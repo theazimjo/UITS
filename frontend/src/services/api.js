@@ -16,9 +16,11 @@ export const login = (credentials) => api.post('/auth/login', credentials);
 
 export const getStudents = () => api.get('/students');
 export const getStudentById = (id) => api.get(`/students/${id}`);
+export const getStudentAttendance = (id, date) => api.get(`/students/${id}/attendance`, { params: { date } });
 export const syncStudents = () => api.post('/students/sync');
 export const createStudent = (student) => api.post('/students', student);
 export const deleteStudent = (id) => api.delete(`/students/${id}`);
+export const getDashboardAttendanceStats = () => api.get('/dashboard/attendance-stats');
 export const deleteAllStudents = () => api.delete('/students/all/clear');
 
 export const getStaff = () => api.get('/staff');
