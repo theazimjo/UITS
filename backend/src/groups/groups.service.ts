@@ -96,15 +96,51 @@ export class GroupsService implements OnModuleInit {
   }
 
   async updateGroup(id: number, data: any): Promise<Group | null> { 
-    const group = await this.groupRepo.findOne({ where: { id } });
+    const group = await this.groupRepo.findOne({ 
+      where: { id },
+      relations: ['phases']
+    });
     if (!group) return null;
     
-    // Explicitly update IDs if provided in data
-    if (data.teacherId) group.teacherId = data.teacherId;
-    if (data.courseId) group.courseId = data.courseId;
-    if (data.roomId) group.roomId = data.roomId;
+    // Explicitly update IDs if provided in data and nullify relations to force TypeORM to use new IDs
+    // Also use Number() to ensure we don't pass empty strings or NaN to the DB
+    const tId = data.teacherId ? Number(data.teacherId) : NaN;
+    if (!isNaN(tId) && tId !== group.teacherId) {
+      group.teacherId = tId;
+      group.teacher = null as any; 
+
+      const activePhase = group.phases?.find(p => !p.endDate);
+      if (activePhase) {
+        activePhase.teacherId = group.teacherId;
+        await this.phaseRepo.save(activePhase).catch(e => console.error('Phase update fail:', e));
+      }
+    }
+
+    const cId = data.courseId ? Number(data.courseId) : NaN;
+    if (!isNaN(cId) && cId !== group.courseId) {
+      group.courseId = cId;
+      group.course = null as any;
+
+      const activePhase = group.phases?.find(p => !p.endDate);
+      if (activePhase) {
+        activePhase.courseId = group.courseId;
+        await this.phaseRepo.save(activePhase).catch(e => console.error('Phase course update fail:', e));
+      }
+    }
+
+    const rId = data.roomId ? Number(data.roomId) : NaN;
+    if (!isNaN(rId) && rId !== group.roomId) {
+      group.roomId = rId;
+      group.room = null as any;
+    }
     
-    Object.assign(group, data);
+    // Clean up dates - PostgreSQL doesn't like empty strings for date columns
+    if (data.startDate === '') data.startDate = null;
+    if (data.endDate === '') data.endDate = null;
+
+    const { teacherId, courseId, roomId, teacher, course, room, phases, ...rest } = data;
+    Object.assign(group, rest);
+    
     await this.groupRepo.save(group);
     
     await this.activityLogService.logAction({ action: 'GROUP_EDIT', entityName: 'GROUP', entityId: id, description: `Guruh parametrlari tahrirlandi.` });
@@ -190,26 +226,46 @@ export class GroupsService implements OnModuleInit {
         where: { group: { id }, endDate: IsNull() }
       });
 
-      if (currentPhase) {
-        const newStart = new Date(data.startDate);
-        const prevEnd = new Date(newStart);
-        prevEnd.setDate(prevEnd.getDate() - 1);
-        currentPhase.endDate = prevEnd.toISOString().split('T')[0];
-        await manager.save(GroupPhase, currentPhase);
+      if (currentPhase && data.startDate) {
+        try {
+          const newStart = new Date(data.startDate);
+          if (!isNaN(newStart.getTime())) {
+            const prevEnd = new Date(newStart);
+            prevEnd.setDate(prevEnd.getDate() - 1);
+            currentPhase.endDate = prevEnd.toISOString().split('T')[0];
+            await manager.save(GroupPhase, currentPhase);
+          }
+        } catch (e) {
+          console.error('Phase end date calculation fail:', e);
+        }
       }
+
+      const tId = Number(data.teacherId);
+      const cId = Number(data.courseId);
 
       const newPhase = manager.create(GroupPhase, {
         group: { id },
-        teacher: { id: data.teacherId },
-        course: { id: data.courseId },
-        startDate: data.startDate,
+        teacherId: !isNaN(tId) ? tId : undefined,
+        courseId: !isNaN(cId) ? cId : undefined,
+        startDate: data.startDate || new Date().toISOString().split('T')[0],
       });
       await manager.save(GroupPhase, newPhase);
 
-      group.teacherId = data.teacherId;
-      group.courseId = data.courseId;
-      group.startDate = data.startDate;
-      group.endDate = data.endDate;
+      // Explicitly update IDs and nullify relations to force TypeORM to use new IDs
+      if (!isNaN(tId)) {
+        group.teacherId = tId;
+        group.teacher = null as any; 
+      }
+      
+      if (!isNaN(cId)) {
+        group.courseId = cId;
+        group.course = null as any;
+      }
+
+      if (data.startDate) group.startDate = data.startDate;
+      if (data.endDate === '') group.endDate = null as any;
+      else if (data.endDate) group.endDate = data.endDate;
+
       await manager.save(Group, group);
 
       // LOG HISTORY

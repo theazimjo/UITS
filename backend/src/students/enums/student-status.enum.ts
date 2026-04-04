@@ -1,0 +1,7 @@
+export enum StudentStatus {
+  YANGI = 'YANGI',
+  OQIYAPTI = 'OQIYAPTI',
+  PAUZADA = 'PAUZADA',
+  BITIRGAN = 'BITIRGAN',
+  CHETLATILGAN = 'CHETLATILGAN',
+}

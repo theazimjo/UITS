@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Enrollment } from '../../groups/entities/enrollment.entity';
 import { Payment } from '../../payments/entities/payment.entity';
+import { StudentStatus } from '../enums/student-status.enum';
 
 @Entity()
 export class Student {
@@ -36,6 +37,13 @@ export class Student {
 
   @OneToMany(() => Enrollment, (enrollment) => enrollment.student)
   enrollments: Enrollment[];
+
+  @Column({
+    type: 'enum',
+    enum: StudentStatus,
+    default: StudentStatus.OQIYAPTI, // Default to OQIYAPTI for existing syncs
+  })
+  status: StudentStatus;
 
   @Column({ default: true })
   isActive: boolean;

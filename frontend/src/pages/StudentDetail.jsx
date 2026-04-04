@@ -6,7 +6,7 @@ import {
   CreditCard, ArrowRight, History, CheckCircle, RefreshCw,
   ChevronRight, Fingerprint, GraduationCap, Building
 } from 'lucide-react';
-import { getStudentById, getPaymentsByStudent, getStudentAttendance } from '../services/api';
+import { getStudentById, getPaymentsByStudent, getStudentAttendance, updateStudent } from '../services/api';
 
 const StudentDetail = ({ fetchStudents }) => {
   const { id } = useParams();
@@ -81,6 +81,17 @@ const StudentDetail = ({ fetchStudents }) => {
     }
   };
 
+  const handleStatusChange = async (newStatus) => {
+    try {
+      await updateStudent(id, { status: newStatus });
+      setStudent(prev => ({ ...prev, status: newStatus }));
+      if (fetchStudents) fetchStudents();
+    } catch (err) {
+      console.error('Status update error:', err);
+      alert('Statusni yangilab bo\'mladi');
+    }
+  };
+
   if (loading) return (
     <div className="h-screen w-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#000000]">
       <div className="w-8 h-8 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin"></div>
@@ -140,7 +151,27 @@ const StudentDetail = ({ fetchStudents }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Actions can be added here */}
+          <select
+            value={student.status || 'YANGI'}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border outline-none cursor-pointer transition-all shadow-sm
+              ${student.status === 'OQIYAPTI' 
+                ? 'bg-green-100/50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' 
+                : student.status === 'CHETLATILGAN'
+                ? 'bg-red-100/50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'
+                : student.status === 'PAUZADA'
+                ? 'bg-orange-100/50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+                : student.status === 'BITIRGAN'
+                ? 'bg-blue-100/50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                : 'bg-gray-100/50 border-gray-200 text-gray-700 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400'
+              }`}
+          >
+            <option value="YANGI">YANGI</option>
+            <option value="OQIYAPTI">O'QIYAPTI</option>
+            <option value="PAUZADA">PAUZADA</option>
+            <option value="BITIRGAN">BITIRGAN</option>
+            <option value="CHETLATILGAN">CHETLATILGAN</option>
+          </select>
         </div>
       </div>
 

@@ -30,9 +30,10 @@ export class StudentsController {
     return this.studentsService.getExternalAttendance(+id, date);
   }
 
-  @Post()
-  create(@Body() student: Partial<Student>): Promise<Student> {
-    return this.studentsService.create(student);
+  @Post(':id')
+  async update(@Param('id') id: string, @Body() data: Partial<Student>): Promise<Student | null> {
+    if (isNaN(+id)) return null;
+    return this.studentsService.update(+id, data);
   }
 
   @Delete('all/clear')

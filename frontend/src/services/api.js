@@ -14,8 +14,10 @@ api.interceptors.request.use((config) => {
 
 export const login = (credentials) => api.post('/auth/login', credentials);
 
+// Student services
 export const getStudents = () => api.get('/students');
 export const getStudentById = (id) => api.get(`/students/${id}`);
+export const updateStudent = (id, data) => api.post(`/students/${id}`, data);
 export const getStudentAttendance = (id, date) => api.get(`/students/${id}/attendance`, { params: { date } });
 export const syncStudents = () => api.post('/students/sync');
 export const createStudent = (student) => api.post('/students', student);

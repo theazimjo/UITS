@@ -24,10 +24,10 @@ export class Group {
   @Column()
   endTime: string; // HH:mm
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true })
   startDate: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true })
   endDate: string;
 
   @Column({ type: 'decimal', precision: 15, scale: 2 })

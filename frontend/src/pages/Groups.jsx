@@ -14,6 +14,7 @@ const Groups = ({
   fetchGroups, fetchFields, fetchCourses, fetchRooms
 }) => {
   const [activeTab, setActiveTab] = useState('faol');
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [modalType, setModalType] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedFieldId, setSelectedFieldId] = useState(null);
@@ -127,10 +128,16 @@ const Groups = ({
   });
 
   const filteredGroups = groups.filter(g => {
-    if (activeTab === 'shakllanyapti') return g.status === 'WAITING';
-    if (activeTab === 'faol') return g.status === 'ACTIVE';
-    if (activeTab === 'tugatgan') return g.status === 'COMPLETED';
-    return false;
+    // 1. Status Filter
+    let statusMatch = false;
+    if (activeTab === 'shakllanyapti') statusMatch = g.status === 'WAITING';
+    else if (activeTab === 'faol') statusMatch = g.status === 'ACTIVE';
+    else if (activeTab === 'tugatgan') statusMatch = g.status === 'COMPLETED';
+
+    // 2. Teacher Filter
+    const teacherMatch = !selectedTeacherId || (g.teacher?.id?.toString() === selectedTeacherId);
+
+    return statusMatch && teacherMatch;
   });
 
   return (
@@ -152,6 +159,28 @@ const Groups = ({
 
         {/* Center/Right Actions Area */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
+
+          {/* Teacher Filter Select */}
+          <div className="relative">
+            <select
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(e.target.value)}
+              className="appearance-none pl-8 pr-10 py-1.5 bg-gray-200/80 dark:bg-black/40 border border-black/5 dark:border-white/10 rounded-lg text-[12px] font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all shadow-inner w-full sm:w-[180px]"
+            >
+              <option value="">Barcha o'qituvchilar</option>
+              {teachers.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+              <Users size={14} />
+            </div>
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+              <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+          </div>
+
+          <div className="h-6 w-px bg-gray-300 dark:bg-white/10 hidden sm:block"></div>
 
           {/* Segmented Control for Group Status */}
           <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner w-full sm:w-auto">

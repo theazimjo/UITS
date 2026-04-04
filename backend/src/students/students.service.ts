@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Student } from './entities/student.entity';
 import axios from 'axios';
 import * as https from 'https';
+import { StudentStatus } from './enums/student-status.enum';
 
 // Optimized agent for high-concurrency parallel requests (31 days)
 const httpsAgent = new https.Agent({
@@ -32,11 +33,19 @@ export class StudentsService {
   }
 
   async findAll(): Promise<Student[]> {
-    return this.studentsRepository.find({ relations: ['enrollments', 'enrollments.group'] });
+    return this.studentsRepository.find({ relations: ['enrollments', 'enrollments.group', 'payments'] });
   }
 
   async findOne(id: number): Promise<Student | null> {
-    return this.studentsRepository.findOne({ where: { id }, relations: ['enrollments', 'enrollments.group'] });
+    return this.studentsRepository.findOne({ where: { id }, relations: ['enrollments', 'enrollments.group', 'payments'] });
+  }
+
+  async update(id: number, data: Partial<Student>): Promise<Student | null> {
+    const student = await this.studentsRepository.findOne({ where: { id } });
+    if (!student) return null;
+    
+    Object.assign(student, data);
+    return this.studentsRepository.save(student);
   }
 
   private async findCorrectEmployeeID(externalId: string): Promise<string | null> {
