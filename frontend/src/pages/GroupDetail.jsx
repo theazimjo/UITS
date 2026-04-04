@@ -433,9 +433,6 @@ const GroupDetail = ({
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 px-3 border-r border-gray-200/50 dark:border-white/10 hidden sm:block">
-                    O'quvchilar: <span className="text-[#007aff] font-bold">{group.enrollments?.length || 0} ta</span>
-                  </div>
-                  <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 px-3 border-r border-gray-200/50 dark:border-white/10 hidden sm:block">
                     Guruh tushumi: <span className="text-[#34c759] font-bold">{totalRevenueThisMonth.toLocaleString()} UZS</span>
                   </div>
                   <button onClick={() => setIsEnrollModalOpen(true)} className="flex-1 sm:flex-none flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium bg-[#007aff] text-white shadow-sm hover:bg-[#0062cc] transition-colors justify-center">
@@ -462,10 +459,7 @@ const GroupDetail = ({
                       try {
                         const joinedMonth = new Date(en.joinedDate).toISOString().substring(0, 7);
                         if (joinedMonth > selectedMonth) return false;
-                      } catch (e) {
-                         console.warn("Invalid joinedDate", en.joinedDate);
-                         return true; // Xato bo'lsa ko'rsatamiz
-                      }
+                      } catch (e) { console.warn("Invalid joinedDate", en.joinedDate); }
 
                       // 2-shart: Chiqib ketgan yoki bitirgan o'quvchilarni faqat o'qigan oylarida ko'rsatish
                       if (en.status !== 'ACTIVE' && en.updatedAt) {
@@ -475,23 +469,15 @@ const GroupDetail = ({
                         } catch (e) {}
                       }
 
-                      // 3-shart (YUMSHATILGAN): Guruh TUGATILGAN bo'lsa, keyingi oylarda o'quvchilarni ko'rsatmaslik
-                      if (group.status === 'COMPLETED' && group.endDate) {
+                      // 3-shart: Guruh tugagan bo'lsa, keyingi oylarda o'quvchilarni ko'rsatmaslik
+                      if (group.endDate) {
                         const endMonth = group.endDate.substring(0, 7);
                         if (selectedMonth > endMonth) return false;
                       }
 
                       return true;
                     }).map(en => {
-                      const s = en.student; 
-                      if (!s) {
-                        console.error('Enrollment without student:', en.id);
-                        return (
-                          <tr key={en.id} className="text-gray-400 italic">
-                            <td colSpan="4" className="px-5 py-3">O'quvchi ma'lumoti topilmadi (ID: {en.studentId || 'Noma\'lum'})</td>
-                          </tr>
-                        );
-                      }
+                      const s = en.student; if (!s) return null;
 
                       // Shu oy uchun qilingan barcha to'lovlar (bir necha marta bo'lishi mumkin)
                       const stPayments = payments.filter(p => p.student?.id === s.id && p.month === selectedMonth);

@@ -32,10 +32,6 @@ export class GroupsService implements OnModuleInit {
 
   async onModuleInit() {
     // Initialization and legacy migrations moved to InitialMigrationService
-    const g13 = await this.findOneGroup(13).catch(() => null);
-    if (g13) {
-      console.log(`[DEBUG] Group 13: status=${g13.status}, enrollments=${g13.enrollments?.length}, endDate=${g13.endDate}`);
-    }
   }
 
   // Fields
