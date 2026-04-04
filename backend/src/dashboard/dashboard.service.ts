@@ -77,7 +77,8 @@ export class DashboardService {
     const todayPayments = await this.paymentRepo.find({
       where: { paymentDate: todayStr }
     });
-    const todayRevenue = todayPayments.reduce((acc, p) => acc + parseSafe(p.amount), 0);
+    const todayRevenue = todayPayments.reduce((acc, p) => 
+      acc + (parseSafe(p.amount) - parseSafe(p.discount) + parseSafe(p.penalty)), 0);
 
     // 5. Fetch External Attendance (This part can fail without affecting revenue)
     let arrivedCount = 0;

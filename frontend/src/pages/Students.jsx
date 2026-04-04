@@ -156,8 +156,9 @@ const Students = ({ students, syncing, handleSync, setStudents }) => {
                       const activeGroup = activeEnrollment?.group;
                       
                       const currentMonth = '2026-04'; // Per user local time
-                      const monthPayment = student.payments?.find(p => p.month === currentMonth);
-                      const isPaid = !!monthPayment;
+                      const monthlyPayments = student.payments?.filter(p => p.month === currentMonth) || [];
+                      const paidAmt = monthlyPayments.reduce((sum, p) => sum + (Number(p.amount || 0) - Number(p.discount || 0) + Number(p.penalty || 0)), 0);
+                      const isPaid = paidAmt > 0;
 
                       return (
                       <tr key={student.id} onClick={() => navigate(`/students/${student.id}`)} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-pointer">
@@ -217,7 +218,7 @@ const Students = ({ students, syncing, handleSync, setStudents }) => {
                           {isPaid ? (
                             <div className="flex flex-col">
                               <span className="text-green-600 dark:text-green-400 font-semibold text-[12px]">
-                                {Number(monthPayment.amount).toLocaleString()} UZS
+                                {paidAmt.toLocaleString()} UZS
                               </span>
                               <span className="text-[10px] text-gray-400">To'langan</span>
                             </div>

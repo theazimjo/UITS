@@ -159,8 +159,8 @@ const StaffDetail = ({ fetchStaff }) => {
         const fullPrice = group.monthlyPrice || 0;
         const payments = group.payments?.filter(p => p.student?.id === enrollment.student?.id) || [];
         const monthlyPayments = payments.filter(p => p.month === currentMonth);
-        const paidThisMonth = monthlyPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
-        const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+        const paidThisMonth = monthlyPayments.reduce((sum, p) => sum + (parseFloat(p.amount || 0) - parseFloat(p.discount || 0) + parseFloat(p.penalty || 0)), 0) || 0;
+        const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount || 0)), 0) || 0; // Total value covered (Gross) stays for isPaid check
         const collectedByMe = monthlyPayments.some(p => p.teacher?.id === staff.id);
 
         // QARZDORLIK VA OYLAR MANTIG'I (TUG'RILANDI)
@@ -184,11 +184,11 @@ const StaffDetail = ({ fetchStaff }) => {
         const startDay = joinD.getDate();
 
         return {
-          isPaid,
+          isPaid: paidThisMonth > 0,
           collectedByMe,
-          statusLabel: isPaid 
-            ? (paidThisMonth > 0 ? "To'langan" : "Avvaldan to'langan")
-            : `To'lanmagan (${(totalExpected - totalPaid).toLocaleString()} UZS)`,
+          statusLabel: paidThisMonth > 0 
+            ? `To'langan (${paidThisMonth.toLocaleString()} UZS)`
+            : "To'lanmagan",
           startInfo: startDay !== 1 ? `${startDay}-sanada boshlagan` : ""
         };
       })(),
