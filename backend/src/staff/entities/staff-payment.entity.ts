@@ -28,6 +28,9 @@ export class StaffPayment {
   @Column({ type: 'date' })
   date: string;
 
+  @Column({ default: 'Naqd' })
+  paymentType: string; // Naqd, Karta, O'tkazma, Click/Payme
+
   @Column({ nullable: true })
   comment: string;
 

@@ -2,9 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, PieChart,
   BarChart3, ArrowUpRight, ArrowDownRight, CreditCard,
-  Calendar, Plus, X, AlertCircle, Wallet, LucideCreditCard,
-  Repeat, Smartphone
+  Calendar, Plus, X, AlertCircle, Wallet,
+  Repeat, Smartphone, Search, Filter, ArrowRightLeft
 } from 'lucide-react';
+import {
+  AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart, Line
+} from 'recharts';
 import { getFinanceStats, getFinanceTransactions, getFinanceChart, addExpense } from '../services/api';
 import Modal from '../components/common/Modal';
 
@@ -13,12 +18,21 @@ const Finance = () => {
     totalIncome: 0,
     totalExpense: 0,
     netProfit: 0,
-    totalGeneralExpense: 0
+    totalGeneralExpense: 0,
+    incomeByMethod: {},
+    expenseByMethod: {},
+    expenseByCategory: {},
+    prevMonthStats: { totalInc: 0, totalExp: 0 }
   });
   const [transactions, setTransactions] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
+
+  // Filtering states
+  const [filterType, setFilterType] = useState('ALL'); // ALL, INCOME, EXPENSE
+  const [filterMethod, setFilterMethod] = useState('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Expense Modal State
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -44,11 +58,24 @@ const Finance = () => {
         getFinanceTransactions(currentMonth),
         getFinanceChart()
       ]);
-      setStats(statsRes.data);
-      setTransactions(transRes.data);
-      setChartData(chartRes.data);
+
+      if (statsRes?.data) {
+        setStats({
+          ...statsRes.data,
+          incomeByMethod: statsRes.data.incomeByMethod || {},
+          expenseByMethod: statsRes.data.expenseByMethod || {},
+          expenseByCategory: statsRes.data.expenseByCategory || {},
+          prevMonthStats: statsRes.data.prevMonthStats || { totalInc: 0, totalExp: 0 }
+        });
+      }
+
+      setTransactions(transRes?.data || []);
+      setChartData(chartRes?.data || []);
     } catch (err) {
       console.error('Error fetching finance data:', err);
+      if (err.response?.status === 401) {
+        // Silent fail or alert is already there
+      }
     } finally {
       setLoading(false);
     }
@@ -83,50 +110,50 @@ const Finance = () => {
     }
   };
 
-  // --- HISOB-KITOBLAR ---
+  const filteredTransactions = transactions.filter(t => {
+    const matchesType = filterType === 'ALL' || t.type === filterType;
+    const matchesMethod = filterMethod === 'ALL' || t.paymentType === filterMethod;
+    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.comment && t.comment.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesType && matchesMethod && matchesSearch;
+  });
 
-  // 1. Tushumlarni to'lov turlari bo'yicha guruhlash (Naqd, Karta, Click...)
-  const incomeByPaymentMethod = transactions
-    .filter(t => t.type === 'INCOME')
-    .reduce((acc, t) => {
-      const type = t.paymentType || 'Boshqa';
-      acc[type] = (acc[type] || 0) + t.amount;
-      return acc;
-    }, {});
-
-  // 2. Xarajatlarni kategoriyalar bo'yicha guruhlash (Ofis, Bino, Texnika...)
-  const expensesByCategory = transactions
-    .filter(t => t.type === 'EXPENSE')
-    .reduce((acc, t) => {
-      const cat = t.category || 'Boshqa';
-      acc[cat] = (acc[cat] || 0) + t.amount;
-      return acc;
-    }, {});
-
-  // -----------------------
-
-  const statCards = [
-    { type: 'INCOME', title: 'Oylik Tushum', amount: stats.totalIncome.toLocaleString(), change: '+0%', isUp: true, icon: <TrendingUp size={20} className="text-green-500" /> },
-    { type: 'EXPENSE', title: 'Jami Xarajat', amount: stats.totalExpense.toLocaleString(), change: '+0%', isUp: false, icon: <TrendingDown size={20} className="text-red-500" /> },
-    { title: 'Sof Foyda', amount: stats.netProfit.toLocaleString(), change: '+0%', isUp: true, icon: <DollarSign size={20} className="text-[#007aff]" /> },
-    { title: 'Boshqa Xarajatlar', amount: stats.totalGeneralExpense.toLocaleString(), change: '+0%', isUp: false, icon: <PieChart size={20} className="text-orange-500" /> },
-  ];
-
-  const handleCardClick = (type) => {
-    if (!type) return;
-    setDetailType(type);
-    setIsDataDetailModalOpen(true);
+  const getGrowth = (current, previous) => {
+    if (!previous || previous === 0) return 0;
+    return (((current - previous) / previous) * 100).toFixed(1);
   };
 
-  const getPaymentIcon = (type) => {
+  const getPaymentIcon = (type, size = 14) => {
     switch (type) {
-      case 'Naqd': return <Wallet size={14} className="text-orange-500" />;
-      case 'Karta': return <LucideCreditCard size={14} className="text-blue-500" />;
-      case 'O\'tkazma': return <Repeat size={14} className="text-purple-500" />;
-      case 'Click/Payme': return <Smartphone size={14} className="text-teal-500" />;
-      default: return null;
+      case 'Naqd': return <Wallet size={size} className="text-amber-500" />;
+      case 'Karta':
+      case 'Plastik': return <CreditCard size={size} className="text-blue-500" />;
+      case 'O\'tkazma': return <ArrowRightLeft size={size} className="text-purple-500" />;
+      case 'Click/Payme': return <Smartphone size={size} className="text-cyan-500" />;
+      default: return <Wallet size={size} className="text-gray-400" />;
     }
   };
+
+  const COLORS = ['#0088FE', '#FF8042', '#00C49F', '#FFBB28', '#8884d8', '#ffc658'];
+
+  const StatCard = ({ title, value, icon: Icon, color, trendValue }) => (
+    <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/20 to-transparent rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-110 transition-transform" />
+      <div className="flex items-center justify-between mb-4">
+        <div className={`w-12 h-12 rounded-2xl bg-${color}-500/10 flex items-center justify-center text-${color}-500 shadow-inner`}>
+          <Icon size={24} />
+        </div>
+        {trendValue !== undefined && trendValue !== 0 && (
+          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-black ${Number(trendValue) >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+            {Number(trendValue) >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {Math.abs(trendValue)}%
+          </div>
+        )}
+      </div>
+      <p className="text-[13px] font-bold text-gray-500 uppercase tracking-widest opacity-60">{title}</p>
+      <h3 className="text-3xl font-black mt-2 tracking-tighter tabular-nums drop-shadow-sm">{(value || 0).toLocaleString()} <span className="text-[14px] font-medium opacity-50">UZS</span></h3>
+    </div>
+  );
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#f5f5f7] dark:bg-[#1d1d1f] text-[#1d1d1f] dark:text-[#f5f5f7]">
@@ -135,8 +162,8 @@ const Finance = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Moliya</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Markazning moliyaviy holati va tahlili — {currentMonth}</p>
+            <h1 className="text-3xl font-bold tracking-tight">Moliya Dashboard</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">Ko'rsatkichlar va operatsiyalar tahlili — {currentMonth}</p>
           </div>
           <div className="flex items-center gap-3">
             <input
@@ -155,180 +182,402 @@ const Finance = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {statCards.map((stat, i) => (
-            <div
-              key={i}
-              onClick={() => handleCardClick(stat.type)}
-              className={`bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm group hover:shadow-md transition-all ${stat.type ? 'cursor-pointer hover:border-[#007aff]/30' : ''}`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-center">
-                  {stat.icon}
+        {/* Main Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard
+            title="Oylik Tushum"
+            value={stats.totalIncome}
+            icon={TrendingUp}
+            color="green"
+            trendValue={getGrowth(stats.totalIncome, stats.prevMonthStats.totalInc)}
+          />
+          <StatCard
+            title="Jami Xarajat"
+            value={stats.totalExpense}
+            icon={TrendingDown}
+            color="red"
+            trendValue={getGrowth(stats.totalExpense, stats.prevMonthStats.totalExp)}
+          />
+          <StatCard
+            title="Sof Foyda"
+            value={stats.netProfit}
+            icon={DollarSign}
+            color="blue"
+          />
+          <StatCard
+            title="Boshqa Chiqimlar"
+            value={stats.totalGeneralExpense}
+            icon={PieChart}
+            color="orange"
+          />
+        </div>
+
+        {/* Detailed Payment Breakdowns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* INCOME BREAKDOWN */}
+          <div className="bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-gray-200/50 dark:border-white/10 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-500/10 flex items-center justify-center">
+                  <ArrowUpRight size={18} className="text-green-600" />
                 </div>
-                <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${stat.isUp ? 'bg-green-100 dark:bg-green-500/10 text-green-600' : 'bg-red-100 dark:bg-red-500/10 text-red-600'}`}>
-                  {stat.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  {stat.change}
-                </div>
-              </div>
-              <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{stat.title}</p>
-              <h3 className="text-2xl font-bold mt-1 tabular-nums transition-all group-hover:scale-105 origin-left flex items-baseline gap-2">
-                {stat.amount} <span className="text-[13px] font-normal opacity-50 uppercase">UZS</span>
+                Kirim: To'lov turlari bo'yicha
               </h3>
-              {stat.type && <p className="text-[10px] text-[#007aff] mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Batafsil ko'rish →</p>}
             </div>
-          ))}
+            <div className="grid grid-cols-2 gap-4">
+              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
+                <div key={method} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 group hover:border-[#007aff]/30 transition-all">
+                  <div className="flex items-center gap-2 mb-2">
+                    {getPaymentIcon(method, 16)}
+                    <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">{method === 'Karta' ? 'Plastik' : method}</span>
+                  </div>
+                  <p className="text-xl font-black tabular-nums transition-transform group-hover:translate-x-1 lg:text-2xl">
+                    {(stats.incomeByMethod?.[method] || 0).toLocaleString()}
+                  </p>
+                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all duration-1000"
+                      style={{ width: `${(stats.incomeByMethod?.[method] || 0) / (stats.totalIncome || 1) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* EXPENSE BREAKDOWN */}
+          <div className="bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-gray-200/50 dark:border-white/10 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/10 flex items-center justify-center">
+                  <ArrowDownRight size={18} className="text-red-600" />
+                </div>
+                Chiqim: To'lov turlari bo'yicha
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
+                <div key={method} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 group hover:border-red-500/30 transition-all">
+                  <div className="flex items-center gap-2 mb-2">
+                    {getPaymentIcon(method, 16)}
+                    <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">{method}</span>
+                  </div>
+                  <p className="text-xl font-black tabular-nums transition-transform group-hover:translate-x-1 lg:text-2xl">
+                    {(stats.expenseByMethod?.[method] || 0).toLocaleString()}
+                  </p>
+                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
+                    <div
+                      className="h-full bg-red-500 transition-all duration-1000"
+                      style={{ width: `${(stats.expenseByMethod?.[method] || 0) / (stats.totalExpense || 1) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Chart Placeholder */}
-          <div className="lg:col-span-2 bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm min-h-[400px] flex flex-col">
+        {/* Insights & Charts */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Main Trend Line Chart */}
+          <div className="lg:col-span-2 bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-lg font-semibold">Moliyaviy tahlil (Oxirgi 6 oy)</h3>
+              <div>
+                <h3 className="text-xl font-black tracking-tight">Moliyaviy Dinamika</h3>
+                <p className="text-sm text-gray-400 mt-1">Daromad va xarajatlar tahlili</p>
+              </div>
               <div className="flex gap-4">
-                <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#007aff]"></div> Kirim
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#007aff]" />
+                  <span className="text-[11px] font-black text-gray-500 uppercase">Kirim</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div> Chiqim
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                  <span className="text-[11px] font-black text-gray-500 uppercase">Chiqim</span>
                 </div>
               </div>
             </div>
-            <div className="flex-1 flex items-end justify-between gap-4 pb-2">
-              {chartData.map((d, i) => {
-                const maxVal = Math.max(...chartData.map(x => Math.max(x.income, x.expense)));
-                const hIncome = (d.income / maxVal) * 100 || 5;
-                const hExpense = (d.expense / maxVal) * 100 || 5;
-
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-3 group">
-                    <div className="w-full flex items-end justify-center gap-1.5 h-[250px]">
-                      <div
-                        className="w-1/3 bg-[#007aff] rounded-t-lg transition-all relative group-hover:brightness-110"
-                        style={{ height: `${hIncome}%` }}
-                        title={`Kirim: ${d.income.toLocaleString()}`}
-                      />
-                      <div
-                        className="w-1/3 bg-red-400 rounded-t-lg transition-all relative group-hover:brightness-110"
-                        style={{ height: `${hExpense}%` }}
-                        title={`Chiqim: ${d.expense.toLocaleString()}`}
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-bold uppercase">{d.month}</span>
-                  </div>
-                );
-              })}
+            <div className="h-[300px] w-full mt-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#007aff" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#007aff" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888', fontWeight: 700 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888', fontWeight: 700 }} tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: '900' }}
+                  />
+                  <Area type="monotone" dataKey="income" stroke="#007aff" strokeWidth={4} fillOpacity={1} fill="url(#colorInc)" />
+                  <Bar dataKey="expense" fill="#f87171" radius={[10, 10, 0, 0]} barSize={20} />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Recent Operations */}
-          <div className="bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
-            <h3 className="text-lg font-semibold mb-6">So'nggi operatsiyalar</h3>
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
-              {transactions.length > 0 ? transactions.map((t, i) => (
-                <div key={i} className="flex items-center gap-4 p-3 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-all cursor-default group">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${t.type === 'INCOME' ? 'bg-green-100 dark:bg-green-500/10 text-green-600' : 'bg-red-100 dark:bg-red-500/10 text-red-600'
-                    }`}>
-                    {t.type === 'INCOME' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+          {/* Expense Distribution Pie Chart */}
+          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm flex flex-col">
+            <h3 className="text-xl font-black tracking-tight mb-2">Xarajatlar Taqsimoti</h3>
+            <p className="text-sm text-gray-400 mb-8 lowercase">kategoriyalar bo'yicha</p>
+            <div className="flex-1 flex flex-col justify-center">
+              <div className="h-[240px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RePieChart>
+                    <Pie
+                      data={Object.keys(stats.expenseByCategory).map(name => ({ name, value: stats.expenseByCategory[name] }))}
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {Object.keys(stats.expenseByCategory).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={10} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </RePieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {Object.keys(stats.expenseByCategory).slice(0, 4).map((name, index) => (
+                  <div key={name} className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="text-[11px] font-bold text-gray-500 truncate">{name}</span>
                   </div>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="text-[13px] font-semibold truncate" title={t.title}>{t.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[11px] text-gray-500 truncate">{t.comment || t.category}</p>
-                      {t.paymentType && (
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-50 dark:bg-white/5 rounded border border-gray-100 dark:border-white/5">
-                          {getPaymentIcon(t.paymentType)}
-                          <span className="text-[9px] text-gray-500">{t.paymentType}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className={`text-[13px] font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
-                      {t.type === 'INCOME' ? '+' : '-'}{t.amount.toLocaleString()}
-                    </p>
-                    <span className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-white/10 rounded text-gray-500 font-bold uppercase">{t.category}</span>
-                  </div>
-                </div>
-              )) : (
-                <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-2 opacity-30">
-                  <BarChart3 size={40} />
-                  <p className="text-[13px]">Operatsiyalar topilmadi</p>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           </div>
-
         </div>
 
-        {/* --- BO'LIM-BO'LIM STATISTIKA (YANGI QO'SHILDI) --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-
-          {/* To'lov usullari bo'yicha tushum */}
-          <div className="bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm">
-            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-              <Wallet size={20} className="text-[#007aff]" />
-              Kirim: To'lov usullari
-            </h3>
+        {/* Detailed Breakdowns Container */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* INCOME BREAKDOWN */}
+          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center">
+                  <ArrowUpRight size={20} className="text-green-500" />
+                </div>
+                Kirim: To'lov turlari
+              </h3>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              {Object.keys(incomeByPaymentMethod).length > 0 ? (
-                Object.entries(incomeByPaymentMethod).map(([method, amount]) => (
-                  <div key={method} className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 flex flex-col gap-2 hover:border-[#007aff]/30 transition-all">
-                    <div className="flex items-center gap-2">
-                      {getPaymentIcon(method)}
-                      <span className="text-[13px] font-medium text-gray-600 dark:text-gray-300">{method}</span>
-                    </div>
-                    <p className="text-xl font-bold text-green-600">
-                      {amount.toLocaleString()} <span className="text-[11px] font-normal text-gray-500 uppercase">UZS</span>
-                    </p>
+              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
+                <div key={method} className="p-5 rounded-3xl bg-white/50 dark:bg-white/5 border border-white dark:border-white/5 group hover:border-[#007aff]/30 transition-all duration-300">
+                  <div className="flex items-center gap-2 mb-2 opacity-60">
+                    <span className="text-[10px] font-black uppercase tracking-widest">{method === 'Karta' ? 'Plastik' : method}</span>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-2 text-center text-gray-500 text-[13px] py-4 opacity-50">Tushumlar mavjud emas</div>
-              )}
+                  <p className="text-xl font-black tabular-nums tracking-tighter">
+                    {(stats.incomeByMethod?.[method] || 0).toLocaleString()}
+                  </p>
+                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-4 overflow-hidden">
+                    <div
+                      className="h-full bg-[#007aff] transition-all duration-1000"
+                      style={{ width: `${(stats.incomeByMethod?.[method] || 0) / (stats.totalIncome || 1) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Kategoriyalar bo'yicha xarajatlar */}
-          <div className="bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm">
-            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-              <PieChart size={20} className="text-orange-500" />
-              Chiqim: Kategoriyalar
-            </h3>
-            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-              {Object.keys(expensesByCategory).length > 0 ? (
-                Object.entries(expensesByCategory)
-                  .sort((a, b) => b[1] - a[1]) // Kattasidan kichigiga qarab saralash
-                  .map(([category, amount]) => {
-                    const maxExpense = Math.max(...Object.values(expensesByCategory));
-                    const percentage = (amount / maxExpense) * 100;
+          {/* EXPENSE BREAKDOWN */}
+          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center">
+                  <ArrowDownRight size={20} className="text-red-600" />
+                </div>
+                Chiqim: To'lov turlari
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
+                <div key={method} className="p-5 rounded-3xl bg-white/50 dark:bg-white/5 border border-white dark:border-white/5 group hover:border-red-500/30 transition-all duration-300">
+                  <div className="flex items-center gap-2 mb-2 opacity-60">
+                    <span className="text-[10px] font-black uppercase tracking-widest">{method}</span>
+                  </div>
+                  <p className="text-xl font-black tabular-nums tracking-tighter">
+                    {(stats.expenseByMethod?.[method] || 0).toLocaleString()}
+                  </p>
+                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-4 overflow-hidden">
+                    <div
+                      className="h-full bg-red-500 transition-all duration-1000"
+                      style={{ width: `${(stats.expenseByMethod?.[method] || 0) / (stats.totalExpense || 1) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                    return (
-                      <div key={category} className="group">
-                        <div className="flex justify-between text-[13px] font-medium mb-1.5">
-                          <span className="text-gray-700 dark:text-gray-300">{category}</span>
-                          <span className="text-red-500 font-bold">{amount.toLocaleString()} UZS</span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-red-400 rounded-full transition-all duration-1000"
-                            style={{ width: `${percentage}%` }}
-                          />
+          {/* Recent Operations Widget (New) */}
+          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm lg:col-span-1">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black tracking-tight flex items-center gap-2">
+                <ArrowRightLeft className="text-[#007aff]" size={20} />
+                Oxirgi Harakatlar
+              </h3>
+              <button
+                onClick={() => document.getElementById('full-transactions-list')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-[11px] font-black text-[#007aff] hover:underline uppercase tracking-tighter"
+              >
+                Barchasini ko'rish
+              </button>
+            </div>
+            <div className="space-y-4">
+              {transactions.slice(0, 5).map((t, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-3xl bg-white/50 dark:bg-white/5 border border-white dark:border-white/5 hover:border-[#007aff]/20 transition-all group">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                      {t.type === 'INCOME' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-black tracking-tight">{t.title}</p>
+                      <p className="text-[11px] text-gray-400 font-medium uppercase tracking-tighter">{t.category}</p>
+                    </div>
+                  </div>
+                  <p className={`text-[14px] font-black tabular-nums ${t.type === 'INCOME' ? 'text-green-500' : 'text-red-500'}`}>
+                    {t.type === 'INCOME' ? '+' : '-'}{t.amount.toLocaleString()}
+                  </p>
+                </div>
+              ))}
+              {transactions.length === 0 && <p className="text-center text-gray-400 italic py-8">Harakatlar mavjud emas...</p>}
+            </div>
+          </div>
+
+          {/* Quick Stats / Actions (New) */}
+          <div className="bg-gradient-to-br from-[#007aff] to-[#0051af] p-8 rounded-[2.5rem] text-white shadow-2xl shadow-[#007aff]/30 relative overflow-hidden group">
+            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform" />
+            <h3 className="text-2xl font-black tracking-tight mb-2">Tezkor Xulosalar</h3>
+            <p className="text-white/60 text-sm mb-8">Oy yakuniga ko'ra asosiy ko'rsatkichlar</p>
+
+            <div className="space-y-6">
+              <div className="flex justify-between items-end border-b border-white/10 pb-4">
+                <div>
+                  <p className="text-[11px] font-black uppercase opacity-60">Sof Foyda</p>
+                  <p className="text-2xl font-black">{(stats.netProfit / (stats.totalIncome || 1) * 100).toFixed(1)}%</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] font-black uppercase opacity-60">O'rtacha Daromad</p>
+                  <p className="text-xl font-bold">{(stats.totalIncome / (transactions.filter(t => t.type === 'INCOME').length || 1)).toLocaleString()} <span className="text-[10px]">UZS</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* FULL TRANSACTIONS LIST SECTION */}
+        <div id="full-transactions-list" className="bg-white/80 dark:bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm overflow-hidden mt-12">
+          <div className="p-8 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <ArrowRightLeft className="text-[#007aff]" size={20} />
+                Barcha operatsiyalar
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">{filteredTransactions.length} ta operatsiya topildi</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search */}
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#007aff] transition-colors" size={16} />
+                <input
+                  type="text"
+                  placeholder="Qidirish..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-2 text-[13px] outline-none focus:border-[#007aff] w-full md:w-[200px]"
+                />
+              </div>
+
+              {/* Type Filter */}
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-[13px] outline-none"
+              >
+                <option value="ALL">Barchasi</option>
+                <option value="INCOME">Kirim</option>
+                <option value="EXPENSE">Chiqim</option>
+              </select>
+
+              {/* Method Filter */}
+              <select
+                value={filterMethod}
+                onChange={(e) => setFilterMethod(e.target.value)}
+                className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-[13px] outline-none"
+              >
+                <option value="ALL">To'lov usuli</option>
+                <option value="Naqd">Naqd</option>
+                <option value="Karta">Plastik</option>
+                <option value="O'tkazma">O'tkazma</option>
+                <option value="Click/Payme">Click/Payme</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50/50 dark:bg-white/5 text-[11px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-white/5">
+                  <th className="px-6 py-4">Turi</th>
+                  <th className="px-6 py-4">Sana</th>
+                  <th className="px-6 py-4">Nomi & Izoh</th>
+                  <th className="px-6 py-4 text-center">Usul</th>
+                  <th className="px-6 py-4">Kategoriya</th>
+                  <th className="px-6 py-4 text-right">Summa (UZS)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                {filteredTransactions.length > 0 ? filteredTransactions.map((t, i) => (
+                  <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-all text-[13px] group">
+                    <td className="px-6 py-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-100 dark:bg-green-500/10 text-green-600' : 'bg-red-100 dark:bg-red-500/10 text-red-600'}`}>
+                        {t.type === 'INCOME' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 tabular-nums">
+                      {new Date(t.date).toLocaleDateString('uz-UZ')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[#1d1d1f] dark:text-white">{t.title}</span>
+                        <span className="text-[11px] text-gray-500 truncate max-w-[200px]">{t.comment || '-'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center">
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-white/10 rounded-full border border-gray-200 dark:border-white/10 transition-transform group-hover:scale-105">
+                          {getPaymentIcon(t.paymentType)}
+                          <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400">{t.paymentType || 'Naqd'}</span>
                         </div>
                       </div>
-                    );
-                  })
-              ) : (
-                <div className="text-center text-gray-500 text-[13px] py-4 opacity-50">Xarajatlar mavjud emas</div>
-              )}
-            </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[10px] font-black uppercase text-gray-400 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded shadow-sm">{t.category}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`text-[15px] font-black tabular-nums ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                        {t.type === 'INCOME' ? '+' : '-'}{t.amount.toLocaleString()}
+                      </span>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-20 text-center text-gray-400 italic">Ma'lumotlar topilmadi...</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-
         </div>
-        {/* ---------------------------------------------------- */}
 
         {/* ADD EXPENSE MODAL */}
         <Modal
@@ -444,59 +693,6 @@ const Finance = () => {
               </button>
             </div>
           </form>
-        </Modal>
-
-        {/* DATA DETAIL MODAL (INCOME / EXPENSE) */}
-        <Modal
-          isOpen={isDataDetailModalOpen}
-          onClose={() => setIsDataDetailModalOpen(false)}
-          title={detailType === 'INCOME' ? `Oylik tushumlar tafsiloti (${currentMonth})` : `Oylik xarajatlar tafsiloti (${currentMonth})`}
-        >
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-            {transactions.filter(t => t.type === detailType).length > 0 ? (
-              transactions.filter(t => t.type === detailType).map((t, i) => (
-                <div key={i} className="bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl p-4 flex items-center justify-between shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                      }`}>
-                      {t.type === 'INCOME' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white truncate max-w-[180px]">{t.title}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-[10px] text-gray-500">{new Date(t.date).toLocaleDateString('uz-UZ')}</p>
-                        {t.paymentType && (
-                          <span className="flex items-center gap-1 text-[9px] text-[#007aff]">
-                            {getPaymentIcon(t.paymentType)}
-                            {t.paymentType}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-[14px] font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
-                      {t.amount.toLocaleString()} UZS
-                    </p>
-                    <span className="text-[9px] uppercase font-bold opacity-40">{t.category}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-10 text-center text-gray-500">
-                <AlertCircle size={32} className="mx-auto mb-3 opacity-20" />
-                <p className="text-[14px]">Ma'lumotlar topilmadi</p>
-              </div>
-            )}
-          </div>
-          <div className="mt-6">
-            <button
-              onClick={() => setIsDataDetailModalOpen(false)}
-              className="w-full py-3 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 rounded-xl text-[14px] font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
-            >
-              Yopish
-            </button>
-          </div>
         </Modal>
 
       </div>
