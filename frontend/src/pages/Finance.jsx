@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  TrendingUp, TrendingDown, DollarSign, PieChart,
+  TrendingUp, TrendingDown, DollarSign, PieChart as LucidePieChart,
   BarChart3, ArrowUpRight, ArrowDownRight, CreditCard,
   Calendar, Plus, X, AlertCircle, Wallet,
-  Repeat, Smartphone, Search, Filter, ArrowRightLeft
+  Repeat, Smartphone, Search, Filter, ArrowRightLeft,
+  ChevronLeft, ChevronRight, Activity, Download
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
@@ -46,10 +47,6 @@ const Finance = () => {
     comment: ''
   });
 
-  // Detail Modal State
-  const [isDataDetailModalOpen, setIsDataDetailModalOpen] = useState(false);
-  const [detailType, setDetailType] = useState('INCOME'); // INCOME or EXPENSE
-
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -73,9 +70,6 @@ const Finance = () => {
       setChartData(chartRes?.data || []);
     } catch (err) {
       console.error('Error fetching finance data:', err);
-      if (err.response?.status === 401) {
-        // Silent fail or alert is already there
-      }
     } finally {
       setLoading(false);
     }
@@ -94,15 +88,7 @@ const Finance = () => {
         amount: parseFloat(expenseFormData.amount)
       });
       setIsExpenseModalOpen(false);
-      setExpenseFormData({
-        title: '',
-        amount: '',
-        category: 'Ofis',
-        customCategory: '',
-        paymentType: 'Naqd',
-        date: new Date().toISOString().split('T')[0],
-        comment: ''
-      });
+      resetExpenseForm();
       fetchData();
     } catch (err) {
       console.error('Error adding expense:', err);
@@ -110,13 +96,27 @@ const Finance = () => {
     }
   };
 
-  const filteredTransactions = transactions.filter(t => {
-    const matchesType = filterType === 'ALL' || t.type === filterType;
-    const matchesMethod = filterMethod === 'ALL' || t.paymentType === filterMethod;
-    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.comment && t.comment.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesType && matchesMethod && matchesSearch;
-  });
+  const resetExpenseForm = () => {
+    setExpenseFormData({
+      title: '',
+      amount: '',
+      category: 'Ofis',
+      customCategory: '',
+      paymentType: 'Naqd',
+      date: new Date().toISOString().split('T')[0],
+      comment: ''
+    });
+  };
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const matchesType = filterType === 'ALL' || t.type === filterType;
+      const matchesMethod = filterMethod === 'ALL' || t.paymentType === filterMethod;
+      const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.comment && t.comment.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesType && matchesMethod && matchesSearch;
+    });
+  }, [transactions, filterType, filterMethod, searchTerm]);
 
   const getGrowth = (current, previous) => {
     if (!previous || previous === 0) return 0;
@@ -134,464 +134,431 @@ const Finance = () => {
     }
   };
 
-  const COLORS = ['#0088FE', '#FF8042', '#00C49F', '#FFBB28', '#8884d8', '#ffc658'];
+  const COLORS = ['#007aff', '#ff9500', '#34c759', '#af52de', '#ff3b30', '#5856d6'];
 
-  const StatCard = ({ title, value, icon: Icon, color, trendValue }) => (
-    <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/20 to-transparent rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-110 transition-transform" />
-      <div className="flex items-center justify-between mb-4">
-        <div className={`w-12 h-12 rounded-2xl bg-${color}-500/10 flex items-center justify-center text-${color}-500 shadow-inner`}>
-          <Icon size={24} />
-        </div>
-        {trendValue !== undefined && trendValue !== 0 && (
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-black ${Number(trendValue) >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-            {Number(trendValue) >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-            {Math.abs(trendValue)}%
+  const formattedMonth = new Date(currentMonth + '-01').toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' });
+
+  const StatCard = ({ title, value, icon: Icon, color, trendValue, subLabel }) => {
+    const colorMap = {
+      blue: 'text-[#007aff] bg-[#007aff]/10',
+      green: 'text-[#34c759] bg-[#34c759]/10',
+      red: 'text-[#ff3b30] bg-[#ff3b30]/10',
+      orange: 'text-[#ff9500] bg-[#ff9500]/10',
+      purple: 'text-[#af52de] bg-[#af52de]/10'
+    };
+
+    return (
+      <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group hover:-translate-y-1 shadow-sm">
+        <div className="flex justify-between items-start mb-6">
+          <div className="space-y-1">
+            <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</p>
+            <h3 className="text-2xl font-bold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight tabular-nums">
+              {(value || 0).toLocaleString()} <span className="text-[12px] font-medium opacity-50 uppercase">UZS</span>
+            </h3>
           </div>
-        )}
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${colorMap[color]}`}>
+            <Icon size={24} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-4 border-t border-gray-200/50 dark:border-white/5">
+          <div className="flex items-center gap-2">
+            {trendValue !== undefined && trendValue !== 0 ? (
+              <div className={`flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${Number(trendValue) >= 0 ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#ff3b30]/10 text-[#ff3b30]'}`}>
+                {Number(trendValue) >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                {Math.abs(trendValue)}%
+              </div>
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+            )}
+            <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
+              {subLabel || (trendValue !== undefined ? "O'tgan oyga nisbatan" : '')}
+            </span>
+          </div>
+        </div>
       </div>
-      <p className="text-[13px] font-bold text-gray-500 uppercase tracking-widest opacity-60">{title}</p>
-      <h3 className="text-3xl font-black mt-2 tracking-tighter tabular-nums drop-shadow-sm">{(value || 0).toLocaleString()} <span className="text-[14px] font-medium opacity-50">UZS</span></h3>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#f5f5f7] dark:bg-[#1d1d1f] text-[#1d1d1f] dark:text-[#f5f5f7]">
-      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f]">
 
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Moliya Dashboard</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Ko'rsatkichlar va operatsiyalar tahlili — {currentMonth}</p>
+      {/* macOS Finder-style Toolbar */}
+      <div className="min-h-[56px] py-3 lg:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4 z-20 sticky top-0">
+        
+        {/* Title Area */}
+        <div className="flex-shrink-0 flex items-center gap-3">
+          <div className="p-1.5 bg-[#007aff] text-white rounded-md shadow-sm">
+            <DollarSign size={16} />
           </div>
-          <div className="flex items-center gap-3">
-            <input
+          <div>
+            <h2 className="text-[15px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-none">Moliya</h2>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Balans va tushumlar tahlili</p>
+          </div>
+        </div>
+
+        {/* Center/Right Actions Area */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          
+          {/* Month Selector */}
+          <div className="flex items-center bg-white/60 dark:bg-black/30 rounded-md border border-gray-200/50 dark:border-white/10 shadow-sm backdrop-blur-md px-1 py-1">
+             <input
               type="month"
               value={currentMonth}
               onChange={(e) => setCurrentMonth(e.target.value)}
-              className="bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-[13px] outline-none"
+              className="bg-transparent border-none text-[12px] font-medium px-3 py-1 outline-none text-[#1d1d1f] dark:text-[#f5f5f7] cursor-pointer"
             />
-            <button
-              onClick={() => setIsExpenseModalOpen(true)}
-              className="px-4 py-2 bg-[#007aff] text-white rounded-xl text-[13px] font-medium hover:bg-[#007aff]/90 transition-all shadow-md shadow-[#007aff]/20 flex items-center gap-2"
-            >
-              <Plus size={16} />
-              Xarajat qo'shish
-            </button>
-          </div>
-        </div>
-
-        {/* Main Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Oylik Tushum"
-            value={stats.totalIncome}
-            icon={TrendingUp}
-            color="green"
-            trendValue={getGrowth(stats.totalIncome, stats.prevMonthStats.totalInc)}
-          />
-          <StatCard
-            title="Jami Xarajat"
-            value={stats.totalExpense}
-            icon={TrendingDown}
-            color="red"
-            trendValue={getGrowth(stats.totalExpense, stats.prevMonthStats.totalExp)}
-          />
-          <StatCard
-            title="Sof Foyda"
-            value={stats.netProfit}
-            icon={DollarSign}
-            color="blue"
-          />
-          <StatCard
-            title="Boshqa Chiqimlar"
-            value={stats.totalGeneralExpense}
-            icon={PieChart}
-            color="orange"
-          />
-        </div>
-
-        {/* Detailed Payment Breakdowns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* INCOME BREAKDOWN */}
-          <div className="bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-gray-200/50 dark:border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-500/10 flex items-center justify-center">
-                  <ArrowUpRight size={18} className="text-green-600" />
-                </div>
-                Kirim: To'lov turlari bo'yicha
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
-                <div key={method} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 group hover:border-[#007aff]/30 transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    {getPaymentIcon(method, 16)}
-                    <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">{method === 'Karta' ? 'Plastik' : method}</span>
-                  </div>
-                  <p className="text-xl font-black tabular-nums transition-transform group-hover:translate-x-1 lg:text-2xl">
-                    {(stats.incomeByMethod?.[method] || 0).toLocaleString()}
-                  </p>
-                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
-                    <div
-                      className="h-full bg-green-500 transition-all duration-1000"
-                      style={{ width: `${(stats.incomeByMethod?.[method] || 0) / (stats.totalIncome || 1) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* EXPENSE BREAKDOWN */}
-          <div className="bg-white/70 dark:bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-gray-200/50 dark:border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/10 flex items-center justify-center">
-                  <ArrowDownRight size={18} className="text-red-600" />
-                </div>
-                Chiqim: To'lov turlari bo'yicha
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
-                <div key={method} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 group hover:border-red-500/30 transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    {getPaymentIcon(method, 16)}
-                    <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">{method}</span>
-                  </div>
-                  <p className="text-xl font-black tabular-nums transition-transform group-hover:translate-x-1 lg:text-2xl">
-                    {(stats.expenseByMethod?.[method] || 0).toLocaleString()}
-                  </p>
-                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
-                    <div
-                      className="h-full bg-red-500 transition-all duration-1000"
-                      style={{ width: `${(stats.expenseByMethod?.[method] || 0) / (stats.totalExpense || 1) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          <div className="h-4 w-px bg-gray-300 dark:bg-white/10 hidden sm:block" />
 
-        {/* Insights & Charts */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Main Trend Line Chart */}
-          <div className="lg:col-span-2 bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-xl font-black tracking-tight">Moliyaviy Dinamika</h3>
-                <p className="text-sm text-gray-400 mt-1">Daromad va xarajatlar tahlili</p>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#007aff]" />
-                  <span className="text-[11px] font-black text-gray-500 uppercase">Kirim</span>
+          {/* Add Button */}
+          <button
+            onClick={() => setIsExpenseModalOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-[#007aff] hover:bg-[#0062cc] text-white border border-[#005bb5]"
+          >
+            <Plus size={14} />
+            <span>Xarajat qo'shish</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Scrollable Area */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 p-6">
+        <div className="max-w-[1400px] mx-auto space-y-8 animate-fade-in pb-10">
+
+          {/* Core Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              title="Oylik Tushum"
+              value={stats.totalIncome}
+              icon={TrendingUp}
+              color="green"
+              trendValue={getGrowth(stats.totalIncome, stats.prevMonthStats.totalInc)}
+            />
+            <StatCard
+              title="Jami Xarajat"
+              value={stats.totalExpense}
+              icon={TrendingDown}
+              color="red"
+              trendValue={getGrowth(stats.totalExpense, stats.prevMonthStats.totalExp)}
+            />
+            <StatCard
+              title="Sof Foyda"
+              value={stats.netProfit}
+              icon={DollarSign}
+              color="blue"
+              subLabel={`${stats.totalIncome > 0 ? ((stats.netProfit / stats.totalIncome) * 100).toFixed(1) : 0}% rentabellik`}
+            />
+            <StatCard
+              title="Zaxira / Boshqa"
+              value={stats.totalGeneralExpense}
+              icon={LucidePieChart}
+              color="orange"
+              subLabel="Umumiy xarajatlar"
+            />
+          </div>
+
+          {/* Detailed Analytics Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Financial Dynamics Chart */}
+            <div className="lg:col-span-2 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Activity size={20} className="text-[#007aff]" />
+                    Moliyaviy Dinamika
+                  </h3>
+                  <p className="text-[12px] text-gray-500 mt-1">Yillik tushum va chiqim grafigi</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <span className="text-[11px] font-black text-gray-500 uppercase">Chiqim</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#007aff]" />
+                    <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-tight">Kirim</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#ff3b30]" />
+                    <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-tight">Chiqim</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="h-[300px] w-full mt-10">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#007aff" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#007aff" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888', fontWeight: 700 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888', fontWeight: 700 }} tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: '900' }}
-                  />
-                  <Area type="monotone" dataKey="income" stroke="#007aff" strokeWidth={4} fillOpacity={1} fill="url(#colorInc)" />
-                  <Bar dataKey="expense" fill="#f87171" radius={[10, 10, 0, 0]} barSize={20} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
 
-          {/* Expense Distribution Pie Chart */}
-          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm flex flex-col">
-            <h3 className="text-xl font-black tracking-tight mb-2">Xarajatlar Taqsimoti</h3>
-            <p className="text-sm text-gray-400 mb-8 lowercase">kategoriyalar bo'yicha</p>
-            <div className="flex-1 flex flex-col justify-center">
-              <div className="h-[240px] w-full">
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#007aff" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#007aff" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                    <XAxis 
+                      dataKey="month" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#888', fontWeight: 600 }} 
+                      dy={10} 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#888', fontWeight: 600 }} 
+                      tickFormatter={(value) => (value / 1000000).toFixed(1) + 'M'}
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)' }}
+                      itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                    />
+                    <Area type="monotone" dataKey="income" stroke="#007aff" strokeWidth={3} fillOpacity={1} fill="url(#colorInc)" />
+                    <Bar dataKey="expense" fill="#ff3b30" radius={[10, 10, 0, 0]} barSize={20} opacity={0.6} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Expense Distribution */}
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col">
+              <h3 className="text-[15px] font-bold mb-4 flex items-center gap-2 uppercase tracking-tight">
+                <LucidePieChart size={18} className="text-[#af52de]" />
+                Xarajatlar taqsimoti
+              </h3>
+              <p className="text-[11px] text-gray-500 mb-6">Kategoriyalar bo'yicha ulush</p>
+              
+              <div className="h-[180px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <RePieChart>
                     <Pie
                       data={Object.keys(stats.expenseByCategory).map(name => ({ name, value: stats.expenseByCategory[name] }))}
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={50}
+                      outerRadius={75}
                       paddingAngle={5}
                       dataKey="value"
                     >
                       {Object.keys(stats.expenseByCategory).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={10} />
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={4} />
                       ))}
                     </Pie>
                     <Tooltip />
                   </RePieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {Object.keys(stats.expenseByCategory).slice(0, 4).map((name, index) => (
-                  <div key={name} className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                    <span className="text-[11px] font-bold text-gray-500 truncate">{name}</span>
+
+              <div className="space-y-2 mt-6 overflow-y-auto custom-scrollbar flex-1 max-h-[150px] pr-2">
+                {Object.keys(stats.expenseByCategory).map((name, index) => (
+                  <div key={name} className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2">
+                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                       <span className="text-[12px] text-gray-600 dark:text-gray-400 font-medium group-hover:text-[#1d1d1f] dark:group-hover:text-white transition-colors">{name}</span>
+                    </div>
+                    <span className="text-[11px] font-bold tabular-nums">
+                      {((stats.expenseByCategory[name] / (stats.totalExpense || 1)) * 100).toFixed(0)}%
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Detailed Breakdowns Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* INCOME BREAKDOWN */}
-          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center">
-                  <ArrowUpRight size={20} className="text-green-500" />
-                </div>
-                Kirim: To'lov turlari
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
-                <div key={method} className="p-5 rounded-3xl bg-white/50 dark:bg-white/5 border border-white dark:border-white/5 group hover:border-[#007aff]/30 transition-all duration-300">
-                  <div className="flex items-center gap-2 mb-2 opacity-60">
-                    <span className="text-[10px] font-black uppercase tracking-widest">{method === 'Karta' ? 'Plastik' : method}</span>
-                  </div>
-                  <p className="text-xl font-black tabular-nums tracking-tighter">
-                    {(stats.incomeByMethod?.[method] || 0).toLocaleString()}
-                  </p>
-                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-4 overflow-hidden">
-                    <div
-                      className="h-full bg-[#007aff] transition-all duration-1000"
-                      style={{ width: `${(stats.incomeByMethod?.[method] || 0) / (stats.totalIncome || 1) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* EXPENSE BREAKDOWN */}
-          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center">
-                  <ArrowDownRight size={20} className="text-red-600" />
-                </div>
-                Chiqim: To'lov turlari
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
-                <div key={method} className="p-5 rounded-3xl bg-white/50 dark:bg-white/5 border border-white dark:border-white/5 group hover:border-red-500/30 transition-all duration-300">
-                  <div className="flex items-center gap-2 mb-2 opacity-60">
-                    <span className="text-[10px] font-black uppercase tracking-widest">{method}</span>
-                  </div>
-                  <p className="text-xl font-black tabular-nums tracking-tighter">
-                    {(stats.expenseByMethod?.[method] || 0).toLocaleString()}
-                  </p>
-                  <div className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-full mt-4 overflow-hidden">
-                    <div
-                      className="h-full bg-red-500 transition-all duration-1000"
-                      style={{ width: `${(stats.expenseByMethod?.[method] || 0) / (stats.totalExpense || 1) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Operations Widget (New) */}
-          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm lg:col-span-1">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black tracking-tight flex items-center gap-2">
-                <ArrowRightLeft className="text-[#007aff]" size={20} />
-                Oxirgi Harakatlar
-              </h3>
-              <button
-                onClick={() => document.getElementById('full-transactions-list')?.scrollIntoView({ behavior: 'smooth' })}
-                className="text-[11px] font-black text-[#007aff] hover:underline uppercase tracking-tighter"
-              >
-                Barchasini ko'rish
-              </button>
-            </div>
-            <div className="space-y-4">
-              {transactions.slice(0, 5).map((t, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-3xl bg-white/50 dark:bg-white/5 border border-white dark:border-white/5 hover:border-[#007aff]/20 transition-all group">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                      {t.type === 'INCOME' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+          {/* Payment Methods Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* Income Card */}
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-[15px] font-bold flex items-center gap-2 uppercase tracking-tight">
+                  <ArrowUpRight size={18} className="text-[#34c759]" />
+                  Kirim (To'lov turlari)
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
+                  <div key={method} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 group hover:border-[#007aff]/30 transition-all">
+                    <div className="flex items-center gap-2 mb-2">
+                      {getPaymentIcon(method, 16)}
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-tighter">{method === 'Karta' ? 'Plastik' : method}</span>
                     </div>
-                    <div>
-                      <p className="text-[13px] font-black tracking-tight">{t.title}</p>
-                      <p className="text-[11px] text-gray-400 font-medium uppercase tracking-tighter">{t.category}</p>
+                    <p className="text-[18px] font-bold tabular-nums tracking-tighter truncate">
+                      {(stats.incomeByMethod?.[method] || 0).toLocaleString()}
+                    </p>
+                    <div className="w-full h-1 bg-gray-200 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
+                      <div
+                        className="h-full bg-[#34c759] transition-all duration-1000"
+                        style={{ width: `${(stats.incomeByMethod?.[method] || 0) / (stats.totalIncome || 1) * 100}%` }}
+                      />
                     </div>
                   </div>
-                  <p className={`text-[14px] font-black tabular-nums ${t.type === 'INCOME' ? 'text-green-500' : 'text-red-500'}`}>
-                    {t.type === 'INCOME' ? '+' : '-'}{t.amount.toLocaleString()}
-                  </p>
-                </div>
-              ))}
-              {transactions.length === 0 && <p className="text-center text-gray-400 italic py-8">Harakatlar mavjud emas...</p>}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Quick Stats / Actions (New) */}
-          <div className="bg-gradient-to-br from-[#007aff] to-[#0051af] p-8 rounded-[2.5rem] text-white shadow-2xl shadow-[#007aff]/30 relative overflow-hidden group">
-            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform" />
-            <h3 className="text-2xl font-black tracking-tight mb-2">Tezkor Xulosalar</h3>
-            <p className="text-white/60 text-sm mb-8">Oy yakuniga ko'ra asosiy ko'rsatkichlar</p>
-
-            <div className="space-y-6">
-              <div className="flex justify-between items-end border-b border-white/10 pb-4">
-                <div>
-                  <p className="text-[11px] font-black uppercase opacity-60">Sof Foyda</p>
-                  <p className="text-2xl font-black">{(stats.netProfit / (stats.totalIncome || 1) * 100).toFixed(1)}%</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] font-black uppercase opacity-60">O'rtacha Daromad</p>
-                  <p className="text-xl font-bold">{(stats.totalIncome / (transactions.filter(t => t.type === 'INCOME').length || 1)).toLocaleString()} <span className="text-[10px]">UZS</span></p>
-                </div>
+            {/* Expense Card */}
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-[15px] font-bold flex items-center gap-2 uppercase tracking-tight">
+                  <ArrowDownRight size={18} className="text-[#ff3b30]" />
+                  Chiqim (To'lov turlari)
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {['Naqd', 'Karta', 'O\'tkazma', 'Click/Payme'].map(method => (
+                  <div key={method} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 group hover:border-[#ff3b30]/30 transition-all">
+                    <div className="flex items-center gap-2 mb-2">
+                      {getPaymentIcon(method, 16)}
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-tighter">{method}</span>
+                    </div>
+                    <p className="text-[18px] font-bold tabular-nums tracking-tighter truncate">
+                      {(stats.expenseByMethod?.[method] || 0).toLocaleString()}
+                    </p>
+                    <div className="w-full h-1 bg-gray-200 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
+                      <div
+                        className="h-full bg-[#ff3b30] transition-all duration-1000"
+                        style={{ width: `${(stats.expenseByMethod?.[method] || 0) / (stats.totalExpense || 1) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* FULL TRANSACTIONS LIST SECTION */}
-        <div id="full-transactions-list" className="bg-white/80 dark:bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-sm overflow-hidden mt-12">
-          <div className="p-8 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <ArrowRightLeft className="text-[#007aff]" size={20} />
-                Barcha operatsiyalar
+          {/* Transactions Table Section */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                 <ArrowRightLeft className="text-[#007aff]" size={20} />
+                 Operatsiyalar logi
               </h3>
-              <p className="text-xs text-gray-500 mt-1">{filteredTransactions.length} ta operatsiya topildi</p>
-            </div>
+              
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none sm:w-64">
+                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                   <input
+                    type="text"
+                    placeholder="Qidirish (Nomi, izoh...)"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md text-[12px] outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all backdrop-blur-md"
+                  />
+                </div>
+                
+                <select 
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md px-3 py-1.5 text-[12px] outline-none backdrop-blur-md cursor-pointer"
+                >
+                  <option value="ALL">Barcha turlar</option>
+                  <option value="INCOME">Kirim</option>
+                  <option value="EXPENSE">Chiqim</option>
+                </select>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Search */}
-              <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#007aff] transition-colors" size={16} />
-                <input
-                  type="text"
-                  placeholder="Qidirish..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-2 text-[13px] outline-none focus:border-[#007aff] w-full md:w-[200px]"
-                />
+                <select 
+                  value={filterMethod}
+                  onChange={(e) => setFilterMethod(e.target.value)}
+                   className="bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md px-3 py-1.5 text-[12px] outline-none backdrop-blur-md cursor-pointer"
+                >
+                  <option value="ALL">To'lov usuli</option>
+                  <option value="Naqd">Naqd</option>
+                  <option value="Karta">Plastik</option>
+                  <option value="O'tkazma">O'tkazma</option>
+                  <option value="Click/Payme">Click/Payme</option>
+                </select>
               </div>
+            </div>
 
-              {/* Type Filter */}
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-[13px] outline-none"
-              >
-                <option value="ALL">Barchasi</option>
-                <option value="INCOME">Kirim</option>
-                <option value="EXPENSE">Chiqim</option>
-              </select>
-
-              {/* Method Filter */}
-              <select
-                value={filterMethod}
-                onChange={(e) => setFilterMethod(e.target.value)}
-                className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-[13px] outline-none"
-              >
-                <option value="ALL">To'lov usuli</option>
-                <option value="Naqd">Naqd</option>
-                <option value="Karta">Plastik</option>
-                <option value="O'tkazma">O'tkazma</option>
-                <option value="Click/Payme">Click/Payme</option>
-              </select>
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left text-[13px]">
+                  <thead className="bg-[#f2f2f7] dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
+                    <tr>
+                      <th className="px-5 py-2.5 font-medium">Tur</th>
+                      <th className="px-5 py-2.5 font-medium">Sana</th>
+                      <th className="px-5 py-2.5 font-medium">Operatsiya / Izoh</th>
+                      <th className="px-5 py-2.5 font-medium">Metod</th>
+                      <th className="px-5 py-2.5 font-medium">Kategoriya</th>
+                      <th className="px-5 py-2.5 font-medium text-right">Summa (UZS)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                    {loading ? (
+                      <tr>
+                        <td colSpan="6" className="px-5 py-20 text-center">
+                           <div className="flex flex-col items-center justify-center text-gray-400">
+                            <div className="w-6 h-6 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin mb-3"></div>
+                            <span className="text-[12px] font-medium tracking-tight">Ma'lumotlar tahlil qilinmoqda...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredTransactions.length > 0 ? (
+                      filteredTransactions.map((t, i) => (
+                        <tr key={i} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-default">
+                          <td className="px-5 py-3.5">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'INCOME' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#ff3b30]/10 text-[#ff3b30]'}`}>
+                              {t.type === 'INCOME' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 tabular-nums text-gray-500 whitespace-nowrap">
+                            {new Date(t.date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <div className="flex flex-col">
+                               <span className="font-bold text-[#1d1d1f] dark:text-white group-hover:text-[#007aff] transition-colors">{t.title}</span>
+                               <span className="text-[11px] text-gray-400 max-w-[250px] truncate">{t.comment || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+                              {getPaymentIcon(t.paymentType, 12)}
+                              <span className="text-[11px] font-medium">{t.paymentType || 'Naqd'}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-100 dark:bg-white/5 px-1.5 py-0.5 rounded">
+                              {t.category}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-right font-bold tabular-nums">
+                             <span className={t.type === 'INCOME' ? 'text-[#34c759]' : 'text-[#ff3b30]'}>
+                               {t.type === 'INCOME' ? '+' : '-'}{t.amount.toLocaleString()}
+                             </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="px-5 py-24 text-center">
+                          <div className="flex flex-col items-center justify-center grayscale opacity-50">
+                            <Download size={40} className="text-gray-400 mb-4" />
+                            <p className="text-[14px] font-medium text-gray-600">Mos ma'lumotlar topilmadi</p>
+                            <p className="text-[12px] text-gray-400 mt-1">Filtr parametrlarini o'zgartirib ko'ring</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50/50 dark:bg-white/5 text-[11px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-white/5">
-                  <th className="px-6 py-4">Turi</th>
-                  <th className="px-6 py-4">Sana</th>
-                  <th className="px-6 py-4">Nomi & Izoh</th>
-                  <th className="px-6 py-4 text-center">Usul</th>
-                  <th className="px-6 py-4">Kategoriya</th>
-                  <th className="px-6 py-4 text-right">Summa (UZS)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {filteredTransactions.length > 0 ? filteredTransactions.map((t, i) => (
-                  <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-all text-[13px] group">
-                    <td className="px-6 py-4">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-100 dark:bg-green-500/10 text-green-600' : 'bg-red-100 dark:bg-red-500/10 text-red-600'}`}>
-                        {t.type === 'INCOME' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 tabular-nums">
-                      {new Date(t.date).toLocaleDateString('uz-UZ')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[#1d1d1f] dark:text-white">{t.title}</span>
-                        <span className="text-[11px] text-gray-500 truncate max-w-[200px]">{t.comment || '-'}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center">
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-white/10 rounded-full border border-gray-200 dark:border-white/10 transition-transform group-hover:scale-105">
-                          {getPaymentIcon(t.paymentType)}
-                          <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400">{t.paymentType || 'Naqd'}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-[10px] font-black uppercase text-gray-400 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded shadow-sm">{t.category}</span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`text-[15px] font-black tabular-nums ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
-                        {t.type === 'INCOME' ? '+' : '-'}{t.amount.toLocaleString()}
-                      </span>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-20 text-center text-gray-400 italic">Ma'lumotlar topilmadi...</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
+      </div>
 
-        {/* ADD EXPENSE MODAL */}
-        <Modal
-          isOpen={isExpenseModalOpen}
-          onClose={() => setIsExpenseModalOpen(false)}
-          title="Xarajat qo'shish"
-        >
-          <form onSubmit={handleAddExpense} className="space-y-4">
+      {/* ADD EXPENSE MODAL */}
+      <Modal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        title="Yangi xarajat"
+      >
+        <form onSubmit={handleAddExpense} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+          <div className="space-y-4">
             <div>
-              <label className="block text-[12px] font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Xarajat nomi</label>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">MAQSAD / NOMI</label>
               <input
                 type="text"
                 required
-                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#007aff] transition-all"
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                 value={expenseFormData.title}
                 onChange={(e) => setExpenseFormData({ ...expenseFormData, title: e.target.value })}
                 placeholder="Masalan: Ijara to'lovi"
@@ -600,9 +567,9 @@ const Finance = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[12px] font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Kategoriya</label>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">KATEGORIYA</label>
                 <select
-                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#007aff] transition-all"
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                   value={expenseFormData.category}
                   onChange={(e) => setExpenseFormData({ ...expenseFormData, category: e.target.value })}
                 >
@@ -616,9 +583,9 @@ const Finance = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-[12px] font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">To'lov turi</label>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">TO'LOV TURI</label>
                 <select
-                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#007aff] transition-all"
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                   value={expenseFormData.paymentType}
                   onChange={(e) => setExpenseFormData({ ...expenseFormData, paymentType: e.target.value })}
                 >
@@ -631,12 +598,12 @@ const Finance = () => {
             </div>
 
             {expenseFormData.category === 'Boshqa' && (
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className="block text-[12px] font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Yangi kategoriya nomi</label>
+              <div className="animate-in fade-in slide-in-from-top-1">
+                <label className="block text-[11px] font-medium text-[#007aff] mb-1 uppercase tracking-wider">YANGI KATEGORIYA NOMI</label>
                 <input
                   type="text"
                   required
-                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] outline-none border-[#007aff] shadow-sm"
+                  className="w-full bg-[#007aff]/5 dark:bg-[#007aff]/10 border border-[#007aff]/20 rounded-md px-3 py-2 text-[13px] text-[#007aff] font-medium outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all"
                   value={expenseFormData.customCategory}
                   onChange={(e) => setExpenseFormData({ ...expenseFormData, customCategory: e.target.value })}
                   placeholder="Kategoriya nomini yozing..."
@@ -646,22 +613,22 @@ const Finance = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[12px] font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Summa (UZS)</label>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SUMMA (UZS)</label>
                 <input
                   type="number"
                   required
-                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#007aff] transition-all"
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[14px] font-bold text-[#ff3b30] outline-none focus:ring-2 focus:ring-[#ff3b30]/50 transition-all"
                   value={expenseFormData.amount}
                   onChange={(e) => setExpenseFormData({ ...expenseFormData, amount: e.target.value })}
                   placeholder="0.00"
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Sana</label>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SANA</label>
                 <input
                   type="date"
                   required
-                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#007aff] transition-all"
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                   value={expenseFormData.date}
                   onChange={(e) => setExpenseFormData({ ...expenseFormData, date: e.target.value })}
                 />
@@ -669,33 +636,34 @@ const Finance = () => {
             </div>
 
             <div>
-              <label className="block text-[12px] font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Izoh</label>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">IZOH / KOMMENTARIYA</label>
               <textarea
-                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#007aff] transition-all min-h-[100px]"
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner min-h-[80px] resize-none"
                 value={expenseFormData.comment}
                 onChange={(e) => setExpenseFormData({ ...expenseFormData, comment: e.target.value })}
                 placeholder="Qo'shimcha ma'lumot..."
               />
             </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsExpenseModalOpen(false)}
-                className="flex-1 py-3 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-xl text-[14px] font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
-              >
-                Bekor qilish
-              </button>
-              <button
-                type="submit"
-                className="flex-[2] py-3 bg-[#007aff] text-white rounded-xl text-[14px] font-bold hover:bg-[#007aff]/90 transition-all shadow-lg shadow-[#007aff]/20"
-              >
-                Xarajatni saqlash
-              </button>
-            </div>
-          </form>
-        </Modal>
+          </div>
 
-      </div>
+          <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsExpenseModalOpen(false)}
+              className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors"
+            >
+              Saqlash
+            </button>
+          </div>
+        </form>
+      </Modal>
+
     </div>
   );
 };
