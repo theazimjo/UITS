@@ -85,4 +85,9 @@ export const updateRoom = (id, room) => api.patch(`/groups/rooms/${id}`, room);
 export const deleteRoom = (id) => api.delete(`/groups/rooms/${id}`);
 export const getGroupActivities = (id) => api.get(`/groups/${id}/activities`);
 
+// User Profile
+export const getMe = () => api.get('/users/me');
+export const updateProfile = (data) => api.patch('/users/profile', data);
+export const updatePassword = (data) => api.patch('/users/password', data);
+
 export default api;
