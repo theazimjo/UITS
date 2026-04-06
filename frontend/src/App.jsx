@@ -44,6 +44,13 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
     const token = localStorage.getItem('access_token');
     const user = localStorage.getItem('user');
     if (token) {
