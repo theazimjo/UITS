@@ -7,7 +7,7 @@ import {
 import { getPayments, createPayment, deletePayment } from '../services/api';
 import Modal from '../components/common/Modal'; // Ensure this uses a matching macOS design if possible
 
-const Payments = ({ students = [], groups = [] }) => {
+const Payments = ({ students = [], groups = [], staffList = [] }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,6 +28,7 @@ const Payments = ({ students = [], groups = [] }) => {
     discount: '0',
     penalty: '0',
     month: new Date().toISOString().substring(0, 7),
+    teacherId: '',
     paymentType: 'CASH',
     paymentDate: new Date().toISOString().split('T')[0]
   });
@@ -76,6 +77,7 @@ const Payments = ({ students = [], groups = [] }) => {
           ...formData,
           student: { id: parseInt(formData.studentId) },
           group: { id: parseInt(formData.groupId) },
+          teacher: formData.teacherId ? { id: parseInt(formData.teacherId) } : undefined,
           amount: parseFloat(formData.amount),
           discount: parseFloat(formData.discount || 0),
           penalty: parseFloat(formData.penalty || 0)
@@ -100,6 +102,7 @@ const Payments = ({ students = [], groups = [] }) => {
       discount: '0',
       penalty: '0',
       month: new Date().toISOString().substring(0, 7),
+      teacherId: '',
       paymentType: 'CASH',
       paymentDate: new Date().toISOString().split('T')[0]
     });
@@ -114,20 +117,38 @@ const Payments = ({ students = [], groups = [] }) => {
     if (!group) return "Noma'lum";
     if (!group.phases || group.phases.length === 0) return group.teacher?.name || "Noma'lum";
 
-    // Convert month (YYYY-MM) to comparison date (end of that month)
     const [year, monthNum] = month.split('-').map(Number);
     const monthEnd = new Date(year, monthNum, 0).toISOString().split('T')[0];
 
-    // Find phases that started before or during the month
     const relevantPhases = group.phases
       .filter(p => p.startDate <= monthEnd)
-      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()); // Latest first
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
     if (relevantPhases.length > 0) {
       return relevantPhases[0].teacher?.name || group.teacher?.name || "Noma'lum";
     }
 
     return group.teacher?.name || "Noma'lum";
+  };
+
+  const getTeacherIdForMonth = (groupId, month) => {
+    if (!groupId || !month) return '';
+    const group = groups.find(g => g.id === parseInt(groupId));
+    if (!group) return '';
+    if (!group.phases || group.phases.length === 0) return group.teacher?.id?.toString() || '';
+
+    const [year, monthNum] = month.split('-').map(Number);
+    const monthEnd = new Date(year, monthNum, 0).toISOString().split('T')[0];
+
+    const relevantPhases = group.phases
+      .filter(p => p.startDate <= monthEnd)
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+
+    if (relevantPhases.length > 0) {
+      return relevantPhases[0].teacher?.id?.toString() || group.teacher?.id?.toString() || '';
+    }
+
+    return group.teacher?.id?.toString() || '';
   };
 
   const handleDelete = async (id) => {
@@ -561,7 +582,8 @@ const Payments = ({ students = [], groups = [] }) => {
                   if (minMonth && newMonth < minMonth) {
                     newMonth = minMonth;
                   }
-                  setFormData({ ...formData, groupId: e.target.value, amount: g ? g.monthlyPrice : formData.amount, month: newMonth });
+                  const suggestedTeacherId = getTeacherIdForMonth(e.target.value, newMonth);
+                  setFormData({ ...formData, groupId: e.target.value, amount: g ? g.monthlyPrice : formData.amount, month: newMonth, teacherId: suggestedTeacherId });
                 }}
                 className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner disabled:opacity-50"
                 required
@@ -571,12 +593,26 @@ const Payments = ({ students = [], groups = [] }) => {
                 {studentGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
               {formData.groupId && (
-                <div className="mt-1 flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-black/20 rounded-md border border-gray-200/50 dark:border-white/10">
-                  <User size={12} className="text-gray-400" />
-                  <div className="text-[11px] leading-tight">
-                    O'qituvchi nomi: <span className="text-[#007aff] font-bold">{getTeacherForMonth(formData.groupId, formData.month)}</span>
-                    <p className="text-gray-500 mt-1">To'lov tanlangan oydagi o'qituvchiga avtomatik biriktiriladi (tarixiy maosh hisobi uchun).</p>
-                  </div>
+                <div className="mt-3">
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">O'QITUVCHI (AVTOMATIK TANLANDI)</label>
+                  <select
+                    value={formData.teacherId}
+                    onChange={e => setFormData({ ...formData, teacherId: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                    required
+                  >
+                    <option value="">Tanlang...</option>
+                    {staffList
+                      .filter(s => {
+                        const roleName = s.role?.name?.toLowerCase() || '';
+                        return roleName.includes('teacher') || roleName.includes("o'qituvchi") || roleName.includes("ustoz");
+                      })
+                      .map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))
+                    }
+                  </select>
+                  <p className="text-[10px] text-gray-500 mt-1">To'lov tanlangan oydagi o'qituvchiga avtomatik biriktirildi. Zarurat bo'lsa, qo'lda o'zgartirishingiz mumkin.</p>
                 </div>
               )}
               {(!isMultiSelect ? !formData.studentId : selectedStudents.length === 0) && <p className="text-[10px] text-[#ffcc00] mt-1">Avval o'quvchi(lar)ni tanlang</p>}
@@ -636,7 +672,11 @@ const Payments = ({ students = [], groups = [] }) => {
                   type="month"
                   value={formData.month}
                   min={getGroupMinMonth(formData.groupId)}
-                  onChange={e => setFormData({ ...formData, month: e.target.value })}
+                  onChange={e => {
+                    const newMonth = e.target.value;
+                    const suggestedTeacherId = getTeacherIdForMonth(formData.groupId, newMonth);
+                    setFormData({ ...formData, month: newMonth, teacherId: suggestedTeacherId });
+                  }}
                   className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                   required
                 />

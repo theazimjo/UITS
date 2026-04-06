@@ -20,14 +20,12 @@ export class PaymentsService {
   async create(data: any) {
     const payment = this.paymentRepository.create(data) as unknown as Payment;
     
-    // Auto-assign group teacher based on the month being paid for
-    if (data.group && data.group.id && data.month) {
+    // Auto-assign group teacher ONLY if not provided explicitly
+    if (!data.teacher && data.group && data.group.id && data.month) {
       const [year, month] = data.month.split('-').map(Number);
       const monthEnd = new Date(year, month, 0).toISOString().split('T')[0];
 
       // Find the phase that covers the month being paid for
-      // We look for a phase that started before or during the month 
-      // AND (ended after the month started OR hasn't ended yet)
       const phases = await this.groupPhaseRepository.find({
         where: {
           group: { id: data.group.id },
@@ -37,12 +35,9 @@ export class PaymentsService {
         relations: ['teacher']
       });
 
-      // Filter phases to find the one that overlaps with the month
-      // The most recent phase starting before or during the month is usually the correct one
       if (phases && phases.length > 0) {
         payment.teacher = phases[0].teacher;
       } else {
-        // Fallback to current group teacher if no phase history found
         const group = await this.groupRepository.findOne({
           where: { id: data.group.id },
           relations: ['teacher']
@@ -51,8 +46,7 @@ export class PaymentsService {
           payment.teacher = group.teacher;
         }
       }
-    } else if (data.group && data.group.id) {
-      // Fallback if month is missing
+    } else if (!data.teacher && data.group && data.group.id) {
       const group = await this.groupRepository.findOne({
         where: { id: data.group.id },
         relations: ['teacher']

@@ -163,7 +163,7 @@ function App() {
             />
           } />
           <Route path="/payments" element={
-            <Payments students={students} groups={groups} />
+            <Payments students={students} groups={groups} staffList={staffList} />
           } />
           <Route path="/finance" element={<Finance />} />
           <Route path="/settings" element={<Settings />} />
