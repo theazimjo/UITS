@@ -3,24 +3,25 @@ import {
   getDashboardAttendanceStats,
   getDashboardGeneralStats,
   getFinanceChart,
-  clearAllData
 } from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Users, Wallet, UserCheck, Banknote, TrendingUp,
-  Trash2, ShieldAlert, AlertCircle, ExternalLink,
+  AlertCircle, ExternalLink,
   Activity, UserPlus, BookOpen, Clock, ChevronRight,
   RefreshCw, LayoutDashboard, Database, UserRound, UsersRound,
-  ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon
+  ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
+  Calendar, ChevronLeft, ChevronDown
 } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie
 } from 'recharts';
 import Modal from '../components/common/Modal';
 
 const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   
   // Attendance Stats
   const [attStats, setAttStats] = useState({
@@ -29,7 +30,10 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     percentage: 0,
     students: [],
     expectedMonthlyRevenue: 0,
-    todayRevenue: 0
+    todayRevenue: 0,
+    totalMonthRevenue: 0,
+    isHistory: false,
+    date: ''
   });
   const [loadingAtt, setLoadingAtt] = useState(true);
 
@@ -47,27 +51,28 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
   const [loadingFinance, setLoadingFinance] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(selectedDate);
+  }, [selectedDate]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (date) => {
     try {
       setLoadingAtt(true);
       setLoadingGen(true);
       setLoadingFinance(true);
 
       const [attRes, genRes, finRes] = await Promise.all([
-        getDashboardAttendanceStats(),
-        getDashboardGeneralStats(),
-        getFinanceChart()
+        getDashboardAttendanceStats(date),
+        getDashboardGeneralStats(date),
+        getFinanceChart() 
       ]);
 
-      setAttStats(attRes.data);
-      setGenStats(genRes.data);
-      setFinanceChartData(finRes.data);
+      if (attRes.data) setAttStats(attRes.data);
+      if (genRes.data) setGenStats(genRes.data);
+      if (finRes.data) setFinanceChartData(finRes.data);
     } catch (e) {
       console.error('Error fetching dashboard stats:', e);
-      toast.error('Statistikalarni yuklashda xatolik!');
+      const errorMsg = e.response?.data?.message || 'Statistikalarni yuklashda xatolik yuz berdi';
+      toast.error(errorMsg);
     } finally {
       setLoadingAtt(false);
       setLoadingGen(false);
@@ -81,7 +86,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     return new Intl.NumberFormat('uz-UZ', { style: 'decimal' }).format(num) + ' UZS';
   };
 
-  const formatMonth = (monthStr) => {
+  const formatMonthLabel = (monthStr) => {
     if (!monthStr) return '';
     try {
       const [year, month] = monthStr.split('-');
@@ -92,16 +97,26 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     }
   };
 
+  const formatDateLabel = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   const processedFinanceData = useMemo(() => {
     return financeChartData.map(item => ({
       ...item,
-      label: formatMonth(item.month)
+      label: formatMonthLabel(item.month)
     }));
   }, [financeChartData]);
 
   const statsList = [
     {
-      label: 'Bugun kutilgan',
+      label: attStats.isHistory ? `Davomat (${formatDateLabel(selectedDate)})` : 'Bugun kutilgan',
       value: loadingAtt ? '...' : `${attStats.arrived} / ${attStats.expected}`,
       icon: <UserCheck size={24} />,
       color: 'blue',
@@ -114,23 +129,23 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
       value: staffCount || 0,
       icon: <Users size={24} />,
       color: 'indigo',
-      sub: "Barcha faol ustoz va xodimlar",
+      sub: "Faol ustoz va xodimlar",
       trend: 'neutral'
     },
     {
-      label: 'Kutilayotgan tushum (oylik)',
+      label: 'Bashorat qilingan tushum',
       value: loadingAtt ? '...' : formatCurrency(attStats.expectedMonthlyRevenue),
       icon: <Wallet size={24} />,
       color: 'purple',
-      sub: `Shu oy uchun kutilmoqda`,
+      sub: `${selectedDate.slice(0, 7)} oyi uchun jami`,
       trend: 'neutral'
     },
     {
-      label: 'Bugun tushgan tushum',
+      label: attStats.isHistory ? 'Kunlik tushum' : 'Bugun tushgan tushum',
       value: loadingAtt ? '...' : formatCurrency(attStats.todayRevenue),
       icon: <Banknote size={24} />,
       color: 'emerald',
-      sub: 'Bugungi kassa',
+      sub: attStats.isHistory ? formatDateLabel(selectedDate) : 'Bugungi kassa',
       trend: 'up'
     },
   ];
@@ -146,7 +161,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f]">
       
       {/* macOS Finder-style Toolbar */}
-      <div className="min-h-[56px] py-3 lg:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4 z-20 sticky top-0">
+      <div className="min-h-[56px] py-3 lg:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4 z-30 sticky top-0">
         
         {/* Title Area */}
         <div className="flex-shrink-0 flex items-center gap-3">
@@ -154,40 +169,34 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
             <LayoutDashboard size={16} />
           </div>
           <div>
-            <h2 className="text-[15px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-none">Asosiy Panel</h2>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Markaz statistikasi o'z vaqtida</p>
+            <h2 className="text-[15px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-none">
+              {attStats.isHistory ? `Statistika: ${formatDateLabel(selectedDate)}` : 'Bugungi Panel'}
+            </h2>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+              Marhamat, {attStats.isHistory ? formatDateLabel(selectedDate) : 'bugungi'} ko'rsatkichlar bilan tanishing
+            </p>
           </div>
         </div>
 
         {/* Center/Right Actions Area */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
           
-          {/* Status Metrics */}
-          <div className="flex items-center gap-4 px-4 py-1.5 bg-gray-100/50 dark:bg-white/5 rounded-full border border-gray-200/50 dark:border-white/5">
-             <div className="flex items-center gap-1.5 text-[11px]">
-               <UserRound size={12} className="text-blue-500" />
-               <span className="font-bold text-gray-500 uppercase">O'quvchilar:</span>
-               <span className="font-black tabular-nums">{studentsCount || 0}</span>
-             </div>
-             <div className="w-1 h-1 rounded-full bg-gray-300" />
-             <div className="flex items-center gap-1.5 text-[11px]">
-               <UsersRound size={12} className="text-purple-500" />
-               <span className="font-bold text-gray-500 uppercase">Guruhlar:</span>
-               <span className="font-black tabular-nums">{groupsCount || 0}</span>
-             </div>
-             <div className="w-1 h-1 rounded-full bg-gray-300" />
-             <div className="flex items-center gap-1.5 text-[11px]">
-               <Database size={12} className="text-emerald-500" />
-               <span className="font-bold text-gray-500 uppercase">Xodimlar:</span>
-               <span className="font-black tabular-nums">{staffCount || 0}</span>
-             </div>
+          {/* Date Selector */}
+          <div className="flex items-center gap-3 bg-white dark:bg-white/10 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm">
+            <Calendar size={14} className="text-[#007aff]" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] outline-none border-none focus:ring-0 p-0"
+            />
           </div>
 
           <div className="h-4 w-px bg-gray-300 dark:bg-white/10 hidden sm:block" />
 
           {/* Refresh Button */}
           <button
-            onClick={fetchDashboardData}
+            onClick={() => fetchDashboardData(selectedDate)}
             disabled={loadingAtt || loadingGen || loadingFinance}
             className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-[#f5f5f7] border border-gray-200 dark:border-white/10 disabled:opacity-50"
           >
@@ -221,15 +230,9 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200/50 dark:border-white/5">
                   <div className="flex items-center gap-2">
-                    {stat.trend === 'up' ? (
-                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[#34c759]/10 text-[#34c759]">
-                        <TrendingUp size={12} strokeWidth={3} />
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-500/10 text-gray-400">
-                        <TrendingUp size={12} strokeWidth={3} />
-                      </div>
-                    )}
+                    <div className={`flex items-center justify-center w-5 h-5 rounded-full ${stat.trend === 'up' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-gray-500/10 text-gray-400'}`}>
+                      <TrendingUp size={12} strokeWidth={3} />
+                    </div>
                     <span className="text-[11px] font-medium text-gray-500">
                       {stat.sub}
                     </span>
@@ -240,18 +243,18 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
             ))}
           </div>
 
-          {/* Analytics & Activity Row */}
+          {/* Middle Row: Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* Financial Dynamics Chart (FIXED & EXPANDED) */}
-            <div className="lg:col-span-2 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[450px]">
+            {/* Financial Dynamics Chart */}
+            <div className="lg:col-span-2 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2 text-[#1d1d1f] dark:text-white">
                     <Banknote size={22} className="text-[#34c759]" />
                     Moliya tahlili
                   </h3>
-                  <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Oxirgi 6 oylik dinamika</p>
+                  <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Oylik tendensiya</p>
                 </div>
                 <div className="flex gap-4">
                   <div className="flex items-center gap-2">
@@ -294,81 +297,99 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
               </div>
             </div>
 
-            {/* Sidebar Column */}
-            <div className="flex flex-col gap-8 h-[450px]">
-              {/* Groups Health */}
-              <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[180px]">
-                <h3 className="text-[15px] font-bold mb-4 flex items-center gap-2">
-                  <PieChartIcon size={18} className="text-[#af52de]" />
-                  Guruhlar turlari
-                </h3>
-                <div className="flex-1 w-full min-h-0 relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={genStats.groupStatus}
-                        innerRadius={28}
-                        outerRadius={45}
-                        paddingAngle={6}
-                        dataKey="value"
-                      >
-                        {genStats.groupStatus.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={['#007aff', '#ffcc00', '#34c759', '#af52de'][index % 4]} cornerRadius={5} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  {/* Legend Overlay */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2 pr-4">
-                     {genStats.groupStatus.slice(0, 3).map((s, i) => (
-                       <div key={i} className="flex flex-col items-end">
-                         <span className="text-[9px] font-black text-gray-400 leading-none uppercase tracking-tighter">{s.name}</span>
-                         <span className="text-[13px] font-black leading-tight text-[#1d1d1f] dark:text-white">{s.value}</span>
+            {/* Groups Health */}
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
+              <h3 className="text-lg font-bold mb-8 flex items-center gap-2 text-[#1d1d1f] dark:text-white">
+                <PieChartIcon size={22} className="text-[#af52de]" />
+                Guruhlar taqsimoti
+              </h3>
+              <div className="flex-1 w-full min-h-0 relative flex flex-col items-center">
+                <ResponsiveContainer width="100%" height="70%">
+                  <PieChart>
+                    <Pie
+                      data={genStats.groupStatus}
+                      innerRadius={60}
+                      outerRadius={85}
+                      paddingAngle={8}
+                      dataKey="value"
+                    >
+                      {genStats.groupStatus.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#007aff', '#ffcc00', '#34c759', '#af52de'][index % 4]} cornerRadius={8} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                {/* Custom Legend */}
+                <div className="grid grid-cols-2 gap-4 w-full mt-6">
+                   {genStats.groupStatus.map((s, i) => (
+                     <div key={i} className="flex items-center gap-3 bg-gray-50/50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
+                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: ['#007aff', '#ffcc00', '#34c759', '#af52de'][i % 4] }} />
+                       <div className="flex flex-col">
+                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter leading-none">{s.name}</span>
+                         <span className="text-[16px] font-black leading-tight text-[#1d1d1f] dark:text-white tabular-nums">{s.value}</span>
                        </div>
-                     ))}
-                  </div>
+                     </div>
+                   ))}
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Activity Feed */}
-              <div className="flex-1 bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-                <h3 className="text-[15px] font-bold mb-6 flex items-center gap-2">
-                  <Clock size={18} className="text-[#34c759]" />
+          {/* Bottom Row: Recent Activity (Expanded) */}
+          <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col min-h-[500px]">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-[#1d1d1f] dark:text-white">
+                  <Activity size={24} className="text-[#34c759]" />
                   So'nggi harakatlar
                 </h3>
-                <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar flex-1">
-                  {genStats.activity.length > 0 ? genStats.activity.map((act, i) => (
-                    <div key={i} className="flex gap-4 group cursor-default">
-                      <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${act.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                        {act.type === 'PAYMENT' ? <Banknote size={18} /> : <UserPlus size={18} />}
-                      </div>
-                      <div className="flex-1 border-b border-gray-100 dark:border-white/5 pb-4 group-last:border-0 hover:border-[#007aff]/30 transition-colors">
-                        <p className="text-[13px] font-bold text-black dark:text-white group-hover:text-[#007aff] transition-colors leading-tight line-clamp-1">{act.title}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-[11px] text-gray-500 font-medium truncate max-w-[120px]">{act.subtitle}</span>
-                          <span className="text-[10px] text-gray-400 font-bold capitalize">{new Date(act.date).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric' })}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="h-full flex items-center justify-center text-center text-gray-400 italic text-[13px] py-10 font-medium">
-                      Mavjud emas...
-                    </div>
-                  )}
-                </div>
+                <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Tanlangan kunda amalga oshirilgan ishlar</p>
               </div>
+              <div className="flex items-center gap-2 text-[12px] font-bold text-[#007aff] px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                <span>Jami: {genStats.activity.length} ta amal</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {genStats.activity.length > 0 ? genStats.activity.map((act, i) => (
+                <div key={i} className="flex gap-5 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-[#007aff]/40 transition-all group cursor-default hover:bg-white dark:hover:bg-white/10 hover:shadow-md">
+                  <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 shadow-sm ${act.type === 'PAYMENT' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'}`}>
+                    {act.type === 'PAYMENT' ? <Banknote size={20} /> : <UserPlus size={20} />}
+                  </div>
+                  <div className="flex-1 flex items-center justify-between overflow-hidden">
+                    <div>
+                      <p className="text-[14px] font-bold text-black dark:text-white group-hover:text-[#007aff] transition-colors leading-tight">{act.title}</p>
+                      <p className="text-[12px] text-gray-500 font-medium opacity-80 mt-0.5">{act.subtitle}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[11px] text-gray-400 font-bold capitalize tabular-nums bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-md">
+                        {new Date(act.date).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <ChevronRight size={18} className="text-gray-300 group-hover:text-[#007aff] transition-colors" />
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div className="h-40 flex flex-col items-center justify-center text-center text-gray-400 italic font-medium gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                    <Activity size={24} />
+                  </div>
+                  <p className="text-[13px]">Tanlangan kunda hali harakatlar mavjud emas...</p>
+                </div>
+              )}
             </div>
           </div>
 
         </div>
       </div>
 
-      {/* Stats Detail Modal (Attendance) */}
+      {/* Attendance Detail Modal */}
       <Modal
         isOpen={isStatsModalOpen}
         onClose={() => setIsStatsModalOpen(false)}
-        title="Bugungi kutilgan davomat (to'liq ro'yxat)"
+        title={`${formatDateLabel(selectedDate)} kutilgan davomat`}
       >
         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
           <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
@@ -418,7 +439,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
                 ))
             ) : (
               <div className="text-center py-12 text-gray-400 italic">
-                O'quvchilar ro'yxati bo'sh
+                Bu kunda o'quvchilar ro'yxati bo'sh
               </div>
             )}
           </div>

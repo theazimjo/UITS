@@ -22,8 +22,8 @@ export const getStudentAttendance = (id, date) => api.get(`/students/${id}/atten
 export const syncStudents = () => api.post('/students/sync');
 export const createStudent = (student) => api.post('/students', student);
 export const deleteStudent = (id) => api.delete(`/students/${id}`);
-export const getDashboardAttendanceStats = () => api.get('/dashboard/attendance-stats');
-export const getDashboardGeneralStats = () => api.get('/dashboard/general-stats');
+export const getDashboardAttendanceStats = (date) => api.get('/dashboard/attendance-stats', { params: { date } });
+export const getDashboardGeneralStats = (date) => api.get('/dashboard/general-stats', { params: { date } });
 export const deleteAllStudents = () => api.delete('/students/all/clear');
 
 export const getStaff = () => api.get('/staff');
