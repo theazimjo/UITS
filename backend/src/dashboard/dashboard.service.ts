@@ -73,32 +73,18 @@ export class DashboardService {
     ];
 
     
-    // Use QueryBuilder for strict date filtering to avoid TypeORM 'find' inconsistencies
-    const paymentQueryBuilder = this.paymentRepo.createQueryBuilder('p')
+    // For payments, always take the most recent 20 globally (as requested)
+    const recentPayments = await this.paymentRepo.createQueryBuilder('p')
       .leftJoinAndSelect('p.student', 'student')
       .orderBy('p.paymentDate', 'DESC')
-      .take(20);
-
-    if (date) {
-      paymentQueryBuilder.where('p.paymentDate = :targetDate', { targetDate: targetDateStr });
-    }
+      .take(20)
+      .getMany();
     
-    const recentPayments = await paymentQueryBuilder.getMany();
-    
-    // For students, filter by creation date if a date is provided
-    let filteredStudents: Student[] = [];
-    if (date) {
-      filteredStudents = students.filter(s => {
-        if (!s.createdAt) return false;
-        return s.createdAt.toISOString().slice(0, 10) === targetDateStr;
-      });
-    } else {
-      // Find most recent 20
-      filteredStudents = await this.studentRepo.find({
-        order: { createdAt: 'DESC' },
-        take: 20
-      });
-    }
+    // For students, always find most recent 20 globally (as requested for activities)
+    const filteredStudents = await this.studentRepo.find({
+      order: { createdAt: 'DESC' },
+      take: 20
+    });
 
     const activity = [
       ...recentPayments.map(p => ({
@@ -117,10 +103,10 @@ export class DashboardService {
       }))
     ];
 
-    // Final sorting and trimming
+    // Final sorting and trimming (Last 10 as requested)
     const finalActivity = activity
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 20);
+      .slice(0, 10);
 
     return {
       studentGrowth,

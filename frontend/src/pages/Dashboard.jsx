@@ -247,7 +247,8 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Financial Dynamics Chart */}
-            <div className="lg:col-span-2 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
+            {/* Financial Dynamics Chart - Expanded to Full Width */}
+            <div className="lg:col-span-3 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2 text-[#1d1d1f] dark:text-white">
@@ -290,49 +291,10 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
                       itemStyle={{ fontSize: '13px', fontWeight: 'bold', padding: '2px 0' }}
                       formatter={(value) => formatCurrency(value)}
                     />
-                    <Bar dataKey="income" fill="#34c759" radius={[6, 6, 0, 0]} barSize={24} animationDuration={1500} />
-                    <Bar dataKey="expense" fill="#ffcc00" radius={[6, 6, 0, 0]} barSize={24} animationDuration={1500} />
+                    <Bar dataKey="income" fill="#34c759" radius={[6, 6, 0, 0]} barSize={34} animationDuration={1500} />
+                    <Bar dataKey="expense" fill="#ffcc00" radius={[6, 6, 0, 0]} barSize={34} animationDuration={1500} />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Groups Health */}
-            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
-              <h3 className="text-lg font-bold mb-8 flex items-center gap-2 text-[#1d1d1f] dark:text-white">
-                <PieChartIcon size={22} className="text-[#af52de]" />
-                Guruhlar taqsimoti
-              </h3>
-              <div className="flex-1 w-full min-h-0 relative flex flex-col items-center">
-                <ResponsiveContainer width="100%" height="70%">
-                  <PieChart>
-                    <Pie
-                      data={genStats.groupStatus}
-                      innerRadius={60}
-                      outerRadius={85}
-                      paddingAngle={8}
-                      dataKey="value"
-                    >
-                      {genStats.groupStatus.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#007aff', '#ffcc00', '#34c759', '#af52de'][index % 4]} cornerRadius={8} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                
-                {/* Custom Legend */}
-                <div className="grid grid-cols-2 gap-4 w-full mt-6">
-                   {genStats.groupStatus.map((s, i) => (
-                     <div key={i} className="flex items-center gap-3 bg-gray-50/50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
-                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: ['#007aff', '#ffcc00', '#34c759', '#af52de'][i % 4] }} />
-                       <div className="flex flex-col">
-                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter leading-none">{s.name}</span>
-                         <span className="text-[16px] font-black leading-tight text-[#1d1d1f] dark:text-white tabular-nums">{s.value}</span>
-                       </div>
-                     </div>
-                   ))}
-                </div>
               </div>
             </div>
           </div>
@@ -345,7 +307,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
                   <Activity size={24} className="text-[#34c759]" />
                   So'nggi harakatlar
                 </h3>
-                <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Tanlangan kunda amalga oshirilgan ishlar</p>
+                <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Tizimdagi umumiy oxirgi 10 ta harakat</p>
               </div>
               <div className="flex items-center gap-2 text-[12px] font-bold text-[#007aff] px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
                 <span>Jami: {genStats.activity.length} ta amal</span>
