@@ -6,6 +6,7 @@ import { Enrollment } from '../groups/entities/enrollment.entity';
 import { EnrollmentStatus } from '../groups/enums/enrollment-status.enum';
 import { GroupStatus } from '../groups/enums/group-status.enum';
 import { Payment } from '../payments/entities/payment.entity';
+import { Student } from '../students/entities/student.entity';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -23,7 +24,75 @@ export class DashboardService {
     @InjectRepository(Group) private readonly groupRepo: Repository<Group>,
     @InjectRepository(Enrollment) private readonly enrollmentRepo: Repository<Enrollment>,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
+    @InjectRepository(Student) private readonly studentRepo: Repository<Student>,
   ) {}
+
+  async getGeneralStats() {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    // 1. Student Growth (Last 6 Months)
+    const students = await this.studentRepo.find({
+      order: { createdAt: 'ASC' }
+    });
+
+    const studentGrowth: { month: string; count: number }[] = [];
+    const months: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mStr = d.toISOString().slice(0, 7);
+      months.push(mStr);
+      
+      const count = students.filter(s => s.createdAt && s.createdAt.toISOString().slice(0, 7) === mStr).length;
+      studentGrowth.push({ month: mStr, count });
+    }
+
+    // 2. Group Status Distribution
+    const allGroups = await this.groupRepo.find();
+    const groupStatus = [
+      { name: 'Faol', value: allGroups.filter(g => g.status === GroupStatus.ACTIVE).length },
+      { name: 'Kutilmoqda', value: allGroups.filter(g => g.status === GroupStatus.WAITING).length },
+      { name: 'Yakunlangan', value: allGroups.filter(g => g.status === GroupStatus.COMPLETED).length },
+    ];
+
+    // 3. Recent Activity (Combined)
+    const recentPayments = await this.paymentRepo.find({
+      order: { paymentDate: 'DESC' },
+      take: 5,
+      relations: ['student']
+    });
+
+    const recentStudents = await this.studentRepo.find({
+      order: { createdAt: 'DESC' },
+      take: 5
+    });
+
+    const activity = [
+      ...recentPayments.map(p => ({
+        type: 'PAYMENT',
+        title: `${p.student?.name || 'Talaba'} to'lov qildi`,
+        subtitle: `${Number(p.amount).toLocaleString()} UZS`,
+        date: p.paymentDate,
+        icon: 'Banknote'
+      })),
+      ...recentStudents.map(s => ({
+        type: 'STUDENT',
+        title: `Yangi talaba: ${s.name}`,
+        subtitle: s.phone || 'Tel raqamsiz',
+        date: s.createdAt,
+        icon: 'UserPlus'
+      }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+
+    return {
+      studentGrowth,
+      groupStatus,
+      activity,
+      totalStudents: students.length,
+      activeGroups: allGroups.filter(g => g.status === GroupStatus.ACTIVE).length
+    };
+  }
 
   async getTodayAttendanceStats() {
     const today = new Date();

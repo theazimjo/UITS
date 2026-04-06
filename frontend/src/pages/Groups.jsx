@@ -585,8 +585,14 @@ const Groups = ({
                   <input type="date" required value={formData.group.startDate} onChange={(e) => setFormData({ ...formData, group: { ...formData.group, startDate: e.target.value } })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-colors shadow-inner" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TUGASH SANA (AVTO)</label>
-                  <input type="date" required value={formData.group.endDate} onChange={(e) => setFormData({ ...formData, group: { ...formData.group, endDate: e.target.value } })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-500 rounded-md px-3 py-2 text-[13px] outline-none shadow-inner" readOnly />
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TUGASH SANASI</label>
+                  <input 
+                    type="date" 
+                    required 
+                    value={formData.group.endDate} 
+                    onChange={(e) => setFormData({ ...formData, group: { ...formData.group, endDate: e.target.value } })} 
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-colors shadow-inner" 
+                  />
                 </div>
               </div>
 

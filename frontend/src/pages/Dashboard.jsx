@@ -1,39 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { clearAllData, getDashboardAttendanceStats } from '../services/api';
+import {
+  getDashboardAttendanceStats,
+  getDashboardGeneralStats,
+  clearAllData
+} from '../services/api';
 import toast from 'react-hot-toast';
-import { 
-  Users, Wallet, UserCheck, Banknote, TrendingUp, 
-  Trash2, ShieldAlert, AlertCircle, ExternalLink
+import {
+  Users, Wallet, UserCheck, Banknote, TrendingUp,
+  Trash2, ShieldAlert, AlertCircle, ExternalLink,
+  Activity, UserPlus, BookOpen, Clock, ChevronRight
 } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie
+} from 'recharts';
 import Modal from '../components/common/Modal';
 
 const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [attStats, setAttStats] = useState({ 
-    expected: 0, 
-    arrived: 0, 
-    percentage: 0, 
+
+  // Attendance Stats
+  const [attStats, setAttStats] = useState({
+    expected: 0,
+    arrived: 0,
+    percentage: 0,
     students: [],
     expectedMonthlyRevenue: 0,
     todayRevenue: 0
   });
   const [loadingAtt, setLoadingAtt] = useState(true);
 
+  // General Analytics Stats
+  const [genStats, setGenStats] = useState({
+    studentGrowth: [],
+    groupStatus: [],
+    activity: [],
+    totalStudents: 0,
+    activeGroups: 0
+  });
+  const [loadingGen, setLoadingGen] = useState(true);
+
   useEffect(() => {
-    fetchAttStats();
+    fetchDashboardData();
   }, []);
 
-  const fetchAttStats = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoadingAtt(true);
-      const res = await getDashboardAttendanceStats();
-      setAttStats(res.data);
+      setLoadingGen(true);
+
+      const [attRes, genRes] = await Promise.all([
+        getDashboardAttendanceStats(),
+        getDashboardGeneralStats()
+      ]);
+
+      setAttStats(attRes.data);
+      setGenStats(genRes.data);
     } catch (e) {
       console.error('Error fetching dashboard stats:', e);
+      toast.error('Statistikalarni yuklashda xatolik!');
     } finally {
       setLoadingAtt(false);
+      setLoadingGen(false);
     }
   };
 
@@ -91,7 +121,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     try {
       await clearAllData();
       toast.success('Barcha ma\'lumotlar muvaffaqiyatli o\'chirildi!');
-      window.location.reload(); 
+      window.location.reload();
     } catch (err) {
       toast.error('Xatolik yuz berdi!');
       setIsClearing(false);
@@ -146,11 +176,137 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
         ))}
       </div>
 
+      {/* Analytics & Activity Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+        {/* Student Growth Chart */}
+        <div className="lg:col-span-2 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Activity size={20} className="text-[#007aff]" />
+                Talabalar o'sishi
+              </h3>
+              <p className="text-[12px] text-gray-500 mt-1">Oxirgi 6 oylik statistik ko'rinish</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#007aff]" />
+                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-tighter">Yangi talabalar</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[300px] w-full mt-auto">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={genStats.studentGrowth}>
+                <defs>
+                  <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#007aff" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#007aff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: '#888', fontWeight: 600 }}
+                  dy={10}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: '#888', fontWeight: 600 }}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)' }}
+                  itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  stroke="#007aff"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorGrowth)"
+                  animationDuration={1500}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Group Distribution & Recent Activity */}
+        <div className="flex flex-col gap-8">
+          {/* Groups Health */}
+          <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm">
+            <h3 className="text-[15px] font-bold mb-4 flex items-center gap-2">
+              <BookOpen size={18} className="text-[#af52de]" />
+              Guruhlar taqsimoti
+            </h3>
+            <div className="h-[120px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={genStats.groupStatus}
+                    innerRadius={30}
+                    outerRadius={50}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {genStats.groupStatus.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#007aff', '#ffcc00', '#34c759'][index % 3]} cornerRadius={4} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              {genStats.groupStatus.map((s, i) => (
+                <div key={i} className="text-center">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter mb-1">{s.name}</p>
+                  <p className="text-sm font-bold text-black dark:text-white uppercase">{s.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Activity Feed */}
+          <div className="flex-1 bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col">
+            <h3 className="text-[15px] font-bold mb-6 flex items-center gap-2">
+              <Clock size={18} className="text-[#34c759]" />
+              So'nggi harakatlar
+            </h3>
+            <div className="space-y-5 overflow-y-auto pr-2 custom-scrollbar flex-1">
+              {genStats.activity.length > 0 ? genStats.activity.map((act, i) => (
+                <div key={i} className="flex gap-4 group cursor-default">
+                  <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${act.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                    {act.type === 'PAYMENT' ? <Banknote size={18} /> : <UserPlus size={18} />}
+                  </div>
+                  <div className="flex-1 border-b border-gray-100 dark:border-white/5 pb-4 group-last:border-0">
+                    <p className="text-[13px] font-bold text-black dark:text-white group-hover:text-[#007aff] transition-colors">{act.title}</p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="text-[11px] text-gray-500 font-medium">{act.subtitle}</span>
+                      <span className="text-[10px] text-gray-400 capitalize">{new Date(act.date).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div className="h-full flex items-center justify-center text-center text-gray-400 italic text-[13px] py-10">
+                  Mavjud emas...
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* System Maintenance Section */}
       <div className="mt-16 pt-8 border-t border-gray-200/50 dark:border-white/10">
         <div className="bg-[#ff3b30]/5 border border-[#ff3b30]/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative backdrop-blur-md">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#ff3b30]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-          
+
           <div className="flex items-center gap-5 text-center md:text-left relative z-10">
             <div className="w-12 h-12 rounded-xl bg-[#ff3b30]/10 flex items-center justify-center text-[#ff3b30] shadow-sm transition-transform hover:scale-105">
               <ShieldAlert size={24} />
@@ -160,7 +316,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
               <p className="text-gray-500 text-[13px] max-w-md">Barcha talabalar, guruhlar, to'lovlar va xodimlarni butunlay o'chirib tashlaydi. Faqat testlash uchun!</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setIsClearModalOpen(true)}
             className="w-full md:w-auto px-6 py-2.5 bg-[#ff3b30] hover:bg-[#ff453a] text-white rounded-lg text-[13px] font-semibold active:scale-95 transition-all flex items-center justify-center gap-2 relative z-10 shadow-sm"
           >
@@ -206,11 +362,10 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
                     </div>
                     <div className="text-right">
                       <div className="flex flex-col items-end gap-1">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          s.status === 'present' 
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 shadow-sm' 
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${s.status === 'present'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 shadow-sm'
                             : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                        }`}>
+                          }`}>
                           {s.status_display}
                         </span>
                         {(s.arrivedAt || s.leftAt) && (
@@ -233,32 +388,32 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
       </Modal>
 
       {/* Confirmation Modal */}
-      <Modal 
-        isOpen={isClearModalOpen} 
-        onClose={() => !isClearing && setIsClearModalOpen(false)} 
+      <Modal
+        isOpen={isClearModalOpen}
+        onClose={() => !isClearing && setIsClearModalOpen(false)}
         title="Tizimni Tozalash"
       >
         <div className="space-y-6">
           <div className="p-4 bg-[#ffcc00]/10 border border-[#ffcc00]/20 rounded-xl flex gap-3">
-             <AlertCircle className="text-[#ffcc00] shrink-0" size={20} />
-             <p className="text-[#ffcc00] text-[13px] font-medium leading-relaxed mt-0.5">
-               Bu amalni ortga qaytarib bo'lmaydi. Tizimdagi barcha ma'lumotlar (talabalar, guruhlar, to'lovlar) o'chib ketadi. Admin akkauntingiz saqlanib qoladi.
-             </p>
+            <AlertCircle className="text-[#ffcc00] shrink-0" size={20} />
+            <p className="text-[#ffcc00] text-[13px] font-medium leading-relaxed mt-0.5">
+              Bu amalni ortga qaytarib bo'lmaydi. Tizimdagi barcha ma'lumotlar (talabalar, guruhlar, to'lovlar) o'chib ketadi. Admin akkauntingiz saqlanib qoladi.
+            </p>
           </div>
-          
+
           <p className="text-gray-700 dark:text-gray-300 text-[14px]">
             Haqiqatdan ham hamma narsani o'chirib yubormoqchimisiz?
           </p>
 
           <div className="flex gap-3 justify-end pt-2">
-            <button 
+            <button
               disabled={isClearing}
               onClick={() => setIsClearModalOpen(false)}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-black dark:text-white rounded-lg text-[13px] font-medium transition-all disabled:opacity-50"
             >
               Bekor qilish
             </button>
-            <button 
+            <button
               disabled={isClearing}
               onClick={handleClearData}
               className="px-4 py-2 bg-[#ff3b30] hover:bg-[#ff453a] text-white rounded-lg text-[13px] font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"

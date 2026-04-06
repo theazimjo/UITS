@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn } from 'typeorm';
 import { Enrollment } from '../../groups/entities/enrollment.entity';
 import { Payment } from '../../payments/entities/payment.entity';
 import { StudentStatus } from '../enums/student-status.enum';
@@ -47,6 +47,9 @@ export class Student {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @CreateDateColumn()
+  createdAt: Date;
 
   @OneToMany(() => Payment, (payment) => payment.student)
   payments: Payment[];
