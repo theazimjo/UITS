@@ -1,0 +1,25 @@
+# Stage 1: Build TypeScript
+FROM node:20-alpine AS build-stage
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+# Stage 2: Production runtime
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=build-stage /app/package*.json ./
+COPY --from=build-stage /app/dist ./dist
+
+# Faqat production dependencies o'rnatiladi
+RUN npm install --omit=dev
+
+EXPOSE 3000
+
+CMD ["node", "dist/main"]

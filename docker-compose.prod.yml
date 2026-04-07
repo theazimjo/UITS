@@ -3,56 +3,59 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: crm-db-prod
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-2255}
-      POSTGRES_DB: ${DB_NAME:-crm_db}
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
+    container_name: crm-db
     restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - crm-prod-network
+      - crm-network
 
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: crm-backend-prod
+      dockerfile: Dockerfile.prod
+    container_name: crm-backend
+    restart: always
+    ports:
+      - '3000:3000'
     environment:
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-2255}
-      - DB_NAME=${DB_NAME:-crm_db}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
-      - DB_SYNC=${DB_SYNC:-false}
+      - NODE_ENV=production
     depends_on:
       - db
-    restart: always
     networks:
-      - crm-prod-network
-    # In production, often exposed via Nginx reverse proxy, 
-    # but for simple direct access:
-    ports:
-      - "3000:3000"
+      - crm-network
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
       args:
-        - VITE_API_URL=${VITE_API_URL}
-    container_name: crm-frontend-prod
+        # Frontend build vaqtida API URL o'rnatiladi
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: crm-frontend
     restart: always
-    networks:
-      - crm-prod-network
     ports:
-      - "80:80"
+      - '80:80'
+    depends_on:
+      - backend
+    networks:
+      - crm-network
 
 networks:
-  crm-prod-network:
+  crm-network:
     driver: bridge
 
 volumes:
-  postgres_prod_data:
+  postgres_data:
