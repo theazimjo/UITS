@@ -91,7 +91,7 @@ export const updateProfile = (data) => api.patch('/users/profile', data);
 export const updatePassword = (data) => api.patch('/users/password', data);
 
 // Teacher Portal
-export const getTeacherDashboard = () => api.get('/teacher/dashboard');
+export const getTeacherDashboard = (month) => api.get('/teacher/dashboard', { params: { month } });
 export const getTeacherGroups = () => api.get('/teacher/my-groups');
 export const getTeacherStudents = () => api.get('/teacher/my-students');
 export const getTeacherAttendance = (date) => api.get('/teacher/my-attendance', { params: { date } });

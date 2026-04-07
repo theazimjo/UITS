@@ -44,8 +44,9 @@ export class TeacherController {
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
   @UseGuards(JwtAuthGuard)
   @Get('dashboard')
-  async getDashboard(@Req() req: any) {
+  async getDashboard(@Req() req: any, @Query('month') monthStr?: string) {
     const staffId = req.user.userId;
+    const targetMonth = monthStr || new Date().toISOString().slice(0, 7);
 
     const groups = await this.groupRepo.find({
       where: { teacherId: staffId },
@@ -64,45 +65,62 @@ export class TeacherController {
           studentMap.set(e.student.id, {
             id: e.student.id,
             name: e.student.name,
-            photo: e.student.photo,
-            groupName: g.name,
           });
         }
       });
     });
 
-    // Today's attendance quick stats
-    const today = new Date().toISOString().split('T')[0];
-    const dayNames = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
-    const todayDayUz = dayNames[new Date().getDay()];
-    const todayGroups = activeGroups.filter((g) => g.days?.includes(todayDayUz));
-
-    let todayExpected = 0;
-    todayGroups.forEach((g) => {
-      g.enrollments?.forEach((e) => {
-        if (e.status === EnrollmentStatus.ACTIVE) todayExpected++;
-      });
-    });
-
-    // Current month payments
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const groupIds = activeGroups.map((g) => g.id);
+    // Monthly payments (Calculating from ALL groups assigned to this teacher)
+    const allGroupIds = groups.map((g) => g.id);
     let monthlyIncome = 0;
-    if (groupIds.length > 0) {
+    if (allGroupIds.length > 0) {
       const payments = await this.paymentRepo
         .createQueryBuilder('p')
-        .where('p.groupId IN (:...ids)', { ids: groupIds })
-        .andWhere('p.month = :month', { month: currentMonth })
+        .where('p.groupId IN (:...ids)', { ids: allGroupIds })
+        .andWhere('p.month = :month', { month: targetMonth })
         .getMany();
       monthlyIncome = payments.reduce((sum, p) => sum + Number(p.amount), 0);
     }
 
+    // Expected Income (Only for CURRENTLY active groups in the selected month)
+    const expectedIncome = activeGroups.reduce((sum, g) => {
+      const activeCount = g.enrollments?.filter(e => e.status === EnrollmentStatus.ACTIVE).length || 0;
+      return sum + (activeCount * Number(g.monthlyPrice || 0));
+    }, 0);
+
+    // Financial Trend (Based on target month)
+    const [targetY, targetM] = targetMonth.split('-').map(Number);
+    const financialTrend: any[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(targetY, (targetM - 1) - i, 1);
+      const m = d.toISOString().slice(0, 7);
+      
+      let income = 0;
+      if (allGroupIds.length > 0) {
+        const pms = await this.paymentRepo
+          .createQueryBuilder('p')
+          .where('p.groupId IN (:...ids)', { ids: allGroupIds })
+          .andWhere('p.month = :month', { month: m })
+          .getMany();
+        income = pms.reduce((sum, p) => sum + Number(p.amount), 0);
+      }
+      financialTrend.push({ month: m, income });
+    }
+
+    // Student Distribution
+    const studentDistribution = activeGroups.map(g => ({
+      name: g.name,
+      value: g.enrollments?.filter(e => e.status === EnrollmentStatus.ACTIVE).length || 0,
+    })).filter(d => d.value > 0);
+
     return {
+      month: targetMonth,
       totalGroups: activeGroups.length,
       totalStudents: studentMap.size,
-      todayExpected,
-      todayGroupsCount: todayGroups.length,
       monthlyIncome,
+      expectedIncome,
+      financialTrend,
+      studentDistribution,
       groups: activeGroups.map((g) => ({
         id: g.id,
         name: g.name,
@@ -112,6 +130,7 @@ export class TeacherController {
         endTime: g.endTime,
         courseName: g.course?.name,
         studentCount: g.enrollments?.filter((e) => e.status === EnrollmentStatus.ACTIVE).length || 0,
+        monthlyPrice: g.monthlyPrice,
       })),
     };
   }
