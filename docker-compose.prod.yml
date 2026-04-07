@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: crm-db-prod
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-2255}
+      POSTGRES_DB: ${DB_NAME:-crm_db}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - crm-prod-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: crm-backend-prod
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-2255}
+      - DB_NAME=${DB_NAME:-crm_db}
+      - JWT_SECRET=${JWT_SECRET}
+      - DB_SYNC=${DB_SYNC:-false}
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - crm-prod-network
+    # In production, often exposed via Nginx reverse proxy, 
+    # but for simple direct access:
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+    container_name: crm-frontend-prod
+    restart: always
+    networks:
+      - crm-prod-network
+    ports:
+      - "80:80"
+
+networks:
+  crm-prod-network:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:

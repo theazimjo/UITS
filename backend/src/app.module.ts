@@ -14,8 +14,11 @@ import { User } from './users/entities/user.entity';
 import { UsersService } from './users/users.service';
 import * as bcrypt from 'bcrypt';
 
+import { ConfigModule } from '@nestjs/config';
+
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
@@ -24,7 +27,7 @@ import * as bcrypt from 'bcrypt';
       password: process.env.DB_PASSWORD || '2255',
       database: process.env.DB_NAME || 'crm_db',
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: process.env.DB_SYNC === 'true' || true, // Note: synchronize should be false in production usually
     }),
     AuthModule,
     UsersModule,
