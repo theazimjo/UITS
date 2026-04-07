@@ -1,25 +1,14 @@
-# Stage 1: Build
-FROM node:20-alpine as build-stage
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-RUN npm run build
-
-# Stage 2: Run
 FROM node:20-alpine
 
 WORKDIR /app
 
-COPY --from=build-stage /app/package*.json ./
-COPY --from=build-stage /app/dist ./dist
+# package.json copy qilib, devDependencies ham o'rnatiladi (nest CLI uchun kerak)
+COPY package*.json ./
+RUN npm install
 
-# Install only production dependencies
-RUN npm install --omit=dev
+COPY . .
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start:prod"]
+# nest start --watch — real-time o'zgarishlar uchun
+CMD ["npm", "run", "start:dev"]

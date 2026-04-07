@@ -109,10 +109,11 @@ const Finance = () => {
   };
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
+    return (transactions || []).filter(t => {
+      if (!t) return false;
       const matchesType = filterType === 'ALL' || t.type === filterType;
       const matchesMethod = filterMethod === 'ALL' || t.paymentType === filterMethod;
-      const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = (t.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (t.comment && t.comment.toLowerCase().includes(searchTerm.toLowerCase()));
       return matchesType && matchesMethod && matchesSearch;
     });
@@ -286,7 +287,7 @@ const Finance = () => {
 
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData}>
+                  <ComposedChart data={chartData || []}>
                     <defs>
                       <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#007aff" stopOpacity={0.15} />
@@ -330,13 +331,13 @@ const Finance = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <RePieChart>
                     <Pie
-                      data={Object.keys(stats.expenseByCategory).map(name => ({ name, value: stats.expenseByCategory[name] }))}
+                      data={Object.keys(stats?.expenseByCategory || {}).map(name => ({ name, value: stats.expenseByCategory[name] }))}
                       innerRadius={50}
                       outerRadius={75}
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {Object.keys(stats.expenseByCategory).map((entry, index) => (
+                      {Object.keys(stats?.expenseByCategory || {}).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={4} />
                       ))}
                     </Pie>
@@ -346,7 +347,7 @@ const Finance = () => {
               </div>
 
               <div className="space-y-2 mt-6 overflow-y-auto custom-scrollbar flex-1 max-h-[150px] pr-2">
-                {Object.keys(stats.expenseByCategory).map((name, index) => (
+                {Object.keys(stats?.expenseByCategory || {}).map((name, index) => (
                   <div key={name} className="flex items-center justify-between group">
                     <div className="flex items-center gap-2">
                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />

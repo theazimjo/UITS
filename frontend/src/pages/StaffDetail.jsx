@@ -9,15 +9,18 @@ import {
 import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment } from '../services/api';
 import Modal from '../components/common/Modal';
 
-const StaffDetail = ({ fetchStaff }) => {
+import useStore from '../store/useStore';
+
+const StaffDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { setStaff: updateGlobalStaff } = useStore();
   const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // overview, students, salary
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [salaryData, setSalaryData] = useState({ total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [] });
+  const [salaryData, setSalaryData] = useState({ total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [], payments: [] });
 
   // Edit state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -48,24 +51,25 @@ const StaffDetail = ({ fetchStaff }) => {
   const [isDayDetailModalOpen, setIsDayDetailModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null); // format: YYYY-MM-DD
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [staffRes, rolesRes, salaryRes] = await Promise.all([
+        getStaffById(id),
+        getRoles(),
+        getStaffSalary(id, currentMonth)
+      ]);
+      setStaff(staffRes.data);
+      setRoles(rolesRes.data || []);
+      setSalaryData(salaryRes.data || { total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [], payments: [] });
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [staffRes, rolesRes, salaryRes] = await Promise.all([
-          getStaffById(id),
-          getRoles(),
-          getStaffSalary(id, currentMonth)
-        ]);
-        setStaff(staffRes.data);
-        setRoles(rolesRes.data);
-        setSalaryData(salaryRes.data);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, [id, currentMonth]);
 
@@ -96,14 +100,15 @@ const StaffDetail = ({ fetchStaff }) => {
       };
       await updateStaff(id, payload);
 
-      // Refresh data
-      const staffRes = await getStaffById(id);
-      setStaff(staffRes.data);
+      // Refresh data local and global
+      await fetchData();
+      const allStaff = await getStaff();
+      if (allStaff.data) updateGlobalStaff(allStaff.data);
+      
       setIsEditModalOpen(false);
-      if (fetchStaff) fetchStaff();
     } catch (err) {
       console.error('Error updating staff:', err);
-      alert("Xatolik: Ma'lumotlarni saqlashda xatolik yuzaga keldi.");
+      toast.error("Ma'lumotlarni saqlashda xatolik yuzaga keldi.");
     }
   };
 
@@ -193,7 +198,7 @@ const StaffDetail = ({ fetchStaff }) => {
   };
 
   // Faol guruhlarni filtrlash
-  const activeGroups = staff?.groups?.filter(group => {
+  const activeGroups = (staff?.groups || []).filter(group => {
     if (staff.role?.name === 'TEACHER') {
       const [year, monthNum] = currentMonth.split('-').map(Number);
       const mStart = new Date(year, monthNum - 1, 1);
@@ -211,15 +216,15 @@ const StaffDetail = ({ fetchStaff }) => {
   }) || [];
 
   // O'quvchilarni yig'ish (Guruhlar ichidan)
-  const allStudents = activeGroups.flatMap(group =>
-    group.enrollments?.filter(enrollment => {
+  const allStudents = (activeGroups || []).flatMap(group =>
+    (group.enrollments || []).filter(enrollment => {
       const joinedDate = new Date(enrollment.joinedDate);
       const joinedMonth = joinedDate.toISOString().substring(0, 7);
       if (joinedMonth > currentMonth) return false;
 
-      const teacherPhases = group.phases?.filter(p => p.teacher?.id === staff.id) || [];
+      const teacherPhases = (group.phases || []).filter(p => p.teacher?.id === staff.id) || [];
       if (teacherPhases.length > 0) {
-        const taughtThisStudent = teacherPhases.some(phase => {
+        const taughtThisStudent = (teacherPhases || []).some(phase => {
           const pEnd = phase.endDate ? new Date(phase.endDate) : new Date(8640000000000000);
           return joinedDate <= pEnd;
         });
@@ -240,8 +245,8 @@ const StaffDetail = ({ fetchStaff }) => {
       enrollmentStatus: enrollment.status,
       ...(() => {
         const fullPrice = group.monthlyPrice || 0;
-        const payments = group.payments?.filter(p => p.student?.id === enrollment.student?.id) || [];
-        const monthlyPayments = payments.filter(p => p.month === currentMonth);
+        const payments = (group.payments || []).filter(p => p.student?.id === enrollment.student?.id) || [];
+        const monthlyPayments = (payments || []).filter(p => p.month === currentMonth);
         const paidThisMonth = monthlyPayments.reduce((sum, p) => sum + (parseFloat(p.amount || 0) - parseFloat(p.discount || 0) + parseFloat(p.penalty || 0)), 0) || 0;
         const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount || 0)), 0) || 0; // Total value covered (Gross) stays for isPaid check
         const collectedByMe = monthlyPayments.some(p => p.teacher?.id === staff.id);
@@ -275,7 +280,7 @@ const StaffDetail = ({ fetchStaff }) => {
           startInfo: startDay !== 1 ? `${startDay}-sanada boshlagan` : ""
         };
       })(),
-      lastPayment: group.payments?.filter(p => p.student?.id === enrollment.student?.id)
+      lastPayment: (group.payments || []).filter(p => p.student?.id === enrollment.student?.id)
         .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())[0]
     }))
   ).filter(Boolean) || [];

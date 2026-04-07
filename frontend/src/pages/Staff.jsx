@@ -6,7 +6,12 @@ import Modal from '../components/common/Modal';
 
 import Skeleton from '../components/common/Skeleton';
 
-const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
+import useStore from '../store/useStore';
+import toast from 'react-hot-toast';
+import { getStaff, getRoles } from '../services/api';
+
+const Staff = () => {
+  const { staff: staffList = [], roles = [], setStaff: setGlobalStaff, setRoles: setGlobalRoles, loading } = useStore();
   const navigate = useNavigate();
   const [activeRoleTab, setActiveRoleTab] = useState('Barchasi');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,16 +26,22 @@ const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
   const [newRoleName, setNewRoleName] = useState('');
   const [showRoleInput, setShowRoleInput] = useState(false);
 
-  const filteredStaff = activeRoleTab === 'Barchasi'
-    ? staffList
-    : staffList.filter(s => s.role?.name === activeRoleTab);
+  const filteredStaff = (staffList || [])
+    .filter(s => activeRoleTab === 'Barchasi' || s.role?.name === activeRoleTab);
 
   const handleAddRole = async () => {
     if (!newRoleName) return;
-    await createRole({ name: newRoleName });
-    setNewRoleName('');
-    setShowRoleInput(false);
-    fetchRoles();
+    try {
+      await createRole({ name: newRoleName });
+      setNewRoleName('');
+      setShowRoleInput(false);
+      const rolesRes = await getRoles();
+      if (rolesRes.data) setGlobalRoles(rolesRes.data);
+      toast.success('Yangi lavozim qo\'shildi');
+    } catch (err) {
+      console.error('Role creation error:', err);
+      toast.error('Lavozim qo\'shishda xatolik');
+    }
   };
 
   const onAddStaffSubmit = async (e) => {
@@ -52,10 +63,13 @@ const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
         kpiPercentage: '0'
       });
       setIsModalOpen(false);
-      fetchStaff();
+      
+      const staffRes = await getStaff();
+      if (staffRes.data) setGlobalStaff(staffRes.data);
+      toast.success('Xodim qo\'shildi');
     } catch (err) {
       console.error('Error creating staff:', err);
-      alert("Xatolik: Xodimni saqlashda muammo yuzaga keldi.");
+      toast.error("Ma'lumotlarni saqlashda muammo yuzaga keldi.");
     }
   };
 
@@ -81,7 +95,7 @@ const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
 
           {/* Segmented Control for Roles */}
           <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner overflow-x-auto scrollbar-hide w-full sm:w-auto">
-            {['Barchasi', ...roles.map(r => r.name)].map((roleName) => (
+            {['Barchasi', ...(Array.isArray(roles) ? roles.map(r => r.name) : [])].map((roleName) => (
               <button
                 key={roleName}
                 onClick={() => setActiveRoleTab(roleName)}
@@ -174,7 +188,7 @@ const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-[12px] shadow-sm">
-                            {staff.name.substring(0, 1).toUpperCase()}
+                            {(staff.name || 'X').substring(0, 1).toUpperCase()}
                           </div>
                           <div>
                             <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7] group-hover:text-[#007aff] transition-colors">
@@ -243,7 +257,7 @@ const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
                   className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                 >
                   <option value="" disabled>Tanlang...</option>
-                  {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  {(Array.isArray(roles) ? roles : []).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
               <div>

@@ -14,12 +14,12 @@ import {
 } from '../services/api';
 import Modal from '../components/common/Modal';
 
-const GroupDetail = ({
-  students, getStudents: refreshStudents, fetchGroups,
-  fields = [], courses = [], rooms = [], staffList = []
-}) => {
+import useStore from '../store/useStore';
+
+const GroupDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { fields, courses, rooms, staff: staffList, groups, setGroups, students } = useStore();
   const [group, setGroup] = useState(null);
   const [payments, setPayments] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -50,29 +50,70 @@ const GroupDetail = ({
     endDate: ''
   });
 
-  const getGroupStatusDetails = (status) => {
-    switch (status) {
-      case 'WAITING': return { label: "Yig'ilmoqda", color: 'bg-[#007aff]/10 text-[#007aff] border-[#007aff]/20' };
-      case 'ACTIVE': return { label: "Faol", color: 'bg-[#34c759]/10 text-[#34c759] border-[#34c759]/20' };
-      case 'COMPLETED': return { label: "Tugatilgan", color: 'bg-[#af52de]/10 text-[#af52de] border-[#af52de]/20' };
-      case 'CANCELLED': return { label: "Bekor qilingan", color: 'bg-[#ff3b30]/10 text-[#ff3b30] border-[#ff3b30]/20' };
-      default: return { label: status, color: 'bg-gray-500/10 text-gray-500 border-gray-500/20' };
+  // Unified fetch function
+  const fetchGroup = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await getGroupById(id);
+      const g = res.data;
+      if (!g) {
+        setGroup(null);
+        return;
+      }
+      setGroup(g);
+      
+      // Default enrollment date
+      if (g.startDate) setEnrollDate(g.startDate);
+
+      // Status handling
+      if (!silent && g.status === 'COMPLETED' && g.endDate) {
+        setSelectedMonth(g.endDate.substring(0, 7));
+      } else if (!silent && g.startDate) {
+        const todayMonth = new Date().toISOString().substring(0, 7);
+        const startMonth = g.startDate.substring(0, 7);
+        if (startMonth > todayMonth) setSelectedMonth(startMonth);
+      }
+
+      setEditFormData({
+        name: g.name || '',
+        sohaId: g.course?.field?.id || '',
+        courseId: g.course?.id || '',
+        roomId: g.room?.id || '',
+        teacherId: g.teacher?.id || '',
+        days: g.days || [],
+        startTime: g.startTime || '',
+        endTime: g.endTime || '',
+        startDate: g.startDate || '',
+        endDate: g.endDate || '',
+        monthlyPrice: g.monthlyPrice || 0,
+        status: g.status || ''
+      });
+
+      setTransferFormData({
+        teacherId: g.teacher?.id || '',
+        sohaId: g.course?.field?.id || '',
+        courseId: g.course?.id || '',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: ''
+      });
+
+      // Parallel fetch for other data
+      const [actRes, payRes] = await Promise.all([
+        getGroupActivities(id),
+        getPaymentsByGroup(id)
+      ]);
+      setActivities(actRes.data || []);
+      setPayments(payRes.data || []);
+    } catch (err) {
+      console.error('Error fetching group:', err);
+    } finally {
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchGroup();
-    fetchPayments();
   }, [id]);
-
-  const fetchPayments = async () => {
-    try {
-      const res = await getPaymentsByGroup(id);
-      setPayments(res.data);
-    } catch (err) {
-      console.error('Error fetching payments:', err);
-    }
-  };
 
   const handlePrevMonth = () => {
     const date = new Date(selectedMonth + '-01');
@@ -100,7 +141,7 @@ const GroupDetail = ({
       }
     }
   }, [editFormData.startDate, editFormData.courseId, courses]);
-  
+
   useEffect(() => {
     if (transferFormData.startDate && transferFormData.courseId) {
       const course = courses.find(c => c.id === parseInt(transferFormData.courseId));
@@ -115,61 +156,51 @@ const GroupDetail = ({
     }
   }, [transferFormData.startDate, transferFormData.courseId, courses]);
 
-  const fetchGroup = async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      const res = await getGroupById(id);
-      const g = res.data;
-      setGroup(g);
-      
-      // Default enrollment date to group start date for convenience
-      if (g.startDate) {
-        setEnrollDate(g.startDate);
-      }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#007aff]"></div>
+      </div>
+    );
+  }
 
-      // If the group is COMPLETED, default the view to the end date so students are visible
-      if (!silent && g.status === 'COMPLETED' && g.endDate) {
-        setSelectedMonth(g.endDate.substring(0, 7));
-      } else if (!silent && g.startDate) {
-        // If viewing an active/waiting group, and today is before start, show start month
-        const todayMonth = new Date().toISOString().substring(0, 7);
-        const startMonth = g.startDate.substring(0, 7);
-        if (startMonth > todayMonth) {
-          setSelectedMonth(startMonth);
-        }
-      }
+  if (!group) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Guruh topilmadi</h2>
+        <button onClick={() => navigate('/groups')} className="mt-4 text-[#007aff] hover:underline">
+          Guruhlar ro'yxatiga qaytish
+        </button>
+      </div>
+    );
+  }
 
-      setEditFormData({
-        name: g.name,
-        sohaId: g.course?.field?.id || '',
-        courseId: g.course?.id || '',
-        roomId: g.room?.id || '',
-        teacherId: g.teacher?.id || '',
-        days: g.days || [],
-        startTime: g.startTime,
-        endTime: g.endTime,
-        startDate: g.startDate,
-        endDate: g.endDate,
-        monthlyPrice: g.monthlyPrice,
-        status: g.status
-      });
-
-      setTransferFormData({
-        teacherId: g.teacher?.id || '',
-        sohaId: g.course?.field?.id || '',
-        courseId: g.course?.id || '',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: ''
-      });
-
-      const actRes = await getGroupActivities(id);
-      setActivities(actRes.data || []);
-    } catch (err) {
-      console.error('Error fetching group:', err);
-    } finally {
-      if (!silent) setLoading(false);
+  const getGroupStatusDetails = (status) => {
+    switch (status) {
+      case 'WAITING': return { label: "Yig'ilmoqda", color: 'bg-[#007aff]/10 text-[#007aff] border-[#007aff]/20' };
+      case 'ACTIVE': return { label: "Faol", color: 'bg-[#34c759]/10 text-[#34c759] border-[#34c759]/20' };
+      case 'COMPLETED': return { label: "Tugatilgan", color: 'bg-[#af52de]/10 text-[#af52de] border-[#af52de]/20' };
+      case 'CANCELLED': return { label: "Bekor qilingan", color: 'bg-[#ff3b30]/10 text-[#ff3b30] border-[#ff3b30]/20' };
+      default: return { label: status, color: 'bg-gray-500/10 text-gray-500 border-gray-500/20' };
     }
   };
+
+  const filteredEnrollments = (group?.enrollments || []).filter(en => {
+    const matchesSearch = en.student?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         en.student?.phone?.includes(searchQuery);
+    return matchesSearch;
+  });
+
+  const activeEnrollments = filteredEnrollments.filter(en => en.status === 'ACTIVE');
+  const otherEnrollments = filteredEnrollments.filter(en => en.status !== 'ACTIVE');
+
+  const stats = {
+    total: group?.enrollments?.length || 0,
+    active: (group?.enrollments || []).filter(e => e.status === 'ACTIVE').length,
+    completed: (group?.enrollments || []).filter(e => e.status === 'COMPLETED').length,
+    dropped: (group?.enrollments || []).filter(e => e.status === 'DROPPED').length
+  };
+
 
   const handleUpdateGroup = async (e) => {
     e.preventDefault();
@@ -252,23 +283,10 @@ const GroupDetail = ({
 
   const totalRevenueThisMonth = calculateTotalRevenueThisMonth();
 
-  if (loading) return (
-    <div className="h-screen w-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#000000]">
-      <div className="w-8 h-8 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
 
-  if (!group) return (
-    <div className="h-screen w-full flex items-center justify-center bg-[#f5f5f7] dark:bg-[#000000] text-[#1d1d1f] dark:text-[#f5f5f7]">
-      <div className="text-center">
-        <h2 className="text-xl font-medium mb-2">Guruh topilmadi</h2>
-        <button onClick={() => navigate('/groups')} className="text-[#007aff] hover:underline">Orqaga qaytish</button>
-      </div>
-    </div>
-  );
 
   const currentStudentIds = group.enrollments?.map(en => en.student?.id).filter(Boolean) || [];
-  const availableStudents = students.filter(s =>
+  const availableStudents = (students || []).filter(s =>
     !currentStudentIds.includes(s.id) &&
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -491,7 +509,7 @@ const GroupDetail = ({
                       const s = en.student; if (!s) return null;
 
                       // Shu oy uchun qilingan barcha to'lovlar (bir necha marta bo'lishi mumkin)
-                      const stPayments = payments.filter(p => p.student?.id === s.id && p.month === selectedMonth);
+                      const stPayments = (payments || []).filter(p => p.student?.id === s.id && p.month === selectedMonth);
                       const paidThisMonth = stPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
                       const fullPrice = parseFloat(group.monthlyPrice || 0);
 
@@ -742,7 +760,7 @@ const GroupDetail = ({
             <p className="text-[11px] text-[#ff9500] font-medium">Joriy o'qish tarixi arxivlanadi.</p>
           </div>
           <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">YANGI SOHA</label><select value={transferFormData.sohaId} onChange={e => setTransferFormData({ ...transferFormData, sohaId: e.target.value, courseId: '' })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required><option value="">Tanlang...</option>{fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
-          <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">YANGI YO'NALISH</label><select value={transferFormData.courseId} onChange={e => setTransferFormData({ ...transferFormData, courseId: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required disabled={!transferFormData.sohaId}><option value="">Tanlang...</option>{courses.filter(c => (c.field?.id || c.fieldId) == transferFormData.sohaId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+          <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">YANGI YO'NALISH</label><select value={transferFormData.courseId} onChange={e => setTransferFormData({ ...transferFormData, courseId: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required disabled={!transferFormData.sohaId}><option value="">Tanlang...</option>{(courses || []).filter(c => (c.field?.id || c.fieldId) == transferFormData.sohaId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
           <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">YANGI O'QITUVCHI</label><select value={transferFormData.teacherId} onChange={e => setTransferFormData({ ...transferFormData, teacherId: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required><option value="">Tanlang...</option>{staffList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
           <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">BOSHLANISH SANASI</label><input type="date" value={transferFormData.startDate} onChange={e => setTransferFormData({ ...transferFormData, startDate: e.target.value })} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-[#ff9500]/50" required /></div>
           <div><label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">TUGASH SANASI (AVTOMATIK)</label><input type="date" value={transferFormData.endDate} readOnly className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[13px] text-gray-500 dark:text-gray-400 outline-none cursor-not-allowed" /></div>

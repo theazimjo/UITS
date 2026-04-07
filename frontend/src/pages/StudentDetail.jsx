@@ -8,7 +8,12 @@ import {
 } from 'lucide-react';
 import { getStudentById, getPaymentsByStudent, getStudentAttendance, updateStudent } from '../services/api';
 
-const StudentDetail = ({ fetchStudents }) => {
+import useStore from '../store/useStore';
+import toast from 'react-hot-toast';
+import { getStudents } from '../services/api';
+
+const StudentDetail = () => {
+  const { setStudents: setGlobalStudents } = useStore();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,7 +55,7 @@ const StudentDetail = ({ fetchStudents }) => {
         getPaymentsByStudent(id)
       ]);
       setStudent(stRes.data);
-      setPayments(payRes.data);
+      setPayments(payRes.data || []);
     } catch (err) {
       console.error('Error fetching student data:', err);
     } finally {
@@ -66,7 +71,7 @@ const StudentDetail = ({ fetchStudents }) => {
 
     // Check cache first
     if (attCache[cacheKey]) {
-      setAttendance(attCache[cacheKey]);
+      setAttendance(attCache[cacheKey] || []);
       return;
     }
 
@@ -90,10 +95,13 @@ const StudentDetail = ({ fetchStudents }) => {
     try {
       await updateStudent(id, { status: newStatus });
       setStudent(prev => ({ ...prev, status: newStatus }));
-      if (fetchStudents) fetchStudents();
+      
+      const allRes = await getStudents();
+      if (allRes.data) setGlobalStudents(allRes.data);
+      toast.success('Status yangilandi');
     } catch (err) {
       console.error('Status update error:', err);
-      alert('Statusni yangilab bo\'mladi');
+      toast.error('Statusni yangilab bo\'mladi');
     }
   };
 

@@ -7,7 +7,11 @@ import {
 import { getPayments, createPayment, deletePayment } from '../services/api';
 import Modal from '../components/common/Modal'; // Ensure this uses a matching macOS design if possible
 
-const Payments = ({ students = [], groups = [], staffList = [] }) => {
+import useStore from '../store/useStore';
+import toast from 'react-hot-toast';
+
+const Payments = () => {
+  const { students = [], groups = [], staff: staffList = [] } = useStore();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,9 +92,10 @@ const Payments = ({ students = [], groups = [], staffList = [] }) => {
       await fetchPayments();
       setIsModalOpen(false);
       resetForm();
+      toast.success("To'lov muvaffaqiyatli saqlandi");
     } catch (err) {
       console.error('Error creating payment:', err);
-      alert("Xatolik: To'lovni saqlashda muammo yuzaga keldi.");
+      toast.error("To'lovni saqlashda muammo yuzaga keldi.");
     }
   };
 

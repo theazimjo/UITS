@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useStore from '../../store/useStore';
 import { getTeacherFinance, getStaffSalary } from '../../services/api';
 import { 
   BarChart3, ChevronLeft, ChevronRight, Loader2, TrendingUp, Wallet, Users, 
@@ -7,6 +8,7 @@ import {
 import Modal from '../../components/common/Modal';
 
 const TeacherFinance = () => {
+  const { user: currentUser } = useStore();
   const [data, setData] = useState(null);
   const [salaryData, setSalaryData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,9 +19,7 @@ const TeacherFinance = () => {
   const [isDayDetailModalOpen, setIsDayDetailModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
 
-  // Get teacher ID from localStorage
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const teacherId = user.id;
+  const teacherId = currentUser?.id;
 
   useEffect(() => {
     fetchData();
@@ -33,8 +33,8 @@ const TeacherFinance = () => {
         getTeacherFinance(currentMonth),
         getStaffSalary(teacherId, currentMonth)
       ]);
-      setData(financeRes.data);
-      setSalaryData(salaryRes.data);
+      setData(financeRes.data || null);
+      setSalaryData(salaryRes.data || null);
     } catch (err) {
       console.error('Data fetch error:', err);
     } finally {
@@ -60,7 +60,7 @@ const TeacherFinance = () => {
     'Naqd': 'Naqd', 'Karta': 'Karta', "O'tkazma": "O'tkazma"
   };
 
-  // Calendar Helpers (from StaffDetail)
+  // Calendar Helpers
   const getCalendarDays = () => {
     const [year, month] = currentMonth.split('-').map(Number);
     const firstDay = new Date(year, month - 1, 1).getDay(); // 0-6 (Sun-Sat)
@@ -77,7 +77,7 @@ const TeacherFinance = () => {
 
   const getDayPayments = (dayStr) => {
     if (!salaryData?.payments) return [];
-    return salaryData.payments.filter(p => p.date.split('T')[0] === dayStr);
+    return (salaryData.payments || []).filter(p => p.date?.split('T')[0] === dayStr);
   };
 
   const handleDayClick = (dayStr) => {
@@ -246,14 +246,14 @@ const TeacherFinance = () => {
                                 </span>
                                 {dayTotal > 0 && (
                                   <div className="w-full space-y-1 mt-auto">
-                                    {dayPayments.slice(0, 2).map((p, i) => (
+                                    {(dayPayments || []).slice(0, 2).map((p, i) => (
                                       <div 
                                         key={i} 
                                         className={`text-[9px] px-1.5 py-0.5 rounded-md truncate font-bold text-center ${
                                           p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759] border border-[#34c759]/20' : 'bg-[#af52de]/10 text-[#af52de] border border-[#af52de]/20'
                                         }`}
                                       >
-                                        {Number(p.amount).toLocaleString()}
+                                        {Number(p.amount || 0).toLocaleString()}
                                       </div>
                                     ))}
                                     {dayPayments.length > 2 && <div className="text-[8px] text-gray-400 text-center font-bold">+{dayPayments.length - 2} yana</div>}
@@ -293,7 +293,7 @@ const TeacherFinance = () => {
                             </div>
                             <div className="text-right">
                               <p className={`text-[16px] font-black ${p.type === 'SALARY' ? 'text-[#34c759]' : 'text-[#af52de]'}`}>
-                                {Number(p.amount).toLocaleString()} <span className="text-[10px] font-bold opacity-60">UZS</span>
+                                {Number(p.amount || 0).toLocaleString()} <span className="text-[10px] font-bold opacity-60">UZS</span>
                               </p>
                               <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{p.paymentType || 'Naqd'}</p>
                             </div>
@@ -324,7 +324,7 @@ const TeacherFinance = () => {
                               }`}>
                                 {p.type === 'SALARY' ? "Oylik" : p.type === 'BONUS' ? 'Bonus' : 'Bayram'}
                               </span>
-                              <span className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">{Number(p.amount).toLocaleString()} UZS</span>
+                              <span className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">{Number(p.amount || 0).toLocaleString()} UZS</span>
                             </div>
                             {p.comment && (
                               <div className="mt-3 p-2.5 bg-white dark:bg-white/5 rounded-lg border border-black/5 dark:border-white/5 italic text-[12px] text-gray-600 dark:text-gray-400">
@@ -378,13 +378,13 @@ const TeacherFinance = () => {
                           Guruhlar bo'yicha tushum
                         </h3>
                         <div className="space-y-4">
-                          {data?.groups?.map((g) => {
+                          {(data?.groups || []).map((g) => {
                             const pct = g.activeStudents > 0 ? Math.round((g.paidStudents / g.activeStudents) * 100) : 0;
                             return (
                               <div key={g.id} className="p-4 bg-gray-50/80 dark:bg-white/[0.03] rounded-2xl border border-gray-100 dark:border-white/5 transition-all hover:border-[#34c759]/30">
                                 <div className="flex items-center justify-between mb-3">
                                   <span className="text-[14px] font-bold text-[#1d1d1f] dark:text-white truncate pr-2">{g.name}</span>
-                                  <span className="text-[14px] font-black text-[#34c759] whitespace-nowrap">{Number(g.totalCollected).toLocaleString()} <span className="text-[10px] font-normal opacity-60">UZS</span></span>
+                                  <span className="text-[14px] font-black text-[#34c759] whitespace-nowrap">{Number(g.totalCollected || 0).toLocaleString()} <span className="text-[10px] font-normal opacity-60">UZS</span></span>
                                 </div>
                                 <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium mb-3">
                                   <span className="flex items-center gap-1.5"><Users size={12} className="opacity-60" /> {g.paidStudents} / {g.activeStudents} to'lagan</span>
@@ -446,7 +446,7 @@ const TeacherFinance = () => {
                                     </span>
                                   </td>
                                   <td className="px-4 py-4 text-right">
-                                    <span className="font-black text-[#34c759] text-[15px]">{Number(p.amount).toLocaleString()}</span>
+                                    <span className="font-black text-[#34c759] text-[15px]">{Number(p.amount || 0).toLocaleString()}</span>
                                   </td>
                                   <td className="px-4 py-4 text-center">
                                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${

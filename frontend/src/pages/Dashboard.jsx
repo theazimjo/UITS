@@ -21,7 +21,15 @@ import {
 import Modal from '../components/common/Modal';
 import Skeleton from '../components/common/Skeleton';
 
-const Dashboard = ({ studentsCount, staffCount, groupsCount, loading }) => {
+import useStore from '../store/useStore';
+
+const Dashboard = () => {
+  const { students, staff, groups, loading: globalLoading } = useStore();
+  const studentsCount = students.length;
+  const staffCount = staff.length;
+  const groupsCount = groups.length;
+  const loading = globalLoading;
+
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   
@@ -349,7 +357,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount, loading }) => {
                 <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Tizimdagi umumiy oxirgi 10 ta harakat</p>
               </div>
               <div className="flex items-center gap-2 text-[12px] font-bold text-[#007aff] px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
-                <span>Jami: {genStats.activity.length} ta amal</span>
+                <span>Jami: {(genStats?.activity || []).length} ta amal</span>
               </div>
             </div>
 
@@ -364,7 +372,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount, loading }) => {
                     </div>
                   </div>
                 ))
-              ) : genStats.activity.length > 0 ? genStats.activity.map((act, i) => (
+              ) : (genStats?.activity || []).length > 0 ? (genStats?.activity || []).map((act, i) => (
                 <div key={i} className="flex gap-5 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-[#007aff]/40 transition-all group cursor-default hover:bg-white dark:hover:bg-white/10 hover:shadow-md">
                   <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 shadow-sm ${act.type === 'PAYMENT' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'}`}>
                     {act.type === 'PAYMENT' ? <Banknote size={20} /> : <UserPlus size={20} />}
@@ -412,8 +420,8 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount, loading }) => {
           </div>
 
           <div className="space-y-2">
-            {attStats.students && attStats.students.length > 0 ? (
-              attStats.students
+            {(attStats?.students || []).length > 0 ? (
+              (attStats?.students || [])
                 .sort((a, b) => (a.status === 'present' ? -1 : 1))
                 .map((s) => (
                   <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-[#007aff]/30 transition-all group">

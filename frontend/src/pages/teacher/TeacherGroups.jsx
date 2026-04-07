@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getTeacherGroups, getGroupPayments } from '../../services/api';
+import useStore from '../../store/useStore';
+import { getGroupPayments } from '../../services/api';
 import { 
   BookOpen, 
   Users, 
@@ -27,8 +28,7 @@ const statusMap = {
 };
 
 const TeacherGroups = () => {
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { groups: allGroups, loading, refreshAllRows } = useStore();
   const [activeTab, setActiveTab] = useState('faol'); // faol, tugatgan, otkazilgan
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -39,25 +39,15 @@ const TeacherGroups = () => {
   const [paymentsLoading, setPaymentsLoading] = useState(false);
 
   useEffect(() => {
-    fetchGroups();
-  }, []);
+    refreshAllRows();
+  }, [refreshAllRows]);
 
-  const fetchGroups = async () => {
-    try {
-      const res = await getTeacherGroups();
-      setGroups(res.data);
-    } catch (err) {
-      console.error('Groups fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const activeEnrollments = (group) => group?.enrollments?.filter(e => e.status === 'ACTIVE') || [];
 
-  const activeEnrollments = (group) => group.enrollments?.filter(e => e.status === 'ACTIVE') || [];
-
+  const groups = allGroups || [];
   const filteredGroups = groups.filter(g => {
-    const matchesSearch = g.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         g.course?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (g.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         (g.course?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
 
     if (activeTab === 'faol') {
@@ -89,7 +79,7 @@ const TeacherGroups = () => {
     setPaymentsLoading(true);
     try {
       const res = await getGroupPayments(groupId, month);
-      setGroupPayments(res.data);
+      setGroupPayments(res.data || []);
     } catch (err) {
       console.error('Payments fetch error:', err);
     } finally {
@@ -228,14 +218,14 @@ const TeacherGroups = () => {
                           <Clock size={14} className="text-blue-500" />
                           <span className="text-[11px] font-bold uppercase tracking-wider opacity-60">Vaqt</span>
                         </div>
-                        <span className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">{group.startTime} - {group.endTime}</span>
+                        <span className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">{group.startTime || '--:--'} - {group.endTime || '--:--'}</span>
                       </div>
                       <div className="p-3 bg-gray-50/50 dark:bg-white/5 rounded-2xl flex flex-col gap-1">
                         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                           <Calendar size={14} className="text-amber-500" />
                           <span className="text-[11px] font-bold uppercase tracking-wider opacity-60">Kunlar</span>
                         </div>
-                        <span className="text-[13px] font-bold text-[#1d1d1f] dark:text-white truncate">{group.days?.join(', ')}</span>
+                        <span className="text-[13px] font-bold text-[#1d1d1f] dark:text-white truncate">{group.days?.join(', ') || 'Belgilanmagan'}</span>
                       </div>
                     </div>
 
@@ -292,7 +282,7 @@ const TeacherGroups = () => {
               </div>
               <div className="p-4 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1">Darslar</p>
-                <span className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">{selectedGroup?.startTime} - {selectedGroup?.endTime}</span>
+                <span className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">{selectedGroup?.startTime || '--:--'} - {selectedGroup?.endTime || '--:--'}</span>
               </div>
             </div>
 
@@ -321,7 +311,7 @@ const TeacherGroups = () => {
               <div className="px-6 py-3 bg-gray-50/50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
                 <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Oy Tanlash</span>
                 <div className="flex items-center gap-4 bg-white dark:bg-black/20 rounded-xl p-1 shadow-sm border border-gray-100 dark:border-white/5">
-                  <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg pr-transition-all">
+                  <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-all">
                     <ChevronLeft size={16} className="text-gray-400" />
                   </button>
                   <span className="text-[12px] font-bold text-[#1d1d1f] dark:text-white min-w-[100px] text-center">
@@ -344,9 +334,9 @@ const TeacherGroups = () => {
                   </div>
                   <div className="space-y-3">
                     {activeEnrollments(selectedGroup).length > 0 ? activeEnrollments(selectedGroup).map((e, i) => {
-                      const studentPayments = groupPayments.filter(p => p.student?.id === e.student?.id);
+                      const studentPayments = (groupPayments || []).filter(p => p.student?.id === e.student?.id);
                       const totalPaid = studentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-                      const monthlyPrice = Number(selectedGroup.monthlyPrice || 0);
+                      const monthlyPrice = Number(selectedGroup?.monthlyPrice || 0);
                       
                       let paymentBadge;
                       if (totalPaid >= monthlyPrice && monthlyPrice > 0) {
@@ -387,8 +377,8 @@ const TeacherGroups = () => {
                 <div className="space-y-6">
                   <span className="text-[12px] font-black text-gray-400 uppercase tracking-widest">O'qituvchilar Tarixi</span>
                   <div className="relative border-l-2 border-gray-100 dark:border-white/5 ml-3 space-y-8 pb-10">
-                    {selectedGroup?.phases?.length > 0 ? [...selectedGroup.phases].sort((a,b) => new Date(b.startDate) - new Date(a.startDate)).map((phase, i) => (
-                      <div key={phase.id} className="relative pl-7">
+                    {(selectedGroup?.phases || []).length > 0 ? [...selectedGroup.phases].sort((a,b) => new Date(b.startDate) - new Date(a.startDate)).map((phase, i) => (
+                      <div key={phase.id || i} className="relative pl-7">
                         <div className={`absolute -left-[7px] top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-[#1c1c1e] ${!phase.endDate ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-gray-300 dark:bg-gray-600'}`} />
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center justify-between">
@@ -396,7 +386,7 @@ const TeacherGroups = () => {
                               {phase.teacher?.name}
                               {!phase.endDate && <span className="ml-2 text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider">Hozirgi</span>}
                             </h4>
-                            <span className="text-[10px] font-bold text-gray-400">{phase.startDate.substring(0, 10)}</span>
+                            <span className="text-[10px] font-bold text-gray-400">{(phase.startDate || "").substring(0, 10)}</span>
                           </div>
                           <p className="text-[12px] text-gray-400 font-medium">
                             {phase.endDate ? `Tugadi: ${phase.endDate.substring(0, 10)}` : 'Davom etmoqda'}

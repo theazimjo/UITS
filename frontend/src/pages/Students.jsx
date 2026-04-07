@@ -6,17 +6,40 @@ import { getStudents, deleteAllStudents } from '../services/api';
 import { useState, useMemo, useEffect } from 'react';
 import Skeleton from '../components/common/Skeleton';
 
-const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
+import useStore from '../store/useStore';
+import toast from 'react-hot-toast';
+import { updateStudent, syncStudents } from '../services/api';
+
+const Students = () => {
+  const { students: globalStudents, setStudents: setGlobalStudents, loading } = useStore();
+  const students = Array.isArray(globalStudents) ? globalStudents : [];
   const navigate = useNavigate();
+  const [syncing, setSyncing] = useState(false);
+
   // Qidiruv va Sahifalash state'lari
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12; // Bitta sahifada nechta o'quvchi chiqishi
 
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      await syncStudents();
+      const res = await getStudents();
+      if (res.data) setGlobalStudents(res.data);
+      toast.success("Ma'lumotlar sinxronizatsiya qilindi");
+    } catch (err) {
+      console.error('Sync error:', err);
+      toast.error('Sinxronizatsiyada xatolik');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Qidiruv va Status bo'yicha filtrlash
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
+    return (students || []).filter(student => {
       // 1. Status bo'yicha filter
       if (selectedStatus !== 'ALL' && student.status !== selectedStatus) {
         return false;
@@ -42,10 +65,10 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
     try {
       await updateStudent(studentId, { status: newStatus });
       const res = await getStudents();
-      setStudents(res.data);
+      if (res.data) setGlobalStudents(res.data);
     } catch (err) {
       console.error('Status update error:', err);
-      alert('Statusni yangilab bo\'lmadi');
+      toast.error('Statusni yangilab bo\'lmadi');
     }
   };
 

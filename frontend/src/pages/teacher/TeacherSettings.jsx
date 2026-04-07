@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import useStore from '../../store/useStore';
 import { Settings as SettingsIcon, Sun, Moon, Check, User as UserIcon, Monitor } from 'lucide-react';
 
 const TeacherSettings = () => {
+  const { user, loading } = useStore();
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
@@ -39,7 +40,7 @@ const TeacherSettings = () => {
             </div>
             <div>
               <h3 className="text-[20px] font-black text-[#1d1d1f] dark:text-white leading-tight">
-                {user?.username || 'O\'qituvchi'}
+                {loading ? 'Yuklanmoqda...' : user?.username || 'O\'qituvchi'}
               </h3>
               <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
                 <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md text-[11px] font-bold uppercase tracking-wider">O'qituvchi</span>

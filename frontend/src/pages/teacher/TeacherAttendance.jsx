@@ -1,29 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getTeacherAttendance } from '../../services/api';
-import { ClipboardCheck, ChevronLeft, ChevronRight, Loader2, UserCheck, UserX, Users, Info } from 'lucide-react';
+import useStore from '../../store/useStore';
+import { ClipboardCheck, ChevronLeft, ChevronRight, Loader2, UserCheck, UserX, Users } from 'lucide-react';
 
 const TeacherAttendance = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { students: allStudents, loading, refreshAllRows } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedGroup, setSelectedGroup] = useState('all');
 
   useEffect(() => {
-    fetchAttendance();
-  }, [currentMonth]);
-
-  const fetchAttendance = async () => {
-    setLoading(true);
-    try {
-      const res = await getTeacherAttendance(`${currentMonth}-01`);
-      setData(res.data);
-    } catch (err) {
-      console.error('Attendance fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    refreshAllRows();
+  }, [currentMonth, refreshAllRows]);
 
   const changeMonth = (delta) => {
     const [y, m] = currentMonth.split('-').map(Number);
@@ -35,23 +22,17 @@ const TeacherAttendance = () => {
 
   const monthNames = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
   const [year, month] = currentMonth.split('-').map(Number);
-  const monthLabel = `${monthNames[month - 1]} ${year}`;
-
+  
   const today = new Date();
   const isCurrentMonth = today.toISOString().slice(0, 7) === currentMonth;
   const todayDay = today.getDate();
 
-  // Statistics
-  const students = data?.students || [];
-  const uniqueGroups = [...new Set(students.map(s => s.groupName))];
+  const students = allStudents || [];
+  const uniqueGroups = [...new Set(students.map(s => s.groupName).filter(Boolean))];
   const filteredStudents = selectedGroup === 'all' ? students : students.filter(s => s.groupName === selectedGroup);
-  const daysInMonth = data?.daysInMonth || 30;
-
-  const totalCells = filteredStudents.reduce((sum, s) => sum + Object.keys(s.attendance || {}).length, 0);
-  const presentCells = filteredStudents.reduce((sum, s) => sum + Object.values(s.attendance || {}).filter(v => v === 'present').length, 0);
-  const attendanceRate = totalCells > 0 ? Math.round((presentCells / totalCells) * 100) : 0;
-
+  
   const todayArrived = filteredStudents.filter(s => s.attendance?.[todayDay] === 'present').length;
+  const daysInMonth = new Date(year, month, 0).getDate();
 
   return (
     <div className="h-full w-full overflow-hidden bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] scroll-smooth">
