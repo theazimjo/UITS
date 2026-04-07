@@ -1,48 +1,53 @@
-import React from 'react';
-import { RefreshCw, Trash2, Phone, Users, ChevronRight, Fingerprint, Search, ChevronLeft } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, Phone, Users, ChevronRight, Fingerprint, Search, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getStudents, deleteAllStudents } from '../services/api';
-
-import { useState, useMemo, useEffect } from 'react';
+import useStore from '../store/useStore';
+import { syncStudents, updateStudent } from '../services/api';
 import Skeleton from '../components/common/Skeleton';
 
-const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
+const Students = () => {
   const navigate = useNavigate();
-  // Qidiruv va Sahifalash state'lari
+  const { 
+    students, studentPagination, loadingStudents, fetchStudents, setStudents 
+  } = useStore();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // Bitta sahifada nechta o'quvchi chiqishi
+  const [syncing, setSyncing] = useState(false);
 
-  // Qidiruv va Status bo'yicha filtrlash
-  const filteredStudents = useMemo(() => {
-    return students.filter(student => {
-      // 1. Status bo'yicha filter
-      if (selectedStatus !== 'ALL' && student.status !== selectedStatus) {
-        return false;
-      }
-
-      // 2. Qidiruv bo'yicha filter
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        student.name?.toLowerCase().includes(searchLower) ||
-        student.phone?.includes(searchTerm) ||
-        student.parentPhone?.includes(searchTerm) ||
-        student.externalId?.toLowerCase().includes(searchLower)
-      );
-    });
-  }, [students, searchTerm, selectedStatus]);
-
-  // Qidiruv yoki Status o'zgarganda birinchi sahifaga qaytish
+  // Initial fetch and on status/page change
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedStatus]);
+    fetchStudents({ 
+      page: studentPagination.page, 
+      status: selectedStatus,
+      search: searchTerm 
+    });
+  }, [selectedStatus, studentPagination.page]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStudents({ page: 1, search: searchTerm, status: selectedStatus });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await syncStudents();
+      fetchStudents({ page: 1 });
+    } catch (err) {
+      console.error('Sync error:', err);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleStatusChange = async (studentId, newStatus) => {
     try {
       await updateStudent(studentId, { status: newStatus });
-      const res = await getStudents();
-      setStudents(res.data);
+      fetchStudents({ page: studentPagination.page, status: selectedStatus, search: searchTerm });
     } catch (err) {
       console.error('Status update error:', err);
       alert('Statusni yangilab bo\'lmadi');
@@ -64,12 +69,7 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
     }
   };
 
-  // Sahifalash mantiqiy qismi
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const { page, totalPages, total } = studentPagination;
 
   return (
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
@@ -78,7 +78,7 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
       <div className="min-h-[56px] py-3 sm:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4">
         <div className="flex-shrink-0">
           <h2 className="text-[15px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight">O'quvchilar</h2>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Baza: {students?.length || 0} ta</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Baza: {total} ta</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
@@ -87,7 +87,7 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
             <input
               type="text"
-              placeholder="Ism, tel yoki ID..."
+              placeholder="Ism qidirish..."
               className="w-full pl-8 pr-3 py-1.5 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all placeholder-gray-400 backdrop-blur-md shadow-inner text-[#1d1d1f] dark:text-[#f5f5f7]"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -151,7 +151,7 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                  {loading ? (
+                  {loadingStudents ? (
                     Array(8).fill(0).map((_, i) => (
                       <tr key={i}>
                         <td className="px-5 py-3">
@@ -170,8 +170,8 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
                         <td className="px-5 py-3"></td>
                       </tr>
                     ))
-                  ) : paginatedStudents.length > 0 ? (
-                    paginatedStudents.map((student) => {
+                  ) : students.length > 0 ? (
+                    students.map((student) => {
                       const activeEnrollment = student.enrollments?.find(e => e.status === 'ACTIVE');
                       const activeGroup = activeEnrollment?.group;
                       
@@ -192,7 +192,7 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
                               />
                             ) : (
                               <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-sm shadow-sm">
-                                {student.name.substring(0, 1).toUpperCase()}
+                                {student.name ? student.name.substring(0, 1).toUpperCase() : '?'}
                               </div>
                             )}
                             <div>
@@ -275,7 +275,7 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
                       <td colSpan="6" className="px-5 py-16 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-3">
-                            {searchTerm ? <Search size={24} className="text-gray-400" /> : <Users size={24} className="text-gray-400" />}
+                            <Search size={24} className="text-gray-400" />
                           </div>
                           <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1">
                             {searchTerm ? "Natija topilmadi" : "O'quvchilar topilmadi"}
@@ -302,16 +302,16 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
             </div>
 
             {/* Pagination Footer (macOS Status Bar Style) */}
-            {filteredStudents.length > 0 && (
+            {students.length > 0 && (
               <div className="h-10 px-5 flex items-center justify-between border-t border-gray-200/50 dark:border-white/10 bg-gray-50/50 dark:bg-black/30 backdrop-blur-md shrink-0">
                 <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                  Jami: {filteredStudents.length} ta o'quvchi
+                  {total} tadan {students.length} tasi ko'rsatilmoqda
                 </span>
 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
+                    onClick={() => fetchStudents({ page: Math.max(1, page - 1) })}
+                    disabled={page === 1}
                     className="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent text-gray-600 dark:text-gray-300 transition-colors"
                     title="Oldingi"
                   >
@@ -319,12 +319,12 @@ const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
                   </button>
 
                   <span className="px-2 text-[11px] text-gray-600 dark:text-gray-300 font-medium min-w-[60px] text-center">
-                    {currentPage} / {totalPages}
+                    {page} / {totalPages}
                   </span>
 
                   <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
+                    onClick={() => fetchStudents({ page: Math.min(totalPages, page + 1) })}
+                    disabled={page === totalPages}
                     className="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent text-gray-600 dark:text-gray-300 transition-colors"
                     title="Keyingi"
                   >

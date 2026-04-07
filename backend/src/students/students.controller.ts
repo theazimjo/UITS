@@ -2,6 +2,8 @@ import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query } from '@n
 import { StudentsService } from './students.service';
 import { Student } from './entities/student.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { FilterStudentDto } from './dto/filter-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
 
 @Controller('students')
 @UseGuards(JwtAuthGuard)
@@ -9,8 +11,8 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Get()
-  findAll(): Promise<Student[]> {
-    return this.studentsService.findAll();
+  async findAll(@Query() query: FilterStudentDto) {
+    return this.studentsService.findAll(query);
   }
 
   @Post('sync')
@@ -31,7 +33,7 @@ export class StudentsController {
   }
 
   @Post(':id')
-  async update(@Param('id') id: string, @Body() data: Partial<Student>): Promise<Student | null> {
+  async update(@Param('id') id: string, @Body() data: UpdateStudentDto) {
     if (isNaN(+id)) return null;
     return this.studentsService.update(+id, data);
   }
