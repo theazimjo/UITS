@@ -10,6 +10,7 @@ import {
 
 // Components
 import Layout from './components/layout/Layout';
+import TeacherLayout from './components/layout/TeacherLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
 // Pages
@@ -24,6 +25,13 @@ import StaffDetail from './pages/StaffDetail';
 import StudentDetail from './pages/StudentDetail';
 import Finance from './pages/Finance';
 import Settings from './pages/Settings';
+
+// Teacher Pages
+import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import TeacherAttendance from './pages/teacher/TeacherAttendance';
+import TeacherGroups from './pages/teacher/TeacherGroups';
+import TeacherFinance from './pages/teacher/TeacherFinance';
+import TeacherSettings from './pages/teacher/TeacherSettings';
 
 // Icons
 import { Wallet } from 'lucide-react';
@@ -52,10 +60,23 @@ function App() {
     }
 
     const token = localStorage.getItem('access_token');
-    const user = localStorage.getItem('user');
-    if (token) {
-      setCurrentUser(user ? JSON.parse(user) : { username: 'Admin' });
-      fetchInitialData();
+    const userStr = localStorage.getItem('user');
+    if (token && userStr) {
+      const user = JSON.parse(userStr);
+      setCurrentUser(user);
+      
+      // Initial redirect if at root
+      if (location.pathname === '/' || location.pathname === '/login') {
+        if (user.role === 'teacher') {
+          navigate('/teacher/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      }
+      
+      if (user.role !== 'teacher') {
+        fetchInitialData();
+      }
     } else if (location.pathname !== '/login') {
       navigate('/login');
     }
@@ -89,13 +110,18 @@ function App() {
     <>
       <Routes>
         <Route path="/login" element={
-          <Login onLoginSuccess={() => { 
-            setCurrentUser(JSON.parse(localStorage.getItem('user'))); 
-            fetchInitialData(); 
-            navigate('/dashboard'); 
+          <Login onLoginSuccess={(user) => { 
+            setCurrentUser(user); 
+            if (user.role === 'teacher') {
+              navigate('/teacher/dashboard');
+            } else {
+              fetchInitialData(); 
+              navigate('/dashboard'); 
+            }
           }} />
         } />
         
+        {/* Admin Routes */}
         <Route element={
           <ProtectedRoute>
             <Layout currentUser={currentUser} onLogout={handleLogout} />
@@ -174,11 +200,23 @@ function App() {
           } />
           <Route path="/finance" element={<Finance />} />
           <Route path="/settings" element={<Settings />} />
-          
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+
+        {/* Teacher Routes */}
+        <Route path="/teacher" element={
+          <ProtectedRoute>
+            <TeacherLayout currentUser={currentUser} onLogout={handleLogout} />
+          </ProtectedRoute>
+        }>
+          <Route path="dashboard" element={<TeacherDashboard />} />
+          <Route path="attendance" element={<TeacherAttendance />} />
+          <Route path="groups" element={<TeacherGroups />} />
+          <Route path="finance" element={<TeacherFinance />} />
+          <Route path="settings" element={<TeacherSettings />} />
         </Route>
         
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to={currentUser?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
+        <Route path="*" element={<Navigate to={currentUser?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
       </Routes>
     </>
   );

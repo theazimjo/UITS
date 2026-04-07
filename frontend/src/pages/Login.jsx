@@ -3,8 +3,8 @@ import { login } from '../services/api';
 import { User, Lock, AlertCircle, Loader2, Hexagon } from 'lucide-react';
 
 const Login = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +17,7 @@ const Login = ({ onLoginSuccess }) => {
       const response = await login({ username, password });
       localStorage.setItem('access_token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      onLoginSuccess();
+      onLoginSuccess(response.data.user);
     } catch (err) {
       setError('Kirish muvaffaqiyatsiz. Ma\'lumotlar xato!');
       console.error(err);
