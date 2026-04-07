@@ -1,10 +1,19 @@
-import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+  Req,
+  Param,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Group } from '../groups/entities/group.entity';
 import { Enrollment } from '../groups/entities/enrollment.entity';
 import { Payment } from '../payments/entities/payment.entity';
+import { GroupPhase } from '../groups/entities/group-phase.entity';
 import { Staff } from './entities/staff.entity';
 import { EnrollmentStatus } from '../groups/enums/enrollment-status.enum';
 import { GroupStatus } from '../groups/enums/group-status.enum';
@@ -28,6 +37,8 @@ export class TeacherController {
     private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Staff)
     private readonly staffRepo: Repository<Staff>,
+    @InjectRepository(GroupPhase)
+    private readonly groupPhaseRepo: Repository<GroupPhase>,
   ) {}
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -110,11 +121,51 @@ export class TeacherController {
   @Get('my-groups')
   async getMyGroups(@Req() req: any) {
     const staffId = req.user.userId;
-    const groups = await this.groupRepo.find({
+
+    // 1. Current groups
+    const currentGroups = await this.groupRepo.find({
       where: { teacherId: staffId },
-      relations: ['enrollments', 'enrollments.student', 'course', 'room', 'phases', 'phases.course'],
+      relations: [
+        'enrollments',
+        'enrollments.student',
+        'course',
+        'room',
+        'phases',
+        'phases.teacher',
+      ],
     });
-    return groups;
+
+    // 2. Historical groups from phases
+    const historicalPhases = await this.groupPhaseRepo.find({
+      where: { teacherId: staffId },
+      relations: [
+        'group',
+        'group.enrollments',
+        'group.enrollments.student',
+        'group.course',
+        'group.room',
+        'group.phases',
+        'group.phases.teacher',
+      ],
+    });
+
+    // Combine unique groups
+    const groupMap = new Map<number, any>();
+
+    currentGroups.forEach((g) => {
+      groupMap.set(g.id, { ...g, isTransferred: false });
+    });
+
+    historicalPhases.forEach((p) => {
+      if (p.group && !groupMap.has(p.group.id)) {
+        groupMap.set(p.group.id, {
+          ...p.group,
+          isTransferred: p.group.teacherId !== staffId,
+        });
+      }
+    });
+
+    return Array.from(groupMap.values());
   }
 
   // GET /teacher/my-students — all active students in teacher's groups
@@ -159,40 +210,47 @@ export class TeacherController {
     const [year, month] = targetMonth.split('-').map(Number);
     const daysInMonth = new Date(year, month, 0).getDate();
 
-    // Get teacher's active groups
-    const groups = await this.groupRepo.find({
-      where: [
-        { teacherId: staffId, status: GroupStatus.ACTIVE },
-        { teacherId: staffId, status: GroupStatus.WAITING },
-      ],
-      relations: ['enrollments', 'enrollments.student'],
+    const monthStart = `${targetMonth}-01`;
+    const monthEnd = `${targetMonth}-${String(daysInMonth).padStart(2, '0')}`;
+
+    // 1. Get all phases for this teacher
+    const phases = await this.groupPhaseRepo.find({
+      where: { teacherId: staffId },
+      relations: ['group', 'group.enrollments', 'group.enrollments.student'],
     });
 
-    // Collect unique students with external IDs
     const studentMap = new Map<number, any>();
-    groups.forEach((g) => {
-      g.enrollments?.forEach((e) => {
-        if (e.status === EnrollmentStatus.ACTIVE && e.student?.externalId) {
-          if (!studentMap.has(e.student.id)) {
-            studentMap.set(e.student.id, {
-              id: e.student.id,
-              name: e.student.name,
-              photo: e.student.photo,
-              externalId: e.student.externalId,
-              groupName: g.name,
-              groupId: g.id,
-              attendance: {} as Record<string, string>, // date -> status
-            });
+
+    // 2. Filter phases that overlap with the target month
+    phases.forEach((p) => {
+      const pStart = p.startDate;
+      const pEnd = p.endDate || '9999-12-31';
+
+      if (pStart <= monthEnd && pEnd >= monthStart) {
+        p.group?.enrollments?.forEach((e) => {
+          if ((e.status === EnrollmentStatus.ACTIVE || e.status === EnrollmentStatus.GRADUATED) && e.student) {
+            if (!studentMap.has(e.student.id)) {
+              studentMap.set(e.student.id, {
+                id: e.student.id,
+                name: e.student.name,
+                photo: e.student.photo,
+                externalId: e.student.externalId || null,
+                groupName: p.group.name,
+                groupId: p.group.id,
+                attendance: {} as Record<string, string>,
+              });
+            }
           }
-        }
-      });
+        });
+      }
     });
 
-    // Fetch attendance from external API for entire month
+    // Add students from both current groups and historical phases
     const students = Array.from(studentMap.values());
+    const studentsWithId = students.filter(s => s.externalId);
 
     try {
-      const attendancePromises = students.map(async (student) => {
+      const attendancePromises = studentsWithId.map(async (student) => {
         try {
           const response = await axios.get(
             `https://schoolmanage.uz/api/student/${student.externalId}`,
@@ -281,5 +339,39 @@ export class TeacherController {
       })),
       groups: groupStats,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('group-payments/:id')
+  async getGroupPayments(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Query('month') month: string,
+  ) {
+    const staffId = req.user.userId;
+
+    // Verify if teacher is/was part of this group
+    const isTeacher = await this.groupRepo.findOne({
+      where: { id: parseInt(id), teacherId: staffId },
+    });
+    const isHistorical = await this.groupPhaseRepo.findOne({
+      where: { group: { id: parseInt(id) }, teacherId: staffId },
+    });
+
+    if (!isTeacher && !isHistorical) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
+
+    const targetMonth = month || new Date().toISOString().slice(0, 7);
+
+    const payments = await this.paymentRepo.find({
+      where: {
+        group: { id: parseInt(id) },
+        month: targetMonth,
+      },
+      relations: ['student'],
+    });
+
+    return payments;
   }
 }

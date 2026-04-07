@@ -96,5 +96,6 @@ export const getTeacherGroups = () => api.get('/teacher/my-groups');
 export const getTeacherStudents = () => api.get('/teacher/my-students');
 export const getTeacherAttendance = (date) => api.get('/teacher/my-attendance', { params: { date } });
 export const getTeacherFinance = (month) => api.get('/teacher/my-finance', { params: { month } });
+export const getGroupPayments = (id, month) => api.get(`/teacher/group-payments/${id}`, { params: { month } });
 
 export default api;
