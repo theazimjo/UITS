@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Clock, MapPin, Edit2, Trash2, Calendar, BookOpen, ChevronLeft, Users, FolderKanban } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import useStore from '../store/useStore';
 import {
   createField, updateField, deleteField,
   createCourse, updateCourse, deleteCourse,
@@ -10,12 +9,10 @@ import {
 } from '../services/api';
 import Modal from '../components/common/Modal'; // Assuming Modal has a clean macOS style
 
-const Groups = () => {
-  const {
-    groups, fields, courses, rooms, staffList,
-    loadingGroups, fetchGroups, fetchFields, fetchCourses, fetchRooms, fetchStaff
-  } = useStore();
-
+const Groups = ({
+  groups, fields, courses, rooms, staffList,
+  fetchGroups, fetchFields, fetchCourses, fetchRooms
+}) => {
   const [activeTab, setActiveTab] = useState('faol');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [modalType, setModalType] = useState(null);
@@ -27,14 +24,6 @@ const Groups = () => {
     room: { name: '', capacity: '' },
     group: { name: '', sohaId: '', courseId: '', roomId: '', teacherId: '', days: [], startTime: '', endTime: '', startDate: '', endDate: '', monthlyPrice: '', status: 'WAITING' }
   });
-
-  useEffect(() => {
-    if (groups.length === 0) fetchGroups();
-    if (fields.length === 0) fetchFields();
-    if (courses.length === 0) fetchCourses();
-    if (rooms.length === 0) fetchRooms();
-    if (staffList.length === 0) fetchStaff();
-  }, []);
 
   const getStatusDetails = (status) => {
     switch (status) {

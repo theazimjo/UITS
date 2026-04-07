@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
-// Store
-import useStore from './store/useStore';
+// Services
+import { 
+  getStudents, syncStudents, 
+  getStaff, getRoles, 
+  getGroups, getFields, getCourses, getRooms 
+} from './services/api';
 
 // Components
 import Layout from './components/layout/Layout';
@@ -29,18 +33,23 @@ import TeacherGroups from './pages/teacher/TeacherGroups';
 import TeacherFinance from './pages/teacher/TeacherFinance';
 import TeacherSettings from './pages/teacher/TeacherSettings';
 
+// Icons
+import { Wallet } from 'lucide-react';
+
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [fields, setFields] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [rooms, setRooms] = useState([]);
   
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Store actions & state
-  const { 
-    fetchStudents, fetchStaff, fetchGroupsMetadata,
-    students, staffList, roles, groups, fields, courses, rooms
-  } = useStore();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -52,7 +61,6 @@ function App() {
 
     const token = localStorage.getItem('access_token');
     const userStr = localStorage.getItem('user');
-    
     if (token && userStr) {
       const user = JSON.parse(userStr);
       setCurrentUser(user);
@@ -67,10 +75,7 @@ function App() {
       }
       
       if (user.role !== 'teacher') {
-        // Fetch only basic metadata globally
-        fetchStaff();
-        fetchGroupsMetadata();
-        // Students will be fetched on-demand in Students page
+        fetchInitialData();
       }
     } else if (location.pathname !== '/login') {
       navigate('/login');
@@ -78,12 +83,24 @@ function App() {
     setLoading(false);
   }, []);
 
+  const fetchInitialData = async () => {
+    try {
+      const [st, sf, rl, gr, fl, cr, rm] = await Promise.all([
+        getStudents(), getStaff(), getRoles(), getGroups(), getFields(), getCourses(), getRooms()
+      ]);
+      setStudents(st.data); setStaffList(sf.data); setRoles(rl.data); setGroups(gr.data);
+      setFields(fl.data); setCourses(cr.data); setRooms(rm.data);
+    } catch (e) { console.error('Initial fetch error:', e); }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('access_token'); 
     localStorage.removeItem('user');
     setCurrentUser(null); 
     navigate('/login');
   };
+
+  // Global loading is handled by Layout/ProtectedRoute or per-page via the loading prop
 
   return (
     <>
@@ -94,8 +111,7 @@ function App() {
             if (user.role === 'teacher') {
               navigate('/teacher/dashboard');
             } else {
-              fetchStaff();
-              fetchGroupsMetadata();
+              fetchInitialData(); 
               navigate('/dashboard'); 
             }
           }} />
@@ -107,15 +123,80 @@ function App() {
             <Layout currentUser={currentUser} onLogout={handleLogout} />
           </ProtectedRoute>
         }>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={
+            <Dashboard 
+              studentsCount={students.length} 
+              staffCount={staffList.length} 
+              groupsCount={groups.length} 
+              loading={loading}
+            />
+          } />
           
-          <Route path="/students" element={<Students />} />
-          <Route path="/students/:id" element={<StudentDetail />} />
-          <Route path="/staff" element={<Staff />} />
-          <Route path="/staff/:id" element={<StaffDetail />} />
-          <Route path="/groups" element={<Groups />} />
-          <Route path="/groups/:id" element={<GroupDetail />} />
-          <Route path="/payments" element={<Payments />} />
+          <Route path="/students" element={
+            <Students 
+              students={students} 
+              syncing={syncing} 
+              loading={loading}
+              setStudents={setStudents}
+              handleSync={async () => { 
+                setSyncing(true); 
+                await syncStudents(); 
+                getStudents().then(res => setStudents(res.data)); 
+                setSyncing(false); 
+              }} 
+            />
+          } />
+          
+          <Route path="/students/:id" element={
+            <StudentDetail 
+              fetchStudents={() => getStudents().then(res => setStudents(res.data))} 
+            />
+          } />
+          
+          <Route path="/staff" element={
+            <Staff 
+              staffList={staffList} 
+              roles={roles} 
+              loading={loading}
+              fetchStaff={() => getStaff().then(res => setStaffList(res.data))} 
+              fetchRoles={() => getRoles().then(res => setRoles(res.data))} 
+            />
+          } />
+          
+          <Route path="/staff/:id" element={
+            <StaffDetail 
+              fetchStaff={() => getStaff().then(res => setStaffList(res.data))} 
+            />
+          } />
+          
+          <Route path="/groups" element={
+            <Groups 
+              groups={groups} 
+              fields={fields} 
+              courses={courses} 
+              rooms={rooms} 
+              staffList={staffList} 
+              fetchGroups={() => getGroups().then(res => setGroups(res.data))} 
+              fetchFields={() => getFields().then(res => setFields(res.data))} 
+              fetchCourses={() => getCourses().then(res => setCourses(res.data))} 
+              fetchRooms={() => getRooms().then(res => setRooms(res.data))} 
+            />
+          } />
+
+          <Route path="/groups/:id" element={
+            <GroupDetail
+              students={students}
+              getStudents={() => getStudents().then(res => setStudents(res.data))}
+              fetchGroups={() => getGroups().then(res => setGroups(res.data))}
+              fields={fields}
+              courses={courses}
+              rooms={rooms}
+              staffList={staffList}
+            />
+          } />
+          <Route path="/payments" element={
+            <Payments students={students} groups={groups} staffList={staffList} />
+          } />
           <Route path="/finance" element={<Finance />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

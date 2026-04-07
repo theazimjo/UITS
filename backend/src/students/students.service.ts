@@ -5,9 +5,6 @@ import { Student } from './entities/student.entity';
 import axios from 'axios';
 import * as https from 'https';
 import { StudentStatus } from './enums/student-status.enum';
-import { FilterStudentDto } from './dto/filter-student.dto';
-import { UpdateStudentDto } from './dto/update-student.dto';
-import { ILike } from 'typeorm';
 
 // Optimized agent for high-concurrency parallel requests (31 days)
 const httpsAgent = new https.Agent({
@@ -35,41 +32,15 @@ export class StudentsService {
     console.log('Mavjud jadvallar:', tables.map((t) => t.table_name).join(', '));
   }
 
-  async findAll(query: FilterStudentDto) {
-    const { page = 1, limit = 10, search, status } = query;
-    const skip = (page - 1) * limit;
-
-    const where: any = {};
-    if (status) {
-      where.status = status;
-    }
-    if (search) {
-      where.name = ILike(`%${search}%`);
-      // You can add more OR conditions if needed, but for simplicity we'll start with name
-    }
-
-    const [items, total] = await this.studentsRepository.findAndCount({
-      where,
-      relations: ['enrollments', 'enrollments.group', 'payments'],
-      order: { id: 'DESC' },
-      skip,
-      take: limit,
-    });
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+  async findAll(): Promise<Student[]> {
+    return this.studentsRepository.find({ relations: ['enrollments', 'enrollments.group', 'payments'] });
   }
 
   async findOne(id: number): Promise<Student | null> {
     return this.studentsRepository.findOne({ where: { id }, relations: ['enrollments', 'enrollments.group', 'payments'] });
   }
 
-  async update(id: number, data: UpdateStudentDto): Promise<Student | null> {
+  async update(id: number, data: Partial<Student>): Promise<Student | null> {
     const student = await this.studentsRepository.findOne({ where: { id } });
     if (!student) return null;
     

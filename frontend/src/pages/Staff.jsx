@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Phone, CheckCircle2, X, Users, ChevronRight, UserSquare2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createStaff, createRole } from '../services/api';
-import useStore from '../store/useStore';
 import Modal from '../components/common/Modal';
+
 import Skeleton from '../components/common/Skeleton';
 
-const Staff = () => {
+const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
   const navigate = useNavigate();
-  const { 
-    staffList, roles, loadingStaff, fetchStaff 
-  } = useStore();
-
   const [activeRoleTab, setActiveRoleTab] = useState('Barchasi');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newStaff, setNewStaff] = useState({
@@ -25,26 +21,16 @@ const Staff = () => {
   const [newRoleName, setNewRoleName] = useState('');
   const [showRoleInput, setShowRoleInput] = useState(false);
 
-  useEffect(() => {
-    if (staffList.length === 0) {
-      fetchStaff();
-    }
-  }, []);
-
   const filteredStaff = activeRoleTab === 'Barchasi'
     ? staffList
     : staffList.filter(s => s.role?.name === activeRoleTab);
 
   const handleAddRole = async () => {
     if (!newRoleName) return;
-    try {
-      await createRole({ name: newRoleName });
-      setNewRoleName('');
-      setShowRoleInput(false);
-      fetchStaff(); // Re-fetch roles and staff
-    } catch (err) {
-      console.error('Error creating role:', err);
-    }
+    await createRole({ name: newRoleName });
+    setNewRoleName('');
+    setShowRoleInput(false);
+    fetchRoles();
   };
 
   const onAddStaffSubmit = async (e) => {
@@ -163,7 +149,7 @@ const Staff = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                  {loadingStaff ? (
+                  {loading ? (
                     Array(6).fill(0).map((_, i) => (
                       <tr key={i}>
                         <td className="px-5 py-3">

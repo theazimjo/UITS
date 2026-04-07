@@ -18,14 +18,10 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie,
   AreaChart, Area
 } from 'recharts';
-import useStore from '../store/useStore';
 import Modal from '../components/common/Modal';
 import Skeleton from '../components/common/Skeleton';
 
-const Dashboard = () => {
-  const { 
-    staffList, groups, loadingStaff, loadingGroups 
-  } = useStore();
+const Dashboard = ({ studentsCount, staffCount, groupsCount, loading }) => {
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   
@@ -132,18 +128,18 @@ const Dashboard = () => {
     },
     {
       label: 'Xodimlar soni',
-      value: (loadingStaff || loadingGen) ? <Skeleton width="40px" height="32px" /> : (staffList.length || 0),
+      value: (loading || loadingGen) ? <Skeleton width="40px" height="32px" /> : (staffCount || 0),
       icon: <Users size={24} />,
       color: 'indigo',
       sub: "Faol ustoz va xodimlar",
       trend: 'neutral'
     },
     {
-      label: 'O\'quvchilar soni', // Changed from predicted revenue to student count for variety
-      value: (loadingGen) ? <Skeleton width="40px" height="32px" /> : (genStats.totalStudents),
-      icon: <UsersRound size={24} />,
+      label: 'Bashorat qilingan tushum',
+      value: (loading || loadingAtt) ? <Skeleton width="140px" height="32px" /> : formatCurrency(attStats.expectedMonthlyRevenue),
+      icon: <Wallet size={24} />,
       color: 'purple',
-      sub: "Jami o'quvchilar soni",
+      sub: `${selectedDate.slice(0, 7)} oyi uchun jami`,
       trend: 'neutral'
     },
     {
