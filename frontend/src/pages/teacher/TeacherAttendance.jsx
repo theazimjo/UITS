@@ -53,179 +53,193 @@ const TeacherAttendance = () => {
   const todayArrived = filteredStudents.filter(s => s.attendance?.[todayDay] === 'present').length;
 
   return (
-    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f]">
-      {/* Toolbar */}
-      <div className="min-h-[56px] flex items-center justify-between px-6 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/20 backdrop-blur-md z-20 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-emerald-500 text-white rounded-md shadow-sm">
-            <ClipboardCheck size={16} />
-          </div>
-          <div>
-            <h2 className="text-[15px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-none">Davomat</h2>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Oylik davomat hisoboti</p>
+    <div className="h-full w-full overflow-hidden bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] scroll-smooth">
+      
+      {/* macOS Title Bar Area */}
+      <div className="h-12 border-b border-gray-200/50 dark:border-white/10 flex items-center px-4 justify-between shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md z-20">
+        <div className="flex items-center w-32">
+          <div className="flex items-center gap-1 text-gray-500 text-[11px] font-medium uppercase tracking-wider">
+            <ClipboardCheck size={16} className="text-[#007aff]" /> <span>Davomat</span>
           </div>
         </div>
-
-        {/* Month Navigation */}
-        <div className="flex items-center gap-3">
-          <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-lg hover:bg-gray-200/50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 transition-colors">
-            <ChevronLeft size={18} />
-          </button>
-          <span className="text-[14px] font-bold text-[#1d1d1f] dark:text-white min-w-[140px] text-center uppercase tracking-tight">{monthLabel}</span>
-          <button onClick={() => changeMonth(1)} className="p-1.5 rounded-lg hover:bg-gray-200/50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 transition-colors">
-            <ChevronRight size={18} />
-          </button>
+        <div className="flex-1 text-center font-medium text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] truncate px-4">
+          Oylik Davomat Jurnali
+        </div>
+        <div className="w-32 flex justify-end">
+          <div className="flex items-center gap-2 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">{new Date().toLocaleDateString('uz-UZ')}</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8 scrollbar-premium bg-[#f5f5f7]/50 dark:bg-[#1d1d1f]/50">
-        {/* Summary Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-white/5 p-6 rounded-[32px] border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl transition-all duration-500 group">
-            <div className="flex items-center gap-4 mb-3">
-              <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl group-hover:scale-110 transition-transform">
-                <Users size={20} />
-              </div>
-              <p className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Jami O'quvchilar</p>
-            </div>
-            <p className="text-3xl font-black text-[#1d1d1f] dark:text-white leading-none">
-              {filteredStudents.length}
-              <span className="text-xs font-bold text-gray-400 ml-2">nafar</span>
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-white/5 p-6 rounded-[32px] border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
-            <div className="flex items-center gap-4 mb-3">
-              <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl group-hover:scale-110 transition-transform">
-                <UserCheck size={20} />
-              </div>
-              <p className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Bugun Kelganlar</p>
-            </div>
-            <p className="text-3xl font-black text-emerald-500 leading-none">
-              {isCurrentMonth ? todayArrived : '—'}
-              <span className="text-xs font-bold opacity-60 ml-2">o'quvchi</span>
-            </p>
-            <div className={`absolute right-4 bottom-4 w-2 h-2 rounded-full animate-pulse bg-emerald-500 ${!isCurrentMonth && 'hidden'}`} />
-          </div>
-
-          <div className="bg-white dark:bg-white/5 p-6 rounded-[32px] border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl transition-all duration-500 flex items-center gap-4">
-             <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl">
-                <Info size={20} />
-             </div>
-             <div className="flex-1">
-               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Guruhni Tanlash</p>
-               <select
-                  value={selectedGroup}
-                  onChange={(e) => setSelectedGroup(e.target.value)}
-                  className="w-full bg-transparent border-none text-[15px] font-black outline-none cursor-pointer text-[#1d1d1f] dark:text-white"
-                >
-                  <option value="all">Barcha guruhlar</option>
-                  {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-             </div>
-          </div>
+      {/* Control Bar (Month & Group) */}
+      <div className="px-6 py-3 border-b border-gray-200/50 dark:border-white/10 bg-white/30 dark:bg-white/5 shrink-0 flex flex-col sm:flex-row justify-between items-center gap-4 z-10">
+        <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
+          <button onClick={() => changeMonth(-1)} className="px-2 py-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-600 dark:text-gray-300">
+            <ChevronLeft size={16} />
+          </button>
+          <span className="px-4 text-[12px] font-bold text-[#1d1d1f] dark:text-white min-w-[140px] text-center">
+            {new Date(currentMonth + '-01').toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' })}
+          </span>
+          <button onClick={() => changeMonth(1)} className="px-2 py-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-600 dark:text-gray-300">
+            <ChevronRight size={16} />
+          </button>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="relative">
-              <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-              <div className="absolute inset-0 blur-xl bg-emerald-500/20 animate-pulse" />
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-white/60 dark:bg-black/20 rounded-md border border-gray-200/50 dark:border-white/10 px-3 py-1.5 shadow-sm">
+            <Users size={14} className="text-gray-400 mr-2" />
+            <select
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
+              className="bg-transparent border-none text-[12px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] outline-none cursor-pointer pr-4"
+            >
+              <option value="all" className="bg-white dark:bg-[#1e1e1e] text-[#1d1d1f] dark:text-[#f5f5f7]">Barcha guruhlar</option>
+              {uniqueGroups.map(g => (
+                <option key={g} value={g} className="bg-white dark:bg-[#1e1e1e] text-[#1d1d1f] dark:text-[#f5f5f7]">
+                  {g}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : filteredStudents.length === 0 ? (
-          <div className="text-center py-32 bg-white dark:bg-white/5 rounded-[40px] border border-gray-100 dark:border-white/10 shadow-inner">
-            <div className="w-20 h-20 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-              <UserX size={40} className="text-gray-200 dark:text-gray-700" />
-            </div>
-            <p className="text-[16px] text-gray-400 font-bold tracking-tight">Hozircha talabalar ro'yxati bo'sh</p>
-          </div>
-        ) : (
-          /* Attendance Table */
-          <div className="bg-white/80 dark:bg-black/40 backdrop-blur-2xl rounded-[40px] border border-gray-200/50 dark:border-white/10 shadow-2xl overflow-hidden hover:border-emerald-500/20 transition-colors duration-700">
-            <div className="overflow-x-auto scrollbar-premium">
-              <table className="w-full text-[12px] border-collapse">
-                <thead>
-                  <tr className="bg-gray-50/50 dark:bg-white/2 border-b border-gray-200/50 dark:border-white/10">
-                    <th className="text-left px-8 py-6 font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] sticky left-0 bg-gray-50/80 dark:bg-[#1e1e1e] z-10 min-w-[240px] backdrop-blur-md">
-                      Talaba Ismi
-                    </th>
-                    <th className="text-left px-4 py-6 font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] min-w-[140px]">
-                      Guruh
-                    </th>
-                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                      <th 
-                        key={day} 
-                        className={`text-center px-1 py-6 font-black min-w-[40px] transition-all relative ${isCurrentMonth && day === todayDay ? 'text-emerald-500' : 'text-gray-400'}`}
-                      >
-                        {day}
-                        {isCurrentMonth && day === todayDay && (
-                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-500 rounded-full" />
-                        )}
-                      </th>
-                    ))}
-                    <th className="text-center px-6 py-6 font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] min-w-[80px]">Davomat</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStudents.map((student) => {
-                    const att = student.attendance || {};
-                    const totalDays = Object.keys(att).length;
-                    const presentDays = Object.values(att).filter(v => v === 'present').length;
-                    const pct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+        </div>
+      </div>
 
-                    return (
-                      <tr key={student.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-all duration-300 group">
-                        <td className="px-8 py-4 sticky left-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-gray-50 dark:group-hover:bg-white/5 transition-colors border-r border-gray-100 dark:border-white/5 backdrop-blur-md">
-                          <div className="flex items-center gap-4">
-                            {student.photo ? (
-                              <img src={student.photo} alt="" className="w-10 h-10 rounded-2xl object-cover shadow-sm group-hover:scale-110 transition-transform duration-500" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-[12px] font-black shadow-lg group-hover:scale-110 transition-transform duration-500">
-                                {student.name?.charAt(0)}
-                              </div>
-                            )}
-                            <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-[#1d1d1f] dark:text-white truncate max-w-[160px] tracking-tight text-[13px]">{student.name}</span>
-                                <span className="text-[10px] text-gray-400 font-medium">ID: {student.externalId || 'N/A'}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-gray-500 dark:text-gray-400 text-[11px] font-bold tracking-tight uppercase opacity-60">{student.groupName}</td>
-                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                          const status = att[day];
-                          const isToday = isCurrentMonth && day === todayDay;
-                          return (
-                            <td key={day} className={`text-center px-0.5 py-4 ${isToday ? 'bg-emerald-500/[0.03]' : ''}`}>
-                              {status === 'present' ? (
-                                <div className="flex justify-center">
-                                  <div className="w-7 h-7 rounded-[10px] bg-emerald-500 text-white flex items-center justify-center text-[10px] font-black shadow-[0_4px_12px_rgba(16,185,129,0.3)] scale-100 group-hover:scale-110 transition-transform">✓</div>
-                                </div>
-                              ) : status === 'absent' ? (
-                                <div className="flex justify-center">
-                                  <div className="w-7 h-7 rounded-[10px] bg-rose-500 text-white flex items-center justify-center text-[10px] font-black shadow-[0_4px_12px_rgba(244,63,94,0.3)] scale-100 group-hover:scale-110 transition-transform">✗</div>
-                                </div>
+      <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 relative">
+        <div className="max-w-[1400px] mx-auto space-y-6 h-full">
+          
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in text-left">
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm flex items-center justify-between group overflow-hidden relative">
+              <div className="absolute -right-4 -bottom-4 text-[#007aff]/5 group-hover:scale-110 transition-transform duration-1000">
+                <Users size={120} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-1 text-[#007aff]">
+                  <Users size={16} />
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest leading-none">Jami O'quvchilar</p>
+                </div>
+                <p className="text-2xl font-bold text-[#1d1d1f] dark:text-white leading-tight">
+                  {filteredStudents.length} <span className="text-xs font-medium text-gray-400">nafar</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm flex items-center justify-between group overflow-hidden relative">
+               <div className="absolute -right-4 -bottom-4 text-[#34c759]/5 group-hover:scale-110 transition-transform duration-1000">
+                <UserCheck size={120} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-1 text-[#34c759]">
+                  <UserCheck size={16} />
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest leading-none">Bugun Kelganlar</p>
+                </div>
+                <p className="text-2xl font-bold text-[#34c759] leading-tight">
+                  {isCurrentMonth ? todayArrived : '---'} <span className="text-xs font-medium opacity-60">o'quvchi</span>
+                </p>
+              </div>
+              <div className="relative z-10 text-right">
+                 <p className="text-[9px] text-gray-400 uppercase font-black mb-1.5 tracking-tighter">Holat</p>
+                 <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${isCurrentMonth ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-gray-100 text-gray-400'}`}>
+                    {isCurrentMonth ? 'LIVE' : 'OFFLINE'}
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-40 animate-pulse">
+               <Loader2 className="w-8 h-8 text-[#007aff] animate-spin mb-4" />
+               <p className="text-[13px] font-medium text-gray-500">Ma'lumotlar yuklanmoqda...</p>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-40 bg-white/40 dark:bg-black/10 rounded-xl border border-gray-200/50 dark:border-white/5 border-dashed">
+              <UserX size={48} className="text-gray-200 dark:text-gray-700 mb-6" />
+              <p className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white">O'quvchilar topilmadi</p>
+              <p className="text-[12px] text-gray-500 mt-2">Tanlangan guruh yoki oyda o'quvchilar yo'q</p>
+            </div>
+          ) : (
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10">
+                <table className="w-full text-left text-[13px]">
+                  <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-20">
+                    <tr>
+                      <th className="px-5 py-3 font-medium uppercase tracking-wider text-[11px] sticky left-0 bg-gray-100 dark:bg-[#1e1e1e] z-30 min-w-[220px]">
+                        Ism-sharif
+                      </th>
+                      <th className="px-5 py-3 font-medium uppercase tracking-wider text-[11px] min-w-[130px]">Guruh</th>
+                      {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
+                        <th 
+                          key={day} 
+                          className={`text-center px-1 py-3 font-bold min-w-[42px] transition-all relative ${isCurrentMonth && day === todayDay ? 'text-[#007aff] bg-[#007aff]/5' : ''}`}
+                        >
+                          <span className="text-[11px]">{day}</span>
+                          {isCurrentMonth && day === todayDay && (
+                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#007aff]" />
+                          )}
+                        </th>
+                      ))}
+                      <th className="px-5 py-3 font-medium uppercase tracking-wider text-[11px] text-center sticky right-0 bg-gray-100 dark:bg-[#1e1e1e] z-30 min-w-[70px]">FOIZ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                    {filteredStudents.map((student) => {
+                      const att = student.attendance || {};
+                      const totalDays = Object.keys(att).length;
+                      const presentDays = Object.values(att).filter(v => v === 'present').length;
+                      const pct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+                      return (
+                        <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group text-left">
+                          <td className="px-5 py-3 sticky left-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-[#007aff]/5 transition-colors border-r border-gray-100 dark:border-white/5">
+                            <div className="flex items-center gap-3">
+                              {student.photo ? (
+                                <img src={student.photo} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm" />
                               ) : (
-                                <div className="flex justify-center opacity-10">
-                                  <div className="w-7 h-7 rounded-[10px] bg-gray-200 dark:bg-white/10 text-gray-400 flex items-center justify-center text-[10px] leading-6">—</div>
+                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[11px] font-bold text-gray-500">
+                                  {student.name?.substring(0, 1)}
                                 </div>
                               )}
-                            </td>
-                          );
-                        })}
-                        <td className="text-center px-6 py-4">
-                          <div className={`text-[10px] font-black inline-block px-3 py-1 rounded-full ${pct >= 80 ? 'bg-emerald-500/10 text-emerald-600' : pct >= 50 ? 'bg-amber-500/10 text-amber-600' : 'bg-rose-500/10 text-rose-600'}`}>
-                            {pct}%
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                              <span className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[150px]">{student.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-gray-500 text-[12px]">{student.groupName}</td>
+                          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                            const status = att[day];
+                            const isToday = isCurrentMonth && day === todayDay;
+                            return (
+                              <td key={day} className={`text-center px-0.5 py-3 ${isToday ? 'bg-[#007aff]/[0.02]' : ''}`}>
+                                {status === 'present' ? (
+                                  <div className="flex justify-center">
+                                    <div className="w-6 h-6 rounded-md bg-[#34c759] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(52,199,89,0.3)]">✓</div>
+                                  </div>
+                                ) : status === 'absent' ? (
+                                  <div className="flex justify-center">
+                                    <div className="w-6 h-6 rounded-md bg-[#ff3b30] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(255,59,48,0.3)]">✗</div>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-center opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-400 flex items-center justify-center text-[10px]">—</div>
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="px-5 py-3 text-center sticky right-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-[#007aff]/5 transition-colors border-l border-gray-100 dark:border-white/5 font-bold">
+                            <span className={`${pct >= 80 ? 'text-[#34c759]' : pct >= 50 ? 'text-[#ff9500]' : 'text-[#ff3b30]'} text-[11px]`}>
+                              {pct}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
