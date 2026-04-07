@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   ChevronLeft, User, Phone, MapPin, Calendar,
   BookOpen, Trash2, Search, Info, Edit2,
@@ -11,6 +11,11 @@ import { getStudentById, getPaymentsByStudent, getStudentAttendance, updateStude
 const StudentDetail = ({ fetchStudents }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isTeacherPortal = location.pathname.startsWith('/teacher');
+  const backPath = isTeacherPortal ? '/teacher/attendance' : '/students';
+  const portalPrefix = isTeacherPortal ? '/teacher' : '';
+
   const [student, setStudent] = useState(null);
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -113,8 +118,8 @@ const StudentDetail = ({ fetchStudents }) => {
       {/* macOS Title Bar Area */}
       <div className="h-12 border-b border-gray-200/50 dark:border-white/10 flex items-center px-4 justify-between shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md z-20">
         <div className="flex items-center w-32">
-          <button onClick={() => navigate('/students')} className="flex items-center gap-1 text-gray-500 hover:text-[#1d1d1f] dark:hover:text-white transition-colors text-[12px] font-medium">
-            <ChevronLeft size={16} /> <span>O'quvchilar</span>
+          <button onClick={() => navigate(backPath)} className="flex items-center gap-1 text-gray-500 hover:text-[#1d1d1f] dark:hover:text-white transition-colors text-[12px] font-medium">
+            <ChevronLeft size={16} /> <span>{isTeacherPortal ? 'Davomat' : "O'quvchilar"}</span>
           </button>
         </div>
         <div className="flex-1 text-center font-medium text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] truncate px-4">
@@ -308,7 +313,7 @@ const StudentDetail = ({ fetchStudents }) => {
                           })()}
                         </td>
                         <td className="px-5 py-3 text-right">
-                          <Link to={`/groups/${en.group?.id}`} className="inline-flex items-center gap-1 text-[#007aff] hover:underline font-medium text-[12px]">
+                          <Link to={`${portalPrefix}/groups/${en.group?.id}`} className="inline-flex items-center gap-1 text-[#007aff] hover:underline font-medium text-[12px]">
                             Guruhga o'tish <ArrowRight size={12} />
                           </Link>
                         </td>

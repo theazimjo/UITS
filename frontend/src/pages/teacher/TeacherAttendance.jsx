@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getTeacherAttendance } from '../../services/api';
 import { ClipboardCheck, ChevronLeft, ChevronRight, Loader2, UserCheck, UserX, Users, Info } from 'lucide-react';
 
@@ -201,7 +202,12 @@ const TeacherAttendance = () => {
                                   {student.name?.substring(0, 1)}
                                 </div>
                               )}
-                              <span className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[150px]">{student.name}</span>
+                              <Link 
+                                to={`/teacher/students/${student.id}`}
+                                className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[150px] hover:text-[#007aff] hover:underline transition-colors"
+                              >
+                                {student.name}
+                              </Link>
                             </div>
                           </td>
                           <td className="px-5 py-3 text-gray-500 text-[12px]">{student.groupName}</td>

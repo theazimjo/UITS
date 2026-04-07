@@ -210,6 +210,7 @@ function App() {
         }>
           <Route path="dashboard" element={<TeacherDashboard />} />
           <Route path="attendance" element={<TeacherAttendance />} />
+          <Route path="students/:id" element={<StudentDetail />} />
           <Route path="groups" element={<TeacherGroups />} />
           <Route path="finance" element={<TeacherFinance />} />
           <Route path="settings" element={<TeacherSettings />} />
