@@ -31,6 +31,9 @@ export default defineConfig({
       }
     })
   ],
+  optimizeDeps: {
+    include: ['react-is']
+  },
   server: {
     host: true,
     watch: {
