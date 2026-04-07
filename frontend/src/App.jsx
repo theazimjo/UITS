@@ -100,11 +100,7 @@ function App() {
     navigate('/login');
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black text-black dark:text-white">
-      <div className="w-12 h-12 border-4 border-[#007aff] border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+  // Global loading is handled by Layout/ProtectedRoute or per-page via the loading prop
 
   return (
     <>
@@ -132,6 +128,7 @@ function App() {
               studentsCount={students.length} 
               staffCount={staffList.length} 
               groupsCount={groups.length} 
+              loading={loading}
             />
           } />
           
@@ -139,6 +136,7 @@ function App() {
             <Students 
               students={students} 
               syncing={syncing} 
+              loading={loading}
               setStudents={setStudents}
               handleSync={async () => { 
                 setSyncing(true); 
@@ -159,6 +157,7 @@ function App() {
             <Staff 
               staffList={staffList} 
               roles={roles} 
+              loading={loading}
               fetchStaff={() => getStaff().then(res => setStaffList(res.data))} 
               fetchRoles={() => getRoles().then(res => setRoles(res.data))} 
             />

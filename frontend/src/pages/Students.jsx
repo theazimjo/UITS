@@ -3,9 +3,10 @@ import { RefreshCw, Trash2, Phone, Users, ChevronRight, Fingerprint, Search, Che
 import { useNavigate } from 'react-router-dom';
 import { getStudents, deleteAllStudents } from '../services/api';
 
-const { useState, useMemo, useEffect } = React;
+import { useState, useMemo, useEffect } from 'react';
+import Skeleton from '../components/common/Skeleton';
 
-const Students = ({ students, syncing, handleSync, setStudents }) => {
+const Students = ({ students, syncing, loading, handleSync, setStudents }) => {
   const navigate = useNavigate();
   // Qidiruv va Sahifalash state'lari
   const [searchTerm, setSearchTerm] = useState('');
@@ -150,7 +151,26 @@ const Students = ({ students, syncing, handleSync, setStudents }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                  {paginatedStudents.length > 0 ? (
+                  {loading ? (
+                    Array(8).fill(0).map((_, i) => (
+                      <tr key={i}>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <Skeleton variant="circle" width="36px" height="36px" />
+                            <div className="space-y-2 flex-1">
+                              <Skeleton width="120px" height="14px" />
+                              <Skeleton width="80px" height="10px" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3"><Skeleton width="80px" height="20px" className="rounded-full" /></td>
+                        <td className="px-5 py-3"><Skeleton width="100px" height="14px" /></td>
+                        <td className="px-5 py-3"><Skeleton width="90px" height="14px" /></td>
+                        <td className="px-5 py-3"><Skeleton width="120px" height="14px" /></td>
+                        <td className="px-5 py-3"></td>
+                      </tr>
+                    ))
+                  ) : paginatedStudents.length > 0 ? (
                     paginatedStudents.map((student) => {
                       const activeEnrollment = student.enrollments?.find(e => e.status === 'ACTIVE');
                       const activeGroup = activeEnrollment?.group;

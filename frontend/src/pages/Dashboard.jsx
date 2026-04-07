@@ -15,11 +15,13 @@ import {
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie
+  ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie,
+  AreaChart, Area
 } from 'recharts';
 import Modal from '../components/common/Modal';
+import Skeleton from '../components/common/Skeleton';
 
-const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
+const Dashboard = ({ studentsCount, staffCount, groupsCount, loading }) => {
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   
@@ -117,16 +119,16 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
   const statsList = [
     {
       label: attStats.isHistory ? `Davomat (${formatDateLabel(selectedDate)})` : 'Bugun kutilgan',
-      value: loadingAtt ? '...' : `${attStats.arrived} / ${attStats.expected}`,
+      value: (loading || loadingAtt) ? <Skeleton width="100px" height="32px" /> : `${attStats.arrived} / ${attStats.expected}`,
       icon: <UserCheck size={24} />,
       color: 'blue',
-      sub: `${attStats.percentage}% davomat ko'rsatkichi`,
+      sub: (loading || loadingAtt) ? <Skeleton width="140px" height="12px" /> : `${attStats.percentage}% davomat ko'rsatkichi`,
       trend: attStats.percentage >= 80 ? 'up' : 'neutral',
       onClick: () => setIsStatsModalOpen(true)
     },
     {
       label: 'Xodimlar soni',
-      value: staffCount || 0,
+      value: (loading || loadingGen) ? <Skeleton width="40px" height="32px" /> : (staffCount || 0),
       icon: <Users size={24} />,
       color: 'indigo',
       sub: "Faol ustoz va xodimlar",
@@ -134,7 +136,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     },
     {
       label: 'Bashorat qilingan tushum',
-      value: loadingAtt ? '...' : formatCurrency(attStats.expectedMonthlyRevenue),
+      value: (loading || loadingAtt) ? <Skeleton width="140px" height="32px" /> : formatCurrency(attStats.expectedMonthlyRevenue),
       icon: <Wallet size={24} />,
       color: 'purple',
       sub: `${selectedDate.slice(0, 7)} oyi uchun jami`,
@@ -142,7 +144,7 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
     },
     {
       label: attStats.isHistory ? 'Kunlik tushum' : 'Bugun tushgan tushum',
-      value: loadingAtt ? '...' : formatCurrency(attStats.todayRevenue),
+      value: (loading || loadingAtt) ? <Skeleton width="140px" height="32px" /> : formatCurrency(attStats.todayRevenue),
       icon: <Banknote size={24} />,
       color: 'emerald',
       sub: attStats.isHistory ? formatDateLabel(selectedDate) : 'Bugungi kassa',
@@ -253,48 +255,85 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2 text-[#1d1d1f] dark:text-white">
                     <Banknote size={22} className="text-[#34c759]" />
-                    Moliya tahlili
+                    Moliya tahlili (Oxirgi oylar)
                   </h3>
-                  <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Oylik tendensiya</p>
+                  <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Oylik kassa va harajatlar</p>
                 </div>
                 <div className="flex gap-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#34c759]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
                     <span className="text-[11px] font-black text-gray-500 tracking-tighter uppercase">Kirim</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#ffcc00]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" />
                     <span className="text-[11px] font-black text-gray-500 tracking-tighter uppercase">Chiqim</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex-1 w-full min-h-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={processedFinanceData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.08} />
-                    <XAxis
-                      dataKey="label"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: '#888', fontWeight: 700 }}
-                      dy={15}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: '#888', fontWeight: 700 }}
-                    />
-                    <Tooltip
-                      contentStyle={{ borderRadius: '1.25rem', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(15px)', padding: '12px' }}
-                      labelStyle={{ fontSize: '11px', fontWeight: '900', color: '#1d1d1f', marginBottom: '8px', textTransform: 'uppercase' }}
-                      itemStyle={{ fontSize: '13px', fontWeight: 'bold', padding: '2px 0' }}
-                      formatter={(value) => formatCurrency(value)}
-                    />
-                    <Bar dataKey="income" fill="#34c759" radius={[6, 6, 0, 0]} barSize={34} animationDuration={1500} />
-                    <Bar dataKey="expense" fill="#ffcc00" radius={[6, 6, 0, 0]} barSize={34} animationDuration={1500} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {(loading || loadingFinance) ? (
+                  <Skeleton variant="rect" width="100%" height="100%" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={processedFinanceData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.08} />
+                      <XAxis
+                        dataKey="label"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: '#888', fontWeight: 700 }}
+                        dy={15}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: '#888', fontWeight: 700 }}
+                      />
+                      <Tooltip
+                        contentStyle={{ 
+                          borderRadius: '1.25rem', 
+                          border: 'none', 
+                          boxShadow: '0 20px 50px rgba(0,0,0,0.15)', 
+                          background: 'rgba(255,255,255,0.95)', 
+                          backdropFilter: 'blur(15px)', 
+                          padding: '12px' 
+                        }}
+                        labelStyle={{ fontSize: '11px', fontWeight: '900', color: '#1d1d1f', marginBottom: '8px', textTransform: 'uppercase' }}
+                        itemStyle={{ fontSize: '13px', fontWeight: 'bold', padding: '2px 0' }}
+                        formatter={(value) => formatCurrency(value)}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="income" 
+                        stroke="#10b981" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#colorIncome)" 
+                        animationDuration={2000}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="expense" 
+                        stroke="#f59e0b" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#colorExpense)" 
+                        animationDuration={2000}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
           </div>
@@ -315,7 +354,17 @@ const Dashboard = ({ studentsCount, staffCount, groupsCount }) => {
             </div>
 
             <div className="flex flex-col gap-3">
-              {genStats.activity.length > 0 ? genStats.activity.map((act, i) => (
+              {(loading || loadingGen) ? (
+                Array(5).fill(0).map((_, i) => (
+                  <div key={i} className="flex gap-5 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 transition-all">
+                    <Skeleton variant="rect" width="48px" height="48px" className="rounded-xl" />
+                    <div className="flex-1 flex flex-col justify-between py-1">
+                      <Skeleton width="60%" height="16px" />
+                      <Skeleton width="40%" height="12px" />
+                    </div>
+                  </div>
+                ))
+              ) : genStats.activity.length > 0 ? genStats.activity.map((act, i) => (
                 <div key={i} className="flex gap-5 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-[#007aff]/40 transition-all group cursor-default hover:bg-white dark:hover:bg-white/10 hover:shadow-md">
                   <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 shadow-sm ${act.type === 'PAYMENT' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'}`}>
                     {act.type === 'PAYMENT' ? <Banknote size={20} /> : <UserPlus size={20} />}

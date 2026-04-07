@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { createStaff, createRole } from '../services/api';
 import Modal from '../components/common/Modal';
 
-const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
+import Skeleton from '../components/common/Skeleton';
+
+const Staff = ({ staffList, roles, loading, fetchStaff, fetchRoles }) => {
   const navigate = useNavigate();
   const [activeRoleTab, setActiveRoleTab] = useState('Barchasi');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -147,7 +149,23 @@ const Staff = ({ staffList, roles, fetchStaff, fetchRoles }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                  {filteredStaff.length > 0 ? filteredStaff.map((staff) => (
+                  {loading ? (
+                    Array(6).fill(0).map((_, i) => (
+                      <tr key={i}>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <Skeleton variant="circle" width="36px" height="36px" />
+                            <div className="space-y-2 flex-1">
+                              <Skeleton width="140px" height="14px" />
+                              <Skeleton width="90px" height="10px" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3"><Skeleton width="120px" height="14px" /></td>
+                        <td className="px-5 py-3"></td>
+                      </tr>
+                    ))
+                  ) : filteredStaff.length > 0 ? filteredStaff.map((staff) => (
                     <tr
                       key={staff.id}
                       onClick={() => navigate(`/staff/${staff.id}`)}
