@@ -23,25 +23,25 @@ git pull origin main
 
 # 2. Tozalash (Eski konteynerlarni to'xtatish juda muhim!)
 echo "[2/5] Eski konteynerlarni to'xtatish va joy ochish..."
-docker-compose -f docker-compose.prod.yml down || true
+docker compose -f docker-compose.prod.yml down || true
 docker system prune -f --volumes
 
 # 3. Ketma-ket build qilish (Resurslarni tejash uchun)
 echo "[3/5] Servislarni ketma-ket build qilish..."
 
 echo "   > Backendni build qilish..."
-docker-compose -f docker-compose.prod.yml build backend
+docker compose -f docker-compose.prod.yml build backend
 
 echo "   > Frontendni build qilish (bu biroz vaqt olishi mumkin)..."
-docker-compose -f docker-compose.prod.yml build frontend
+docker compose -f docker-compose.prod.yml build frontend
 
 # 4. Servislarni ishga tushirish
 echo "[4/5] Yangi imageni build qilib, konteynerni ishga tushirish..."
-docker-compose -f docker-compose.prod.yml --env-file .env up -d --no-build
+docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build
 
 # 5. Natijani tekshirish
 echo "[5/5] Konteynern holati:"
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 echo ""
 echo "✅ Deploy muvaffaqiyatli yakunlandi!"
