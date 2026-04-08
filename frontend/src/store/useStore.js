@@ -13,9 +13,11 @@ const useStore = create((set, get) => ({
   fields: [],
   courses: [],
   rooms: [],
+  user: null,
   loading: false,
   
   // Setters with safety checks
+  setUser: (user) => set({ user }),
   setLoading: (val) => set({ loading: val }),
   setStudents: (data) => set({ students: Array.isArray(data) ? data : [] }),
   setStaff: (data) => set({ staff: Array.isArray(data) ? data : [] }),

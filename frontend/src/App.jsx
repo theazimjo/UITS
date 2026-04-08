@@ -39,8 +39,7 @@ import { Wallet } from 'lucide-react';
 import useStore from './store/useStore';
 
 function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const { refreshAllRows } = useStore();
+  const { user, setUser, refreshAllRows } = useStore();
   
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -58,12 +57,12 @@ function App() {
     const token = localStorage.getItem('access_token');
     const userStr = localStorage.getItem('user');
     if (token && userStr) {
-      const user = JSON.parse(userStr);
-      setCurrentUser(user);
+      const u = JSON.parse(userStr);
+      setUser(u);
       
       // Initial redirect if at root
       if (location.pathname === '/' || location.pathname === '/login') {
-        if (user.role === 'teacher') {
+        if (u.role === 'teacher') {
           navigate('/teacher/dashboard');
         } else {
           navigate('/dashboard');
@@ -80,7 +79,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('access_token'); 
     localStorage.removeItem('user');
-    setCurrentUser(null); 
+    setUser(null); 
     navigate('/login');
   };
 
@@ -90,10 +89,10 @@ function App() {
     <>
       <Routes>
         <Route path="/login" element={
-          <Login onLoginSuccess={(user) => { 
-            setCurrentUser(user); 
+          <Login onLoginSuccess={(u) => { 
+            setUser(u); 
             refreshAllRows();
-            if (user.role === 'teacher') {
+            if (u.role === 'teacher') {
               navigate('/teacher/dashboard');
             } else {
               navigate('/dashboard'); 
@@ -104,7 +103,7 @@ function App() {
         {/* Admin Routes */}
         <Route element={
           <ProtectedRoute>
-            <Layout currentUser={currentUser} onLogout={handleLogout} />
+            <Layout currentUser={user} onLogout={handleLogout} />
           </ProtectedRoute>
         }>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -130,7 +129,7 @@ function App() {
         {/* Teacher Routes */}
         <Route path="/teacher" element={
           <ProtectedRoute>
-            <TeacherLayout currentUser={currentUser} onLogout={handleLogout} />
+            <TeacherLayout currentUser={user} onLogout={handleLogout} />
           </ProtectedRoute>
         }>
           <Route path="dashboard" element={<TeacherDashboard />} />
@@ -141,8 +140,8 @@ function App() {
           <Route path="settings" element={<TeacherSettings />} />
         </Route>
         
-        <Route path="/" element={<Navigate to={currentUser?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
-        <Route path="*" element={<Navigate to={currentUser?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
+        <Route path="/" element={<Navigate to={user?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
+        <Route path="*" element={<Navigate to={user?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
       </Routes>
     </>
   );
