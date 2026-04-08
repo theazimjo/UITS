@@ -17,6 +17,7 @@ import { GroupPhase } from '../groups/entities/group-phase.entity';
 import { Staff } from './entities/staff.entity';
 import { EnrollmentStatus } from '../groups/enums/enrollment-status.enum';
 import { GroupStatus } from '../groups/enums/group-status.enum';
+import { AttendanceRecord } from '../students/entities/attendance-record.entity';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -39,6 +40,8 @@ export class TeacherController {
     private readonly staffRepo: Repository<Staff>,
     @InjectRepository(GroupPhase)
     private readonly groupPhaseRepo: Repository<GroupPhase>,
+    @InjectRepository(AttendanceRecord)
+    private readonly attendanceRecordRepo: Repository<AttendanceRecord>,
   ) {}
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -219,11 +222,16 @@ export class TeacherController {
     return Array.from(studentMap.values());
   }
 
-  // GET /teacher/my-attendance?date=YYYY-MM-DD — attendance for teacher's students
+  // GET /teacher/my-attendance?date=YYYY-MM-DD&sync=true — attendance for teacher's students
   @UseGuards(JwtAuthGuard)
   @Get('my-attendance')
-  async getMyAttendance(@Req() req: any, @Query('date') dateStr?: string) {
+  async getMyAttendance(
+    @Req() req: any, 
+    @Query('date') dateStr?: string,
+    @Query('sync') sync?: string
+  ) {
     const staffId = req.user.userId;
+    const isForcedSync = sync === 'true';
     const targetDate = dateStr || new Date().toISOString().split('T')[0];
     const targetMonth = targetDate.slice(0, 7);
     const [year, month] = targetMonth.split('-').map(Number);
@@ -232,72 +240,117 @@ export class TeacherController {
     const monthStart = `${targetMonth}-01`;
     const monthEnd = `${targetMonth}-${String(daysInMonth).padStart(2, '0')}`;
 
-    // 1. Get all phases for this teacher
-    const phases = await this.groupPhaseRepo.find({
-      where: { teacherId: staffId },
-      relations: ['group', 'group.enrollments', 'group.enrollments.student'],
-    });
+    // 1. Broad Discovery: Get students from both direct Group assignments and GroupPhases
+    const [directGroups, phases] = await Promise.all([
+      this.groupRepo.find({
+        where: { teacherId: staffId, status: GroupStatus.ACTIVE },
+        relations: ['enrollments', 'enrollments.student'],
+      }),
+      this.groupPhaseRepo.find({
+        where: { teacherId: staffId },
+        relations: ['group', 'group.enrollments', 'group.enrollments.student'],
+      })
+    ]);
 
     const studentMap = new Map<number, any>();
 
-    // 2. Filter phases that overlap with the target month
+    const addStudentsFromGroup = (group: Group) => {
+      if (!group || !group.enrollments) return;
+      group.enrollments.forEach((e) => {
+        if ((e.status === EnrollmentStatus.ACTIVE || e.status === EnrollmentStatus.GRADUATED) && e.student) {
+          if (!studentMap.has(e.student.id)) {
+            studentMap.set(e.student.id, {
+              id: e.student.id,
+              name: e.student.name,
+              photo: e.student.photo,
+              externalId: e.student.externalId || null,
+              groupName: group.name,
+              groupId: group.id,
+              attendance: {} as Record<string, any>,
+            });
+          }
+        }
+      });
+    };
+
+    directGroups.forEach(g => addStudentsFromGroup(g));
     phases.forEach((p) => {
       const pStart = p.startDate;
       const pEnd = p.endDate || '9999-12-31';
-
       if (pStart <= monthEnd && pEnd >= monthStart) {
-        p.group?.enrollments?.forEach((e) => {
-          if ((e.status === EnrollmentStatus.ACTIVE || e.status === EnrollmentStatus.GRADUATED) && e.student) {
-            if (!studentMap.has(e.student.id)) {
-              studentMap.set(e.student.id, {
-                id: e.student.id,
-                name: e.student.name,
-                photo: e.student.photo,
-                externalId: e.student.externalId || null,
-                groupName: p.group.name,
-                groupId: p.group.id,
-                attendance: {} as Record<string, string>,
-              });
-            }
-          }
-        });
+        addStudentsFromGroup(p.group);
       }
     });
 
-    // Add students from both current groups and historical phases
     const students = Array.from(studentMap.values());
     const studentsWithId = students.filter(s => s.externalId);
 
+    // 2. Caching layer: Check for existing records in our DB
+    if (!isForcedSync) {
+      const extIds = studentsWithId.map(s => s.externalId);
+      if (extIds.length > 0) {
+        const cachedRecords = await this.attendanceRecordRepo.createQueryBuilder('ar')
+          .where('ar.externalId IN (:...ids)', { ids: extIds })
+          .andWhere('ar.date >= :start AND ar.date <= :end', { start: monthStart, end: monthEnd })
+          .getMany();
+
+        if (cachedRecords.length > 0) {
+          cachedRecords.forEach(rec => {
+            const student = studentsWithId.find(s => s.externalId === rec.externalId);
+            if (student) {
+              const dayNum = parseInt(rec.date.split('-')[2]);
+              student.attendance[dayNum] = {
+                status: rec.status,
+                arrived_at: rec.arrivedAt,
+                left_at: rec.leftAt
+              };
+            }
+          });
+          return { month: targetMonth, daysInMonth, students, fromCache: true };
+        }
+      }
+    }
+
+    // 3. Fetch from External API
     try {
       const attendancePromises = studentsWithId.map(async (student) => {
         try {
           const response = await axios.get(
-            `https://schoolmanage.uz/api/student/${student.externalId}`,
+            `https://schoolmanage.uz/api/student/${student.externalId}?date=${targetDate}`,
             { headers: { 'X-Employee-ID': '1' }, httpsAgent, timeout: 10000 },
           );
           const records = response.data.recent_attendance || [];
-          records.forEach((rec: any) => {
-            const recDate = new Date(rec.date);
-            if (recDate.getMonth() + 1 === month && recDate.getFullYear() === year) {
-              const day = recDate.getDate();
-              student.attendance[day] = rec.status?.toLowerCase() === 'present' ? 'present' : 'absent';
+          
+          for (const rec of records) {
+            const recDateStr = rec.date;
+            if (recDateStr.startsWith(targetMonth)) {
+              const day = parseInt(recDateStr.split('-')[2]);
+              const status = rec.status?.toLowerCase() === 'present' ? 'present' : 'absent';
+              const arrTime = rec.arrived_at && rec.arrived_at !== 'None' && rec.arrived_at !== '0' ? rec.arrived_at : null;
+              const depTime = rec.left_at && rec.left_at !== 'None' && rec.left_at !== '0' ? rec.left_at : null;
+
+              student.attendance[day] = { status, arrived_at: arrTime, left_at: depTime };
+
+              // Update cache
+              await this.attendanceRecordRepo.upsert({
+                externalId: student.externalId,
+                date: recDateStr,
+                status,
+                arrivedAt: arrTime,
+                leftAt: depTime
+              }, ['externalId', 'date']);
             }
-          });
-        } catch {
-          // Skip failed fetches
+          }
+        } catch (e) {
+          console.error(`Fetch error for ${student.name}:`, e.message);
         }
       });
-
       await Promise.all(attendancePromises);
-    } catch {
-      // Ignore bulk errors
+    } catch (e) {
+      console.error('Bulk fetch error:', e.message);
     }
 
-    return {
-      month: targetMonth,
-      daysInMonth,
-      students,
-    };
+    return { month: targetMonth, daysInMonth, students, fromCache: false };
   }
 
   // GET /teacher/my-finance?month=YYYY-MM — payments for teacher's groups

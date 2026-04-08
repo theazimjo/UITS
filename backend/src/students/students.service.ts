@@ -5,6 +5,7 @@ import { Student } from './entities/student.entity';
 import axios from 'axios';
 import * as https from 'https';
 import { StudentStatus } from './enums/student-status.enum';
+import { AttendanceRecord } from './entities/attendance-record.entity';
 
 // Optimized agent for high-concurrency parallel requests (31 days)
 const httpsAgent = new https.Agent({
@@ -23,6 +24,8 @@ export class StudentsService {
   constructor(
     @InjectRepository(Student)
     private readonly studentsRepository: Repository<Student>,
+    @InjectRepository(AttendanceRecord)
+    private readonly attendanceRecordRepo: Repository<AttendanceRecord>,
   ) {}
 
   async onApplicationBootstrap() {
@@ -87,32 +90,68 @@ export class StudentsService {
       return { recent_attendance: [] };
     }
 
+    const targetDateStr = dateStr || new Date().toISOString().split('T')[0];
+    const targetMonth = targetDateStr.slice(0, 7);
+    const monthStart = `${targetMonth}-01`;
+    const monthEnd = `${targetMonth}-31`; // Simple approximation
+
     try {
-      // Much more efficient: single call to student-specific API
-      // X-Employee-ID header 1 is usually enough for individual student lookup
-      const response = await axios.get(`https://schoolmanage.uz/api/student/${student.externalId}`, {
+      // 1. Check local cache first
+      const cached = await this.attendanceRecordRepo.createQueryBuilder('ar')
+        .where('ar.externalId = :extId', { extId: student.externalId })
+        .andWhere('ar.date >= :start AND ar.date <= :end', { start: monthStart, end: monthEnd })
+        .getMany();
+
+      if (cached.length > 0) {
+        return {
+          recent_attendance: cached.map(rec => ({
+            date: rec.date,
+            status: rec.status,
+            status_display: rec.status === 'present' ? 'Kelgan' : 'Kelmagan',
+            arrived_at: rec.arrivedAt,
+            left_at: rec.leftAt
+          })),
+          fromCache: true
+        };
+      }
+
+      // 2. Fallback to external API
+      const response = await axios.get(`https://schoolmanage.uz/api/student/${student.externalId}?date=${targetDateStr}`, {
         headers: { 'X-Employee-ID': '1' },
         httpsAgent,
       });
 
       const records = response.data.recent_attendance || [];
-      const targetDate = dateStr ? new Date(dateStr) : new Date();
-      const month = targetDate.getMonth();
-      const year = targetDate.getFullYear();
+      const targetMonthJS = new Date(targetDateStr).getMonth();
+      const targetYearJS = new Date(targetDateStr).getFullYear();
 
-      // Filter for the requested month/year to match current UI expectations
+      // Filter and save to cache
       const filteredRecords = records.filter(rec => {
         const d = new Date(rec.date);
-        return d.getMonth() === month && d.getFullYear() === year;
-      }).map(rec => ({
-        date: rec.date,
-        status: rec.status,
-        status_display: rec.status_display || (rec.status?.toLowerCase() === 'present' ? 'Kelgan' : 'Kelmagan'),
-        arrived_at: rec.arrived_at,
-        left_at: rec.left_at
-      }));
+        return d.getMonth() === targetMonthJS && d.getFullYear() === targetYearJS;
+      });
 
-      return { recent_attendance: filteredRecords };
+      for (const rec of filteredRecords) {
+        const status = rec.status?.toLowerCase() === 'present' ? 'present' : 'absent';
+        const arrTime = rec.arrived_at && rec.arrived_at !== 'None' && rec.arrived_at !== '0' ? rec.arrived_at : null;
+        const depTime = rec.left_at && rec.left_at !== 'None' && rec.left_at !== '0' ? rec.left_at : null;
+
+        await this.attendanceRecordRepo.upsert({
+          externalId: student.externalId,
+          date: rec.date,
+          status,
+          arrivedAt: arrTime,
+          leftAt: depTime,
+        }, ['externalId', 'date']);
+      }
+
+      return {
+        recent_attendance: filteredRecords.map(rec => ({
+          ...rec,
+          status_display: rec.status?.toLowerCase() === 'present' ? 'Kelgan' : 'Kelmagan'
+        })),
+        fromCache: false
+      };
     } catch (e) {
       console.error(`Error fetching student attendance for ${student.name}:`, e.message);
       return { recent_attendance: [] };

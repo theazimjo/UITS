@@ -11,6 +11,7 @@ import { Group } from '../groups/entities/group.entity';
 import { Enrollment } from '../groups/entities/enrollment.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { GroupPhase } from '../groups/entities/group-phase.entity';
+import { AttendanceRecord } from '../students/entities/attendance-record.entity';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { GroupPhase } from '../groups/entities/group-phase.entity';
       Enrollment,
       Payment,
       GroupPhase,
+      AttendanceRecord,
     ]),
   ],
   providers: [StaffService],

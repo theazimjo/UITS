@@ -39,7 +39,7 @@ const useStore = create((set, get) => ({
     rooms: Array.isArray(data.rooms) ? data.rooms : state.rooms,
   })),
 
-  refreshAllRows: async (date) => {
+  refreshAllRows: async (date, sync = false) => {
     set({ loading: true });
     try {
       const userStr = localStorage.getItem('user');
@@ -51,7 +51,7 @@ const useStore = create((set, get) => ({
         
         // If date is provided, get students WITH attendance, otherwise just normal list
         if (date) {
-          promises.push(getTeacherAttendance(date));
+          promises.push(getTeacherAttendance(date, sync));
         } else {
           promises.push(getTeacherStudents());
         }

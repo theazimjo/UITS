@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import useStore from '../../store/useStore';
-import { ClipboardCheck, ChevronLeft, ChevronRight, Loader2, UserCheck, UserX, Users } from 'lucide-react';
+import { ClipboardCheck, ChevronLeft, ChevronRight, Loader2, UserCheck, UserX, Users, RefreshCcw } from 'lucide-react';
 
 const TeacherAttendance = () => {
   const { students: allStudents, loading, refreshAllRows } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     refreshAllRows(currentMonth);
   }, [currentMonth, refreshAllRows]);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    await refreshAllRows(currentMonth, true);
+    setIsSyncing(false);
+  };
 
   const changeMonth = (delta) => {
     const [y, m] = currentMonth.split('-').map(Number);
@@ -70,6 +77,16 @@ const TeacherAttendance = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleSync}
+            disabled={isSyncing || loading}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200/50 dark:border-white/10 bg-white/60 dark:bg-black/20 shadow-sm transition-all ${isSyncing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-white/5 active:scale-95'}`}
+            title="Ma'lumotlarni yangilash"
+          >
+            <RefreshCcw size={14} className={`text-gray-500 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">Yangilash</span>
+          </button>
+
           <div className="flex items-center bg-white/60 dark:bg-black/20 rounded-md border border-gray-200/50 dark:border-white/10 px-3 py-1.5 shadow-sm">
             <Users size={14} className="text-gray-400 mr-2" />
             <select
@@ -162,16 +179,11 @@ const TeacherAttendance = () => {
                           )}
                         </th>
                       ))}
-                      <th className="px-5 py-3 font-medium uppercase tracking-wider text-[11px] text-center sticky right-0 bg-gray-100 dark:bg-[#1e1e1e] z-30 min-w-[70px]">FOIZ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
                     {filteredStudents.map((student) => {
                       const att = student.attendance || {};
-                      const totalDays = Object.keys(att).length;
-                      const presentDays = Object.values(att).filter(v => v === 'present').length;
-                      const pct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
-
                       return (
                         <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group text-left">
                           <td className="px-5 py-3 sticky left-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-[#007aff]/5 transition-colors border-r border-gray-100 dark:border-white/5">
@@ -193,31 +205,34 @@ const TeacherAttendance = () => {
                           </td>
                           <td className="px-5 py-3 text-gray-500 text-[12px]">{student.groupName}</td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                            const status = att[day];
+                            const attObj = att[day];
+                            const status = typeof attObj === 'object' ? attObj?.status : attObj;
                             const isToday = isCurrentMonth && day === todayDay;
+                            
                             return (
-                              <td key={day} className={`text-center px-0.5 py-3 ${isToday ? 'bg-[#007aff]/[0.02]' : ''}`}>
-                                {status === 'present' ? (
-                                  <div className="flex justify-center">
+                              <td key={day} className={`text-center px-0.5 py-2 ${isToday ? 'bg-[#007aff]/[0.02]' : ''}`}>
+                                <div className="flex flex-col items-center gap-0.5 group/cell relative">
+                                  {status === 'present' ? (
                                     <div className="w-6 h-6 rounded-md bg-[#34c759] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(52,199,89,0.3)]">✓</div>
-                                  </div>
-                                ) : status === 'absent' ? (
-                                  <div className="flex justify-center">
+                                  ) : status === 'absent' ? (
                                     <div className="w-6 h-6 rounded-md bg-[#ff3b30] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(255,59,48,0.3)]">✗</div>
-                                  </div>
-                                ) : (
-                                  <div className="flex justify-center opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-400 flex items-center justify-center text-[10px]">—</div>
-                                  </div>
-                                )}
+                                  ) : (
+                                    <div className="opacity-10 group-hover:opacity-20 transition-opacity">
+                                      <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-400 flex items-center justify-center text-[10px]">—</div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Times shown below for present students or on hover */}
+                                  {typeof attObj === 'object' && attObj?.arrived_at && (
+                                    <div className="flex flex-col leading-none scale-[0.8] origin-top opacity-60 group-hover/cell:opacity-100 transition-opacity">
+                                      <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{attObj.arrived_at}</span>
+                                      {attObj.left_at && <span className="text-[9px] text-gray-400">{attObj.left_at}</span>}
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                             );
                           })}
-                          <td className="px-5 py-3 text-center sticky right-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-[#007aff]/5 transition-colors border-l border-gray-100 dark:border-white/5 font-bold">
-                            <span className={`${pct >= 80 ? 'text-[#34c759]' : pct >= 50 ? 'text-[#ff9500]' : 'text-[#ff3b30]'} text-[11px]`}>
-                              {pct}%
-                            </span>
-                          </td>
                         </tr>
                       );
                     })}
