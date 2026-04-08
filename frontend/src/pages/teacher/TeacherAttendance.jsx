@@ -4,10 +4,13 @@ import useStore from '../../store/useStore';
 import { ClipboardCheck, ChevronLeft, ChevronRight, Loader2, UserCheck, UserX, Users, RefreshCcw } from 'lucide-react';
 
 const TeacherAttendance = () => {
-  const { students: allStudents, loading, refreshAllRows } = useStore();
+  const { students: allStudents, loading, refreshAllRows, saveGrade } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedGroup, setSelectedGroup] = useState('all');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedCell, setSelectedCell] = useState(null); // { student, day, score, comment }
+  const [gradeInput, setGradeInput] = useState({ score: '', comment: '' });
+  const [isSavingGrade, setIsSavingGrade] = useState(false);
 
   useEffect(() => {
     refreshAllRows(currentMonth);
@@ -17,6 +20,37 @@ const TeacherAttendance = () => {
     setIsSyncing(true);
     await refreshAllRows(currentMonth, true);
     setIsSyncing(false);
+  };
+
+  const handleCellClick = (student, day) => {
+    const existingGrade = student.grades?.[day] || { score: '', comment: '' };
+    setSelectedCell({ student, day });
+    setGradeInput({ 
+      score: existingGrade.score || '', 
+      comment: existingGrade.comment || '' 
+    });
+  };
+
+  const onSaveGrade = async () => {
+    if (!selectedCell) return;
+    setIsSavingGrade(true);
+    try {
+      const date = `${currentMonth}-${String(selectedCell.day).padStart(2, '0')}`;
+      await saveGrade({
+        studentId: selectedCell.student.id,
+        groupId: selectedCell.student.groupId,
+        date,
+        score: Number(gradeInput.score),
+        comment: gradeInput.comment
+      });
+      // Refresh to see the new grade
+      await refreshAllRows(currentMonth);
+      setSelectedCell(null);
+    } catch (error) {
+      alert('Bahoni saqlashda xatolik yuz berdi');
+    } finally {
+      setIsSavingGrade(false);
+    }
   };
 
   const changeMonth = (delta) => {
@@ -208,17 +242,41 @@ const TeacherAttendance = () => {
                             const attObj = att[day];
                             const status = typeof attObj === 'object' ? attObj?.status : attObj;
                             const isToday = isCurrentMonth && day === todayDay;
+                            const grades = student.grades || {};
+                            const grade = grades[day];
                             
                             return (
-                              <td key={day} className={`text-center px-0.5 py-2 ${isToday ? 'bg-[#007aff]/[0.02]' : ''}`}>
+                              <td 
+                                key={day} 
+                                onClick={() => handleCellClick(student, day)}
+                                className={`text-center px-0.5 py-2 cursor-pointer hover:bg-[#007aff]/10 transition-colors ${isToday ? 'bg-[#007aff]/[0.02]' : ''}`}
+                              >
                                 <div className="flex flex-col items-center gap-0.5 group/cell relative">
                                   {status === 'present' ? (
-                                    <div className="w-6 h-6 rounded-md bg-[#34c759] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(52,199,89,0.3)]">✓</div>
+                                    <div className="w-6 h-6 rounded-md bg-[#34c759] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(52,199,89,0.3)] relative">
+                                      ✓
+                                      {grade && (
+                                        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-[9px] font-bold border border-white dark:border-[#1e1e1e] shadow-sm">
+                                          {grade.score}
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : status === 'absent' ? (
-                                    <div className="w-6 h-6 rounded-md bg-[#ff3b30] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(255,59,48,0.3)]">✗</div>
+                                    <div className="w-6 h-6 rounded-md bg-[#ff3b30] text-white flex items-center justify-center text-[10px] font-black shadow-[0_2px_8px_rgba(255,59,48,0.3)] relative">
+                                      ✗
+                                      {grade && (
+                                        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-[9px] font-bold border border-white dark:border-[#1e1e1e] shadow-sm">
+                                          {grade.score}
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : (
-                                    <div className="opacity-10 group-hover:opacity-20 transition-opacity">
-                                      <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-400 flex items-center justify-center text-[10px]">—</div>
+                                    <div className="opacity-10 group-hover:opacity-100 transition-opacity">
+                                      <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-400 flex items-center justify-center text-[10px] relative">
+                                        {grade ? (
+                                          <span className="text-amber-600 dark:text-amber-400 font-bold">{grade.score}</span>
+                                        ) : '—'}
+                                      </div>
                                     </div>
                                   )}
                                   
@@ -243,6 +301,64 @@ const TeacherAttendance = () => {
           )}
         </div>
       </div>
+
+      {/* Grade Modal */}
+      {selectedCell && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-[#1e1e1e] w-full max-w-[400px] rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden animate-scale-up">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">{selectedCell.student.name}</h3>
+                  <p className="text-[12px] text-gray-500">{selectedCell.day}-iyul, Davomat va Baxo</p>
+                </div>
+                <button onClick={() => setSelectedCell(null)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                  <UserX size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Baho (0-100)</label>
+                  <input 
+                    type="number" 
+                    value={gradeInput.score}
+                    onChange={(e) => setGradeInput({ ...gradeInput, score: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[15px] outline-none focus:border-[#007aff] transition-colors"
+                    placeholder="Baho kiriting..."
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Izoh</label>
+                  <textarea 
+                    value={gradeInput.comment}
+                    onChange={(e) => setGradeInput({ ...gradeInput, comment: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#007aff] transition-colors h-24 resize-none"
+                    placeholder="Qo'shimcha izoh..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button 
+                  onClick={() => setSelectedCell(null)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/5 text-[14px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-all"
+                >
+                  Bekor qilish
+                </button>
+                <button 
+                  onClick={onSaveGrade}
+                  disabled={isSavingGrade}
+                  className="flex-1 px-4 py-3 rounded-xl bg-[#007aff] text-[14px] font-bold text-white hover:bg-[#0076ed] shadow-[0_4px_12px_rgba(0,122,255,0.3)] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {isSavingGrade ? <Loader2 size={16} className="animate-spin" /> : 'Saqlash'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

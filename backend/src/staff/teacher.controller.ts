@@ -6,6 +6,8 @@ import {
   Req,
   Param,
   ForbiddenException,
+  Post,
+  Body,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,6 +20,7 @@ import { Staff } from './entities/staff.entity';
 import { EnrollmentStatus } from '../groups/enums/enrollment-status.enum';
 import { GroupStatus } from '../groups/enums/group-status.enum';
 import { AttendanceRecord } from '../students/entities/attendance-record.entity';
+import { Grade } from '../students/entities/grade.entity';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -42,6 +45,8 @@ export class TeacherController {
     private readonly groupPhaseRepo: Repository<GroupPhase>,
     @InjectRepository(AttendanceRecord)
     private readonly attendanceRecordRepo: Repository<AttendanceRecord>,
+    @InjectRepository(Grade)
+    private readonly gradeRepo: Repository<Grade>,
   ) {}
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -283,9 +288,35 @@ export class TeacherController {
     });
 
     const students = Array.from(studentMap.values());
+    const studentIds = students.map(s => s.id);
     const studentsWithId = students.filter(s => s.externalId);
 
-    // 2. Caching layer: Check for existing records in our DB
+    // 2. Fetch Grades from local DB for all students in this month
+    if (studentIds.length > 0) {
+      const dbGrades = await this.gradeRepo.createQueryBuilder('g')
+        .where('g.studentId IN (:...ids)', { ids: studentIds })
+        .andWhere('g.date >= :start AND g.date <= :end', { start: monthStart, end: monthEnd })
+        .getMany();
+
+      dbGrades.forEach(g => {
+        const student = studentMap.get(g.studentId);
+        if (student) {
+          if (!student.grades) student.grades = {};
+          const dayNum = parseInt(g.date.split('-')[2]);
+          student.grades[dayNum] = {
+            score: Number(g.score),
+            comment: g.comment
+          };
+        }
+      });
+    }
+
+    // Initialize grades object for all students if not already present
+    students.forEach(s => {
+      if (!s.grades) s.grades = {};
+    });
+
+    // 3. Caching layer: Check for existing attendance records in our DB
     if (!isForcedSync) {
       const extIds = studentsWithId.map(s => s.externalId);
       if (extIds.length > 0) {
@@ -311,7 +342,7 @@ export class TeacherController {
       }
     }
 
-    // 3. Fetch from External API
+    // 4. Fetch from External API
     try {
       const attendancePromises = studentsWithId.map(async (student) => {
         try {
@@ -351,6 +382,38 @@ export class TeacherController {
     }
 
     return { month: targetMonth, daysInMonth, students, fromCache: false };
+  }
+
+  // POST /teacher/grade — save or update student grade
+  @UseGuards(JwtAuthGuard)
+  @Post('grade')
+  async saveGrade(
+    @Req() req: any,
+    @Body() body: { 
+      studentId: number; 
+      groupId: number; 
+      date: string; 
+      score: number; 
+      comment?: string 
+    }
+  ) {
+    const teacherId = req.user.userId;
+    const { studentId, groupId, date, score, comment } = body;
+
+    // Upsert the grade
+    await this.gradeRepo.upsert(
+      {
+        studentId,
+        teacherId,
+        groupId,
+        date,
+        score,
+        comment,
+      },
+      ['studentId', 'date', 'groupId'],
+    );
+
+    return { success: true };
   }
 
   // GET /teacher/my-finance?month=YYYY-MM — payments for teacher's groups

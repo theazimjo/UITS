@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { 
   getStudents, getStaff, getRoles, getGroups, getFields, getCourses, getRooms,
-  getTeacherGroups, getTeacherStudents, getTeacherAttendance
+  getTeacherGroups, getTeacherStudents, getTeacherAttendance, saveGrade
 } from '../services/api';
 
 const useStore = create((set, get) => ({
@@ -19,6 +19,17 @@ const useStore = create((set, get) => ({
   // Setters with safety checks
   setUser: (user) => set({ user }),
   setLoading: (val) => set({ loading: val }),
+
+  saveGrade: async (gradeData) => {
+    try {
+      const response = await saveGrade(gradeData);
+      return response.data;
+    } catch (error) {
+      console.error('Save grade error:', error);
+      throw error;
+    }
+  },
+
   setStudents: (data) => set({ students: Array.isArray(data) ? data : [] }),
   setStaff: (data) => set({ staff: Array.isArray(data) ? data : [] }),
   setRoles: (data) => set({ roles: Array.isArray(data) ? data : [] }),
