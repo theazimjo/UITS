@@ -40,7 +40,7 @@ import useStore from './store/useStore';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const { hydrate } = useStore();
+  const { refreshAllRows } = useStore();
   
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -70,34 +70,12 @@ function App() {
         }
       }
       
-      if (user.role !== 'teacher') {
-        fetchInitialData();
-      }
+      refreshAllRows();
     } else if (location.pathname !== '/login') {
       navigate('/login');
     }
     setLoading(false);
   }, []);
-
-  const fetchInitialData = async () => {
-    try {
-      const [st, sf, rl, gr, fl, cr, rm] = await Promise.all([
-        getStudents(), getStaff(), getRoles(), getGroups(), getFields(), getCourses(), getRooms()
-      ]);
-      
-      hydrate({
-        students: st?.data || [],
-        staff: sf?.data || [],
-        roles: rl?.data || [],
-        groups: gr?.data || [],
-        fields: fl?.data || [],
-        courses: cr?.data || [],
-        rooms: rm?.data || []
-      });
-    } catch (e) {
-      console.error('Initial fetch error:', e);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('access_token'); 
@@ -114,10 +92,10 @@ function App() {
         <Route path="/login" element={
           <Login onLoginSuccess={(user) => { 
             setCurrentUser(user); 
+            refreshAllRows();
             if (user.role === 'teacher') {
               navigate('/teacher/dashboard');
             } else {
-              fetchInitialData(); 
               navigate('/dashboard'); 
             }
           }} />

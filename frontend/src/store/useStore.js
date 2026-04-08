@@ -1,6 +1,10 @@
 import { create } from 'zustand';
+import { 
+  getStudents, getStaff, getRoles, getGroups, getFields, getCourses, getRooms,
+  getTeacherGroups, getTeacherStudents, getTeacherAttendance
+} from '../services/api';
 
-const useStore = create((set) => ({
+const useStore = create((set, get) => ({
   // Core Data
   students: [],
   staff: [],
@@ -9,8 +13,10 @@ const useStore = create((set) => ({
   fields: [],
   courses: [],
   rooms: [],
+  loading: false,
   
   // Setters with safety checks
+  setLoading: (val) => set({ loading: val }),
   setStudents: (data) => set({ students: Array.isArray(data) ? data : [] }),
   setStaff: (data) => set({ staff: Array.isArray(data) ? data : [] }),
   setRoles: (data) => set({ roles: Array.isArray(data) ? data : [] }),
@@ -30,6 +36,54 @@ const useStore = create((set) => ({
     courses: Array.isArray(data.courses) ? data.courses : state.courses,
     rooms: Array.isArray(data.rooms) ? data.rooms : state.rooms,
   })),
+
+  refreshAllRows: async (date) => {
+    set({ loading: true });
+    try {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      if (user?.role === 'teacher') {
+        // Teacher specific refresh
+        const promises = [getTeacherGroups()];
+        
+        // If date is provided, get students WITH attendance, otherwise just normal list
+        if (date) {
+          promises.push(getTeacherAttendance(date));
+        } else {
+          promises.push(getTeacherStudents());
+        }
+
+        const [gr, stData] = await Promise.all(promises);
+        
+        set({ 
+          groups: Array.isArray(gr.data) ? gr.data : [],
+          students: Array.isArray(date ? stData.data?.students : stData.data) 
+            ? (date ? stData.data.students : stData.data) 
+            : []
+        });
+      } else {
+        // Admin/Manager refresh
+        const [st, sf, rl, gr, fl, cr, rm] = await Promise.all([
+          getStudents(), getStaff(), getRoles(), getGroups(), getFields(), getCourses(), getRooms()
+        ]);
+        
+        set({
+          students: Array.isArray(st.data) ? st.data : [],
+          staff: Array.isArray(sf.data) ? sf.data : [],
+          roles: Array.isArray(rl.data) ? rl.data : [],
+          groups: Array.isArray(gr.data) ? gr.data : [],
+          fields: Array.isArray(fl.data) ? fl.data : [],
+          courses: Array.isArray(cr.data) ? cr.data : [],
+          rooms: Array.isArray(rm.data) ? rm.data : []
+        });
+      }
+    } catch (e) {
+      console.error('Error refreshing rows:', e);
+    } finally {
+      set({ loading: false });
+    }
+  }
 }));
 
 export default useStore;

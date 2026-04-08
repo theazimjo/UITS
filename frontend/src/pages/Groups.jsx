@@ -33,19 +33,14 @@ const Groups = () => {
     group: { name: '', sohaId: '', courseId: '', roomId: '', teacherId: '', days: [], startTime: '', endTime: '', startDate: '', endDate: '', monthlyPrice: '', status: 'WAITING' }
   });
 
-  const refreshAllRows = async () => {
-    try {
-      const [gr, fl, cr, rm] = await Promise.all([
-        getGroups(), getFields(), getCourses(), getRooms()
-      ]);
-      if (gr.data) setGlobalGroups(gr.data);
-      if (fl.data) setGlobalFields(fl.data);
-      if (cr.data) setGlobalCourses(cr.data);
-      if (rm.data) setGlobalRooms(rm.data);
-    } catch (e) {
-      console.error('Error refreshing rows:', e);
-    }
-  };
+  const { 
+    groups: globalGroups, 
+    fields: globalFields, 
+    courses: globalCourses, 
+    rooms: globalRooms,
+    refreshAllRows,
+    loading
+  } = useStore();
 
   const getStatusDetails = (status) => {
     switch (status) {

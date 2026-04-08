@@ -9,7 +9,7 @@ const TeacherAttendance = () => {
   const [selectedGroup, setSelectedGroup] = useState('all');
 
   useEffect(() => {
-    refreshAllRows();
+    refreshAllRows(currentMonth);
   }, [currentMonth, refreshAllRows]);
 
   const changeMonth = (delta) => {
