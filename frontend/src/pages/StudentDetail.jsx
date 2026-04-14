@@ -63,14 +63,14 @@ const StudentDetail = () => {
     }
   };
 
-  const fetchAttendanceData = async () => {
+  const fetchAttendanceData = async (force = false) => {
     // Format manually to avoid timezone shift
     const year = viewDate.getFullYear();
     const month = String(viewDate.getMonth() + 1).padStart(2, '0');
     const cacheKey = `${year}-${month}`;
 
-    // Check cache first
-    if (attCache[cacheKey]) {
+    // Check cache first (unless forced)
+    if (!force && attCache[cacheKey]) {
       setAttendance(attCache[cacheKey] || []);
       return;
     }
@@ -86,6 +86,7 @@ const StudentDetail = () => {
       setAttCache(prev => ({ ...prev, [cacheKey]: data }));
     } catch (err) {
       console.error('Error fetching attendance:', err);
+      toast.error('Davomat ma\'lumotlarini yuklashda xatolik yuz berdi');
     } finally {
       setAttLoading(false);
     }
@@ -95,7 +96,7 @@ const StudentDetail = () => {
     try {
       await updateStudent(id, { status: newStatus });
       setStudent(prev => ({ ...prev, status: newStatus }));
-      
+
       const allRes = await getStudents();
       if (allRes.data) setGlobalStudents(allRes.data);
       toast.success('Status yangilandi');
@@ -168,15 +169,15 @@ const StudentDetail = () => {
             value={student.status || 'YANGI'}
             onChange={(e) => handleStatusChange(e.target.value)}
             className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border outline-none cursor-pointer transition-all shadow-sm
-              ${student.status === 'OQIYAPTI' 
-                ? 'bg-green-100/50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' 
+              ${student.status === 'OQIYAPTI'
+                ? 'bg-green-100/50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
                 : student.status === 'CHETLATILGAN'
-                ? 'bg-red-100/50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'
-                : student.status === 'PAUZADA'
-                ? 'bg-orange-100/50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
-                : student.status === 'BITIRGAN'
-                ? 'bg-blue-100/50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
-                : 'bg-gray-100/50 border-gray-200 text-gray-700 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400'
+                  ? 'bg-red-100/50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'
+                  : student.status === 'PAUZADA'
+                    ? 'bg-orange-100/50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+                    : student.status === 'BITIRGAN'
+                      ? 'bg-blue-100/50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                      : 'bg-gray-100/50 border-gray-200 text-gray-700 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400'
               }`}
           >
             <option value="YANGI">YANGI</option>
@@ -413,6 +414,15 @@ const StudentDetail = () => {
                       <ChevronRight size={18} />
                     </button>
                   </div>
+
+                  <button
+                    onClick={() => fetchAttendanceData(true)}
+                    disabled={attLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007aff]/10 text-[#007aff] hover:bg-[#007aff]/20 rounded-lg text-[12px] font-medium transition-all"
+                  >
+                    <RefreshCw size={14} className={attLoading ? "animate-spin" : ""} />
+                    Yangilash
+                  </button>
                 </div>
               </div>
 
@@ -437,7 +447,11 @@ const StudentDetail = () => {
 
                   for (let d = 1; d <= lastDay.getDate(); d++) {
                     const currentDayStr = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    const att = attendance.find(a => a.date === currentDayStr);
+                    const att = attendance.find(a => {
+                      if (!a.date) return false;
+                      const aDate = typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0];
+                      return aDate === currentDayStr;
+                    });
 
                     let bgClass = "bg-white/60 dark:bg-white/5";
                     let statusColor = "bg-transparent";

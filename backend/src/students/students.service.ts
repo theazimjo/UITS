@@ -51,19 +51,19 @@ export class StudentsService {
     return this.studentsRepository.save(student);
   }
 
-  private async findCorrectEmployeeID(externalId: string): Promise<string | null> {
+  private async findCorrectEmployeeID(externalId: string, dateStr?: string): Promise<string | null> {
     // 1. Check persistent in-memory cache first
     if (StudentsService.teacherCache.has(externalId)) {
       return StudentsService.teacherCache.get(externalId) || null;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const searchDate = dateStr || new Date().toISOString().split('T')[0];
     const ids = ['1', '2', '3', '4', '5'];
     
     try {
       const results = await Promise.all(
         ids.map(id => 
-          axios.get(`https://schoolmanage.uz/api/teacher/classroom/?date=${today}`, {
+          axios.get(`https://schoolmanage.uz/api/teacher/classroom/?date=${searchDate}`, {
             headers: { 'X-Employee-ID': id },
             httpsAgent, // Use optimized agent
           }).then(res => ({ id, students: res.data.students || [] })).catch(() => ({ id, students: [] }))
@@ -105,7 +105,7 @@ export class StudentsService {
       if (cached.length > 0) {
         return {
           recent_attendance: cached.map(rec => ({
-            date: rec.date,
+            date: typeof rec.date === 'string' ? rec.date : new Date(rec.date).toISOString().split('T')[0],
             status: rec.status,
             status_display: rec.status === 'present' ? 'Kelgan' : 'Kelmagan',
             arrived_at: rec.arrivedAt,
@@ -116,8 +116,11 @@ export class StudentsService {
       }
 
       // 2. Fallback to external API
+      // Try to find the correct classroom/employee ID for this student
+      const employeeId = await this.findCorrectEmployeeID(student.externalId, targetDateStr) || '1';
+      
       const response = await axios.get(`https://schoolmanage.uz/api/student/${student.externalId}?date=${targetDateStr}`, {
-        headers: { 'X-Employee-ID': '1' },
+        headers: { 'X-Employee-ID': employeeId },
         httpsAgent,
       });
 
