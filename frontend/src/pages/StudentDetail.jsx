@@ -29,6 +29,7 @@ const StudentDetail = () => {
   const [activeTab, setActiveTab] = useState('info');
   const [viewDate, setViewDate] = useState(new Date());
   const [attCache, setAttCache] = useState({});
+  const [attSource, setAttSource] = useState(null); // 'cache' | 'external'
 
   useEffect(() => {
     fetchStudentData();
@@ -82,7 +83,9 @@ const StudentDetail = () => {
 
       const attRes = await getStudentAttendance(id, dateStr);
       const data = attRes.data?.recent_attendance || [];
+      const source = attRes.data?.fromCache ? 'cache' : 'external';
       setAttendance(data);
+      setAttSource(source);
       setAttCache(prev => ({ ...prev, [cacheKey]: data }));
     } catch (err) {
       console.error('Error fetching attendance:', err);
@@ -402,6 +405,15 @@ const StudentDetail = () => {
                       </p>
                     </div>
                   </div>
+
+                  {attSource && (
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${attSource === 'cache'
+                      ? 'bg-blue-100/50 border-blue-200 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800'
+                      : 'bg-orange-100/50 border-orange-200 text-orange-600 dark:bg-orange-900/20 dark:border-orange-800'
+                      }`}>
+                      {attSource === 'cache' ? 'Bazadan' : 'API dan'}
+                    </div>
+                  )}
 
                   <div className="flex items-center bg-gray-100 dark:bg-white/5 rounded-full p-1 border border-gray-200 dark:border-white/10 shadow-inner">
                     <button onClick={() => setViewDate(new Date(viewDate.setMonth(viewDate.getMonth() - 1)))} className="p-1 hover:bg-white dark:hover:bg-white/10 rounded-full transition-all text-gray-600 dark:text-gray-400">

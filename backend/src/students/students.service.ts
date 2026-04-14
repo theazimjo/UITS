@@ -13,6 +13,7 @@ const httpsAgent = new https.Agent({
   maxSockets: 100, // Allow 100 concurrent sockets
   maxFreeSockets: 10,
   timeout: 60000,
+  rejectUnauthorized: false, // Fallback for external APIs with strict/outdated SSL certs
 });
 
 @Injectable()
@@ -119,20 +120,25 @@ export class StudentsService {
       // Try to find the correct classroom/employee ID for this student
       const employeeId = await this.findCorrectEmployeeID(student.externalId, targetDateStr) || '1';
       
-      const response = await axios.get(`https://schoolmanage.uz/api/student/${student.externalId}?date=${targetDateStr}`, {
+      const url = `https://schoolmanage.uz/api/student/${student.externalId}?date=${targetDateStr}`;
+      console.log(`[Attendance] Fetching: ${url} with Employee-ID: ${employeeId}`);
+      
+      const response = await axios.get(url, {
         headers: { 'X-Employee-ID': employeeId },
         httpsAgent,
       });
 
       const records = response.data.recent_attendance || [];
-      const targetMonthJS = new Date(targetDateStr).getMonth();
-      const targetYearJS = new Date(targetDateStr).getFullYear();
+      const targetYearStr = targetDateStr.slice(0, 4);
+      const targetMonthStr = targetDateStr.slice(5, 7);
 
-      // Filter and save to cache
+      // Filter and save to cache (Using string comparison to avoid UTC/Local timezone shifts on server)
       const filteredRecords = records.filter(rec => {
-        const d = new Date(rec.date);
-        return d.getMonth() === targetMonthJS && d.getFullYear() === targetYearJS;
+        if (!rec.date || typeof rec.date !== 'string') return false;
+        return rec.date.startsWith(`${targetYearStr}-${targetMonthStr}`);
       });
+
+      console.log(`[Attendance] Found ${records.length} total, ${filteredRecords.length} filtered for ${targetYearStr}-${targetMonthStr}`);
 
       for (const rec of filteredRecords) {
         const status = rec.status?.toLowerCase() === 'present' ? 'present' : 'absent';
@@ -141,7 +147,7 @@ export class StudentsService {
 
         await this.attendanceRecordRepo.upsert({
           externalId: student.externalId,
-          date: rec.date,
+          date: rec.date.split('T')[0], // Ensure clean YYYY-MM-DD
           status,
           arrivedAt: arrTime,
           leftAt: depTime,
