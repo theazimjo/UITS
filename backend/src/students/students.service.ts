@@ -92,15 +92,20 @@ export class StudentsService {
     }
 
     const targetDateStr = dateStr || new Date().toISOString().split('T')[0];
-    const targetMonth = targetDateStr.slice(0, 7);
-    const monthStart = `${targetMonth}-01`;
-    const monthEnd = `${targetMonth}-31`; // Simple approximation
+    const targetYear = parseInt(targetDateStr.slice(0, 4));
+    const targetMonth = parseInt(targetDateStr.slice(5, 7));
+    
+    // Calculate proper month range for SQL
+    const monthStart = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+    const nextMonth = targetMonth === 12 ? 1 : targetMonth + 1;
+    const nextYear = targetMonth === 12 ? targetYear + 1 : targetYear;
+    const monthEndBoundary = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
 
     try {
       // 1. Check local cache first
       const cached = await this.attendanceRecordRepo.createQueryBuilder('ar')
         .where('ar.externalId = :extId', { extId: student.externalId })
-        .andWhere('ar.date >= :start AND ar.date <= :end', { start: monthStart, end: monthEnd })
+        .andWhere('ar.date >= :start AND ar.date < :end', { start: monthStart, end: monthEndBoundary })
         .getMany();
 
       if (cached.length > 0) {
@@ -129,13 +134,18 @@ export class StudentsService {
       });
 
       const records = response.data.recent_attendance || [];
-      const targetYearStr = targetDateStr.slice(0, 4);
-      const targetMonthStr = targetDateStr.slice(5, 7);
+      const targetYearStr = String(targetYear);
+      const targetMonthStr = String(targetMonth).padStart(2, '0');
+
+      if (records.length > 0) {
+        console.log(`[Attendance] Sample record from API: ${JSON.stringify(records[0])}`);
+      }
 
       // Filter and save to cache (Using string comparison to avoid UTC/Local timezone shifts on server)
       const filteredRecords = records.filter(rec => {
         if (!rec.date || typeof rec.date !== 'string') return false;
-        return rec.date.startsWith(`${targetYearStr}-${targetMonthStr}`);
+        // Handle both YYYY-MM-DD and DD.MM.YYYY if necessary, but keep it robust
+        return rec.date.includes(`${targetYearStr}-${targetMonthStr}`) || rec.date.includes(`.${targetMonthStr}.${targetYearStr}`);
       });
 
       console.log(`[Attendance] Found ${records.length} total, ${filteredRecords.length} filtered for ${targetYearStr}-${targetMonthStr}`);
