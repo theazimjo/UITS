@@ -51,7 +51,7 @@ export class TeacherController {
     private readonly gradeRepo: Repository<Grade>,
     @InjectRepository(MonthlyReport)
     private readonly monthlyReportRepo: Repository<MonthlyReport>,
-  ) {}
+  ) { }
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
   @UseGuards(JwtAuthGuard)
@@ -106,7 +106,7 @@ export class TeacherController {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(targetY, (targetM - 1) - i, 1);
       const m = d.toISOString().slice(0, 7);
-      
+
       let income = 0;
       if (allGroupIds.length > 0) {
         const pms = await this.paymentRepo
@@ -235,7 +235,7 @@ export class TeacherController {
   @UseGuards(JwtAuthGuard)
   @Get('my-attendance')
   async getMyAttendance(
-    @Req() req: any, 
+    @Req() req: any,
     @Query('date') dateStr?: string,
     @Query('sync') sync?: string
   ) {
@@ -355,7 +355,7 @@ export class TeacherController {
             { headers: { 'X-Employee-ID': '1' }, httpsAgent, timeout: 10000 },
           );
           const records = response.data.results?.attendance || response.data.recent_attendance || [];
-          
+
           for (const rec of records) {
             const recDateStr = rec.date;
             if (recDateStr.startsWith(targetMonth)) {
@@ -393,12 +393,12 @@ export class TeacherController {
   @Post('grade')
   async saveGrade(
     @Req() req: any,
-    @Body() body: { 
-      studentId: number; 
-      groupId: number; 
-      date: string; 
-      score: number; 
-      comment?: string 
+    @Body() body: {
+      studentId: number;
+      groupId: number;
+      date: string;
+      score: number;
+      comment?: string
     }
   ) {
     const teacherId = req.user.userId;
@@ -535,9 +535,6 @@ export class TeacherController {
       ri.groupName = body.groupNames?.[sid] || '';
       ri.attendanceCount = 0;
       ri.paymentStatus = '';
-      ri.note = null;
-      ri.examScore = null;
-      ri.examComment = null;
       return ri;
     });
 
