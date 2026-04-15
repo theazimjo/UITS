@@ -32,6 +32,7 @@ import TeacherAttendance from './pages/teacher/TeacherAttendance';
 import TeacherGroups from './pages/teacher/TeacherGroups';
 import TeacherFinance from './pages/teacher/TeacherFinance';
 import TeacherSettings from './pages/teacher/TeacherSettings';
+import TeacherReport from './pages/teacher/TeacherReport';
 
 // Icons
 import { Wallet } from 'lucide-react';
@@ -137,6 +138,7 @@ function App() {
           <Route path="students/:id" element={<StudentDetail />} />
           <Route path="groups" element={<TeacherGroups />} />
           <Route path="finance" element={<TeacherFinance />} />
+          <Route path="report" element={<TeacherReport />} />
           <Route path="settings" element={<TeacherSettings />} />
         </Route>
         

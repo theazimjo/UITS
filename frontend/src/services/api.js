@@ -99,8 +99,12 @@ export const getTeacherFinance = (month) => api.get('/teacher/my-finance', { par
 export const getGroupPayments = (id, month) => api.get(`/teacher/group-payments/${id}`, { params: { month } });
 export const saveGrade = (data) => api.post('/teacher/grade', data);
 
-// Monthly Reports (Admin)
+// Monthly Reports (Admin-side)
 export const createMonthlyReport = (teacherId, data) => api.post(`/staff/${teacherId}/monthly-report`, data);
 export const getMonthlyReports = (teacherId, month) => api.get(`/staff/${teacherId}/monthly-reports`, { params: { month } });
+
+// Monthly Reports (Teacher-side)
+export const sendTeacherReport = (data) => api.post('/teacher/send-report', data);
+export const getMyTeacherReports = (month) => api.get('/teacher/my-reports', { params: { month } });
 
 export default api;

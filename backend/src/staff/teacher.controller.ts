@@ -21,6 +21,8 @@ import { EnrollmentStatus } from '../groups/enums/enrollment-status.enum';
 import { GroupStatus } from '../groups/enums/group-status.enum';
 import { AttendanceRecord } from '../students/entities/attendance-record.entity';
 import { Grade } from '../students/entities/grade.entity';
+import { MonthlyReport } from './entities/monthly-report.entity';
+import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -47,6 +49,8 @@ export class TeacherController {
     private readonly attendanceRecordRepo: Repository<AttendanceRecord>,
     @InjectRepository(Grade)
     private readonly gradeRepo: Repository<Grade>,
+    @InjectRepository(MonthlyReport)
+    private readonly monthlyReportRepo: Repository<MonthlyReport>,
   ) {}
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -508,5 +512,68 @@ export class TeacherController {
     });
 
     return payments;
+  }
+
+  // POST /teacher/send-report — teacher sends monthly report to admin
+  @UseGuards(JwtAuthGuard)
+  @Post('send-report')
+  async sendReport(@Req() req: any, @Body() body: {
+    month: string;
+    reportType: string;
+    summary: string;
+    studentIds: number[];
+    studentNames: { [id: number]: string };
+    groupNames: { [id: number]: string };
+  }) {
+    const staffId = req.user.userId;
+
+    // Build items from selected students
+    const items = (body.studentIds || []).map(sid => {
+      const ri = new MonthlyReportItem();
+      ri.studentId = sid;
+      ri.studentName = body.studentNames?.[sid] || String(sid);
+      ri.groupName = body.groupNames?.[sid] || '';
+      ri.attendanceCount = 0;
+      ri.paymentStatus = '';
+      ri.note = null;
+      ri.examScore = null;
+      ri.examComment = null;
+      return ri;
+    });
+
+    // Upsert: update if exists
+    const existing = await this.monthlyReportRepo.findOne({
+      where: { teacherId: staffId, month: body.month, reportType: body.reportType },
+    });
+
+    if (existing) {
+      await this.monthlyReportRepo.manager.delete(MonthlyReportItem, { reportId: existing.id });
+      existing.summary = body.summary || '';
+      existing.items = items;
+      return this.monthlyReportRepo.save(existing);
+    }
+
+    const report = this.monthlyReportRepo.create({
+      teacherId: staffId,
+      month: body.month,
+      reportType: body.reportType,
+      summary: body.summary || '',
+      items,
+    });
+    return this.monthlyReportRepo.save(report);
+  }
+
+  // GET /teacher/my-reports — teacher reads their own reports
+  @UseGuards(JwtAuthGuard)
+  @Get('my-reports')
+  async getMyReports(@Req() req: any, @Query('month') month?: string) {
+    const staffId = req.user.userId;
+    const where: any = { teacherId: staffId };
+    if (month) where.month = month;
+    return this.monthlyReportRepo.find({
+      where,
+      order: { createdAt: 'DESC' },
+      relations: ['items'],
+    });
   }
 }

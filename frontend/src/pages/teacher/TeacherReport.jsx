@@ -1,0 +1,550 @@
+import React, { useState, useEffect } from 'react';
+import useStore from '../../store/useStore';
+import { sendTeacherReport, getMyTeacherReports } from '../../services/api';
+import {
+  FileText, Send, ChevronLeft, ChevronRight, Users,
+  CheckCircle2, AlertCircle, ChevronDown, ChevronUp,
+  Award, Star, X, Loader2, Clock
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const PERIOD_LABELS = {
+  '10_DAY': '1–10 kunlar',
+  '20_DAY': '11–20 kunlar',
+  'END_MONTH': '21–oy oxiri',
+};
+
+const getPeriodLabel = (type) => PERIOD_LABELS[type] || type;
+
+const getCurrentPeriod = (currentMonth) => {
+  const today = new Date();
+  const day = today.getDate();
+  const [year, month] = currentMonth.split('-').map(Number);
+  const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
+  if (!isCurrentMonth) return null;
+  if (day <= 10) return '10_DAY';
+  if (day <= 20) return '20_DAY';
+  return 'END_MONTH';
+};
+
+const TeacherReport = () => {
+  const { students: allStudents, loading, refreshAllRows } = useStore();
+
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [selectedGroup, setSelectedGroup] = useState('all');
+
+  // Table multi-select
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [reportSummary, setReportSummary] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  // History
+  const [reports, setReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+
+  useEffect(() => {
+    refreshAllRows(currentMonth);
+    fetchReports(currentMonth);
+  }, [currentMonth]);
+
+  const fetchReports = async (month) => {
+    setReportsLoading(true);
+    try {
+      const res = await getMyTeacherReports(month);
+      setReports(res.data || []);
+    } catch { /* silent */ }
+    finally { setReportsLoading(false); }
+  };
+
+  const changeMonth = (delta) => {
+    const [y, m] = currentMonth.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const students = allStudents || [];
+  const uniqueGroups = [...new Set(students.map(s => s.groupName).filter(Boolean))];
+  const filteredStudents = selectedGroup === 'all' ? students : students.filter(s => s.groupName === selectedGroup);
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === filteredStudents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredStudents.map(s => s.id)));
+    }
+  };
+
+  const period = getCurrentPeriod(currentMonth);
+  const existingReport = reports.find(r => r.reportType === period);
+
+  const openModal = () => {
+    if (!period) return toast.error("Faqat joriy oy uchun hisobot jo'natish mumkin!");
+    if (selectedIds.size === 0) return toast.error("Kamida 1 ta o'quvchi tanlang!");
+    setIsModalOpen(true);
+  };
+
+  const handleSend = async () => {
+    if (!period || selectedIds.size === 0 || isSending) return;
+    const selectedStudents = filteredStudents.filter(s => selectedIds.has(s.id));
+
+    const studentNames = {};
+    const groupNames = {};
+    selectedStudents.forEach(s => {
+      studentNames[s.id] = s.name;
+      groupNames[s.id] = s.groupName || '';
+    });
+
+    try {
+      setIsSending(true);
+      await sendTeacherReport({
+        month: currentMonth,
+        reportType: period,
+        summary: reportSummary,
+        studentIds: Array.from(selectedIds),
+        studentNames,
+        groupNames,
+      });
+      toast.success("Hisobot adminga muvaffaqiyatli yuborildi! ✅");
+      setIsModalOpen(false);
+      setSelectedIds(new Set());
+      setReportSummary('');
+      fetchReports(currentMonth);
+    } catch {
+      toast.error("Hisobotni yuborishda xatolik yuz berdi!");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const [year, month] = currentMonth.split('-').map(Number);
+  const monthLabel = new Date(currentMonth + '-01').toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' });
+
+  return (
+    <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f] overflow-hidden">
+
+      {/* Header */}
+      <div className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border-b border-gray-200/50 dark:border-white/10 z-20 px-6 py-4 flex items-center justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/20">
+            <FileText size={20} />
+          </div>
+          <div>
+            <h2 className="text-[19px] font-bold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-none">Oylik Hisobot</h2>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 font-medium">Adminga hisobot yuborish</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Period dots */}
+          {period && (
+            <div className="flex items-center gap-1.5">
+              {['10_DAY', '20_DAY', 'END_MONTH'].map(p => {
+                const done = reports.find(r => r.reportType === p);
+                return (
+                  <div
+                    key={p}
+                    title={getPeriodLabel(p)}
+                    className={`w-2.5 h-2.5 rounded-full border-2 transition-all ${
+                      done
+                        ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_5px_rgba(16,185,129,0.5)]'
+                        : p === period
+                          ? 'bg-blue-500 border-blue-400 shadow-[0_0_5px_rgba(59,130,246,0.5)] animate-pulse'
+                          : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Month nav */}
+          <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
+            <button onClick={() => changeMonth(-1)} className="px-2 py-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-600 dark:text-gray-300">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="px-4 text-[12px] font-bold text-[#1d1d1f] dark:text-white min-w-[140px] text-center">
+              {monthLabel}
+            </span>
+            <button onClick={() => changeMonth(1)} className="px-2 py-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-600 dark:text-gray-300">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Group filter */}
+          <select
+            value={selectedGroup}
+            onChange={e => setSelectedGroup(e.target.value)}
+            className="bg-white/60 dark:bg-black/20 border border-gray-200/50 dark:border-white/10 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#1d1d1f] dark:text-white outline-none shadow-sm"
+          >
+            <option value="all">Barcha guruhlar</option>
+            {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+        {/* Period Status Banner */}
+        <div className={`flex items-center justify-between p-4 rounded-2xl border shadow-sm backdrop-blur-md ${
+          period
+            ? existingReport
+              ? 'bg-emerald-50/60 dark:bg-emerald-900/10 border-emerald-200/50 dark:border-emerald-800/30'
+              : 'bg-blue-50/60 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-800/30'
+            : 'bg-gray-50/60 dark:bg-white/5 border-gray-200/50 dark:border-white/10'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              period
+                ? existingReport
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
+                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
+                : 'bg-gray-100 dark:bg-white/10 text-gray-400'
+            }`}>
+              <FileText size={20} />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white">
+                {period ? `Joriy davr: ${getPeriodLabel(period)}` : 'Boshqa oy tanlangan'}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                {period
+                  ? existingReport
+                    ? `✅ Bu davr uchun hisobot ${new Date(existingReport.createdAt).toLocaleDateString('uz-UZ')} da yuborilgan`
+                    : "Hali hisobot yuborilmagan — o'quvchilarni tanlab yuboring"
+                  : 'Faqat joriy oy uchun hisobot yuborish mumkin'
+                }
+              </p>
+            </div>
+          </div>
+
+          {selectedIds.size > 0 && period && (
+            <button
+              onClick={openModal}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white rounded-xl text-[13px] font-semibold transition-all shadow-md border border-blue-800/40"
+            >
+              <Send size={15} />
+              Hisobot Yuborish ({selectedIds.size})
+            </button>
+          )}
+        </div>
+
+        {/* Students Table */}
+        <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
+          {/* Table Header */}
+          <div className="px-5 py-3 border-b border-gray-200/50 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
+                onChange={toggleAll}
+                className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
+              />
+              <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                O'quvchilar ({filteredStudents.length} ta)
+              </span>
+            </div>
+            {selectedIds.size > 0 && (
+              <span className="text-[12px] font-semibold text-blue-500">
+                {selectedIds.size} tanlangan
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="py-16 flex items-center justify-center gap-3 text-gray-400">
+              <Loader2 size={20} className="animate-spin text-blue-500" />
+              <span className="text-[13px]">Yuklanmoqda...</span>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="py-16 text-center text-gray-400">
+              <Users size={32} className="mx-auto mb-3 opacity-20" />
+              <p className="text-[13px]">O'quvchilar topilmadi</p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-[13px]">
+              <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10">
+                <tr>
+                  <th className="pl-5 pr-3 py-3 w-10"></th>
+                  <th className="px-3 py-3 font-medium uppercase tracking-wider text-[11px]">Ism-Sharif</th>
+                  <th className="px-3 py-3 font-medium uppercase tracking-wider text-[11px]">Guruh</th>
+                  <th className="px-3 py-3 font-medium uppercase tracking-wider text-[11px] text-center">To'lov</th>
+                  <th className="px-3 py-3 font-medium uppercase tracking-wider text-[11px] text-center">Bugungi davomat</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                {filteredStudents.map(s => {
+                  const isSelected = selectedIds.has(s.id);
+                  const today = new Date().getDate();
+                  const todayStatus = s.attendance?.[today];
+                  const status = typeof todayStatus === 'object' ? todayStatus?.status : todayStatus;
+
+                  return (
+                    <tr
+                      key={s.id}
+                      onClick={() => toggleSelect(s.id)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-blue-50/60 dark:bg-blue-900/10 hover:bg-blue-50/80'
+                          : 'hover:bg-black/5 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <td className="pl-5 pr-3 py-3">
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                          isSelected
+                            ? 'bg-blue-500 border-blue-500 shadow-sm'
+                            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black/20'
+                        }`}>
+                          {isSelected && <CheckCircle2 size={13} className="text-white" />}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          {s.photo ? (
+                            <img src={s.photo} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
+                              {s.name?.charAt(0)}
+                            </div>
+                          )}
+                          <span className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[180px]">{s.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-gray-500 text-[12px]">{s.groupName || '—'}</td>
+                      <td className="px-3 py-3 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          s.isPaid
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800'
+                            : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800'
+                        }`}>
+                          {s.isPaid ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                          {s.isPaid ? "To'langan" : "To'lanmagan"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        {status === 'present' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 size={10} /> Keldi
+                          </span>
+                        ) : status === 'absent' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-[10px] font-bold border border-red-200 dark:border-red-800">
+                            <AlertCircle size={10} /> Kelmadi
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-[12px]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Report History */}
+        <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10">
+            <h3 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2">
+              <Clock size={16} className="text-blue-500" />
+              Hisobotlar tarixi — {monthLabel}
+            </h3>
+          </div>
+
+          {reportsLoading ? (
+            <div className="py-10 flex justify-center">
+              <Loader2 size={20} className="animate-spin text-blue-500" />
+            </div>
+          ) : reports.length === 0 ? (
+            <div className="py-12 text-center text-gray-400">
+              <FileText size={28} className="mx-auto mb-2 opacity-20" />
+              <p className="text-[13px]">Bu oyda hisobotlar mavjud emas</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200/30 dark:divide-white/5">
+              {reports.map(report => (
+                <div key={report.id}>
+                  <div
+                    className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
+                    onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                        report.reportType === 'END_MONTH' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
+                      }`}>
+                        {report.reportType === 'END_MONTH' ? <Award size={18} /> : <FileText size={18} />}
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
+                          {getPeriodLabel(report.reportType)}
+                          <span className="ml-2 text-[11px] font-normal text-gray-400">
+                            {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          {report.items?.length || 0} ta o'quvchi
+                          {report.summary ? ` • "${report.summary.substring(0, 50)}${report.summary.length > 50 ? '...' : ''}"` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                        report.reportType === 'END_MONTH'
+                          ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                          : 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
+                      }`}>
+                        {report.reportType === 'END_MONTH' ? 'OY OXIRI' : 'ORALIQ'}
+                      </span>
+                      {expandedId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                    </div>
+                  </div>
+
+                  {expandedId === report.id && (
+                    <div className="overflow-x-auto bg-gray-50/50 dark:bg-black/10 border-t border-gray-200/30 dark:border-white/5">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500">
+                          <tr>
+                            <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
+                            <th className="px-3 py-2 text-left font-medium">Guruh</th>
+                            <th className="px-3 py-2 text-center font-medium">To'lov</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                          {(report.items || []).map(item => (
+                            <tr key={item.id} className="hover:bg-white/40 dark:hover:bg-white/5">
+                              <td className="px-5 py-2.5 font-medium text-[#1d1d1f] dark:text-white">{item.studentName}</td>
+                              <td className="px-3 py-2.5 text-gray-500">{item.groupName || '—'}</td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  item.paymentStatus?.includes("To'langan")
+                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                    : item.paymentStatus
+                                      ? 'bg-red-50 text-red-500 border-red-200'
+                                      : 'text-gray-400 border-gray-200'
+                                }`}>
+                                  {item.paymentStatus || '—'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {report.summary && (
+                        <div className="mx-5 my-3 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Umumiy xulosa</p>
+                          <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SEND REPORT MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div
+            className="bg-white dark:bg-[#1c1c1e] w-full max-w-[520px] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden"
+            style={{ animation: 'scaleIn 0.2s ease-out' }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <Send size={18} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">Hisobot Yuborish</h3>
+                  <p className="text-[11px] text-gray-500">{period ? getPeriodLabel(period) : ''} • {selectedIds.size} ta o'quvchi</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Selected Students List */}
+            <div className="px-6 pt-5">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Tanlangan o'quvchilar</p>
+              <div className="max-h-[180px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                {filteredStudents.filter(s => selectedIds.has(s.id)).map(s => (
+                  <div key={s.id} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
+                      {s.name?.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-[#1d1d1f] dark:text-white truncate">{s.name}</p>
+                      <p className="text-[10px] text-gray-400">{s.groupName}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      s.isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
+                    }`}>
+                      {s.isPaid ? "To'langan" : "To'lanmagan"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Summary Input */}
+            <div className="px-6 pt-4 pb-2">
+              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Umumiy Xulosa</label>
+              <textarea
+                value={reportSummary}
+                onChange={e => setReportSummary(e.target.value)}
+                placeholder="Bu o'quvchilar haqida umumiy fikr yoki izoh yozing..."
+                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all min-h-[100px] resize-none"
+                autoFocus
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 px-6 py-5">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 py-3 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-2xl text-[14px] font-bold transition-all"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={isSending}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 disabled:opacity-60 text-white rounded-2xl text-[14px] font-bold shadow-xl shadow-blue-500/20 transition-all"
+              >
+                {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                {isSending ? "Yuborilmoqda..." : "Yuborish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.94); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default TeacherReport;

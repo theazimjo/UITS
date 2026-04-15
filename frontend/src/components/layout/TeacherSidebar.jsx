@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardCheck, BookOpen, BarChart3, Settings, LogOut, GraduationCap
+  LayoutDashboard, ClipboardCheck, BookOpen, BarChart3, Settings, LogOut, GraduationCap, FileText
 } from 'lucide-react';
 
 const TeacherSidebar = ({ onLogout }) => {
@@ -9,6 +9,7 @@ const TeacherSidebar = ({ onLogout }) => {
     { to: '/teacher/dashboard', icon: <LayoutDashboard size={18} />, label: 'Asosiy panel' },
     { to: '/teacher/attendance', icon: <ClipboardCheck size={18} />, label: 'Davomat' },
     { to: '/teacher/groups', icon: <BookOpen size={18} />, label: 'Guruhlar' },
+    { to: '/teacher/report', icon: <FileText size={18} />, label: 'Hisobot' },
     { to: '/teacher/finance', icon: <BarChart3 size={18} />, label: 'Moliya' },
     { to: '/teacher/settings', icon: <Settings size={18} />, label: 'Sozlamalar' },
   ];
