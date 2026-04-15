@@ -6,6 +6,7 @@ import axios from 'axios';
 import * as https from 'https';
 import { StudentStatus } from './enums/student-status.enum';
 import { AttendanceRecord } from './entities/attendance-record.entity';
+import { Grade } from './entities/grade.entity';
 
 // Optimized agent for high-concurrency parallel requests (31 days)
 const httpsAgent = new https.Agent({
@@ -27,6 +28,8 @@ export class StudentsService {
     private readonly studentsRepository: Repository<Student>,
     @InjectRepository(AttendanceRecord)
     private readonly attendanceRecordRepo: Repository<AttendanceRecord>,
+    @InjectRepository(Grade)
+    private readonly gradeRepo: Repository<Grade>,
   ) {}
 
   async onApplicationBootstrap() {
@@ -102,6 +105,12 @@ export class StudentsService {
     const monthEndBoundary = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
 
     try {
+      // Fetch local grades
+      const grades = await this.gradeRepo.createQueryBuilder('g')
+        .where('g.studentId = :studentId', { studentId: id })
+        .andWhere('g.date >= :start AND g.date < :end', { start: monthStart, end: monthEndBoundary })
+        .getMany();
+
       // 1. Check local cache first
       const cached = await this.attendanceRecordRepo.createQueryBuilder('ar')
         .where('ar.externalId = :extId', { extId: student.externalId })
@@ -117,6 +126,7 @@ export class StudentsService {
             arrived_at: rec.arrivedAt,
             left_at: rec.leftAt
           })),
+          grades,
           fromCache: true
         };
       }
@@ -169,11 +179,12 @@ export class StudentsService {
           ...rec,
           status_display: rec.status?.toLowerCase() === 'present' ? 'Kelgan' : 'Kelmagan'
         })),
+        grades,
         fromCache: false
       };
     } catch (e) {
       console.error(`Error fetching student attendance for ${student.name}:`, e.message);
-      return { recent_attendance: [] };
+      return { recent_attendance: [], grades: [] };
     }
   }
 

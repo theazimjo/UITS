@@ -24,6 +24,7 @@ const StudentDetail = () => {
   const [student, setStudent] = useState(null);
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [attLoading, setAttLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
@@ -72,7 +73,8 @@ const StudentDetail = () => {
 
     // Check cache first (unless forced)
     if (!force && attCache[cacheKey]) {
-      setAttendance(attCache[cacheKey] || []);
+      setAttendance(attCache[cacheKey].attendance || []);
+      setGrades(attCache[cacheKey].grades || []);
       return;
     }
 
@@ -83,10 +85,12 @@ const StudentDetail = () => {
 
       const attRes = await getStudentAttendance(id, dateStr);
       const data = attRes.data?.recent_attendance || [];
+      const gradesData = attRes.data?.grades || [];
       const source = attRes.data?.fromCache ? 'cache' : 'external';
       setAttendance(data);
+      setGrades(gradesData);
       setAttSource(source);
-      setAttCache(prev => ({ ...prev, [cacheKey]: data }));
+      setAttCache(prev => ({ ...prev, [cacheKey]: { attendance: data, grades: gradesData } }));
     } catch (err) {
       console.error('Error fetching attendance:', err);
       toast.error('Davomat ma\'lumotlarini yuklashda xatolik yuz berdi');
@@ -464,6 +468,12 @@ const StudentDetail = () => {
                       const aDate = typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0];
                       return aDate === currentDayStr;
                     });
+                    
+                    const grade = grades.find(g => {
+                      if (!g.date) return false;
+                      const gDate = typeof g.date === 'string' ? g.date.split('T')[0] : new Date(g.date).toISOString().split('T')[0];
+                      return gDate === currentDayStr;
+                    });
 
                     let bgClass = "bg-white/60 dark:bg-white/5";
                     let statusColor = "bg-transparent";
@@ -487,6 +497,12 @@ const StudentDetail = () => {
                           {d}
                         </span>
 
+                        {grade && (
+                          <div className="absolute top-2 right-2 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 font-bold text-[10px] px-1.5 py-0.5 rounded shadow-sm">
+                            {grade.score}
+                          </div>
+                        )}
+
                         {att && (
                           <div className="mt-2 flex flex-col gap-1">
                             <div className={`w-1.5 h-1.5 rounded-full ${statusColor} shadow-[0_0_8px] ${att.status === 'present' ? 'shadow-[#34c759]/50' : 'shadow-[#ff3b30]/50'}`} />
@@ -507,6 +523,12 @@ const StudentDetail = () => {
                               <span className="text-gray-400">Ketgan:</span>
                               <span className="font-mono">{att.left_at || '---'}</span>
                             </div>
+                            {grade && (
+                              <div className="flex justify-between mt-1 pt-1 border-t border-white/10">
+                                <span className="text-gray-400">Baho:</span>
+                                <span className="font-bold text-purple-400">{grade.score} izoh: {grade.comment || '-'}</span>
+                              </div>
+                            )}
                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-black/80" />
                           </div>
                         )}
