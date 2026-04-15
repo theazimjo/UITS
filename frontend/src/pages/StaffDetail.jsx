@@ -103,11 +103,14 @@ const StaffDetail = () => {
   };
 
   const getPeriodLabel = (dateStr) => {
-    if (!dateStr) return '';
+    if (!dateStr || !dateStr.includes('-')) return dateStr;
     try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return `${d.getDate()}-${d.toLocaleString('uz-UZ', { month: 'short' })}`;
+      const parts = dateStr.split('-');
+      if (parts.length < 3) return dateStr;
+      const day = parseInt(parts[2]);
+      const monthIdx = parseInt(parts[1]) - 1;
+      const months = ['yan', 'fed', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
+      return `${day}-${months[monthIdx] || parts[1]}`;
     } catch {
       return dateStr;
     }

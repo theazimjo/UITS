@@ -9,9 +9,17 @@ import {
 import toast from 'react-hot-toast';
 
 const getPeriodLabel = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return `${d.getDate()}-${d.toLocaleString('uz-UZ', { month: 'short' })}`;
+  if (!dateStr || !dateStr.includes('-')) return dateStr;
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    const day = parseInt(parts[2]);
+    const monthIdx = parseInt(parts[1]) - 1;
+    const months = ['yan', 'fed', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
+    return `${day}-${months[monthIdx] || parts[1]}`;
+  } catch {
+    return dateStr;
+  }
 };
 
 const TeacherReport = () => {

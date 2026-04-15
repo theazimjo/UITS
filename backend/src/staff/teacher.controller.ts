@@ -589,11 +589,9 @@ export class TeacherController {
   @UseGuards(JwtAuthGuard)
   @Get('report-dates')
   async getReportDates(@Query('month') month?: string) {
-    if (month) {
-      const start = `${month}-01`;
-      const end = `${month}-31`;
+    if (month && month.includes('-')) {
       return this.reportDateRepo.createQueryBuilder('rd')
-        .where('rd.date >= :start AND rd.date <= :end', { start, end })
+        .where('CAST(rd.date AS TEXT) LIKE :pattern', { pattern: `${month}-%` })
         .orderBy('rd.date', 'ASC')
         .getMany();
     }
