@@ -125,7 +125,7 @@ export class StudentsService {
       // Try to find the correct classroom/employee ID for this student
       const employeeId = await this.findCorrectEmployeeID(student.externalId, targetDateStr) || '1';
       
-      const url = `https://schoolmanage.uz/api/student/${student.externalId}?date=${targetDateStr}`;
+      const url = `https://schoolmanage.uz/api/student/${student.externalId}/?date=${targetDateStr}&page_size=100`;
       console.log(`[Attendance] Fetching: ${url} with Employee-ID: ${employeeId}`);
       
       const response = await axios.get(url, {
@@ -133,7 +133,7 @@ export class StudentsService {
         httpsAgent,
       });
 
-      const records = response.data.recent_attendance || [];
+      const records = response.data.results?.attendance || response.data.recent_attendance || [];
       const targetYearStr = String(targetYear);
       const targetMonthStr = String(targetMonth).padStart(2, '0');
 

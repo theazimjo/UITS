@@ -347,10 +347,10 @@ export class TeacherController {
       const attendancePromises = studentsWithId.map(async (student) => {
         try {
           const response = await axios.get(
-            `https://schoolmanage.uz/api/student/${student.externalId}?date=${targetDate}`,
+            `https://schoolmanage.uz/api/student/${student.externalId}/?date=${targetDate}&page_size=100`,
             { headers: { 'X-Employee-ID': '1' }, httpsAgent, timeout: 10000 },
           );
-          const records = response.data.recent_attendance || [];
+          const records = response.data.results?.attendance || response.data.recent_attendance || [];
           
           for (const rec of records) {
             const recDateStr = rec.date;
