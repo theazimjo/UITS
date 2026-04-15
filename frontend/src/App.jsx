@@ -25,6 +25,7 @@ import StaffDetail from './pages/StaffDetail';
 import StudentDetail from './pages/StudentDetail';
 import Finance from './pages/Finance';
 import Settings from './pages/Settings';
+import AdminReports from './pages/AdminReports';
 
 // Teacher Pages
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
@@ -125,6 +126,7 @@ function App() {
           
           <Route path="/finance" element={<Finance />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/reports" element={<AdminReports />} />
         </Route>
 
         {/* Teacher Routes */}

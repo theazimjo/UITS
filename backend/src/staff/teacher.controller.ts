@@ -23,6 +23,7 @@ import { AttendanceRecord } from '../students/entities/attendance-record.entity'
 import { Grade } from '../students/entities/grade.entity';
 import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
+import { ReportDate } from './entities/report-date.entity';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -51,6 +52,8 @@ export class TeacherController {
     private readonly gradeRepo: Repository<Grade>,
     @InjectRepository(MonthlyReport)
     private readonly monthlyReportRepo: Repository<MonthlyReport>,
+    @InjectRepository(ReportDate)
+    private readonly reportDateRepo: Repository<ReportDate>,
   ) { }
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -524,6 +527,8 @@ export class TeacherController {
     studentIds: number[];
     studentNames: { [id: number]: string };
     groupNames: { [id: number]: string };
+    examScores?: { [id: number]: number };
+    examComments?: { [id: number]: string };
   }) {
     const staffId = req.user.userId;
 
@@ -535,6 +540,12 @@ export class TeacherController {
       ri.groupName = body.groupNames?.[sid] || '';
       ri.attendanceCount = 0;
       ri.paymentStatus = '';
+      if (body.examScores?.[sid]) {
+        ri.examScore = Number(body.examScores[sid]);
+      }
+      if (body.examComments?.[sid]) {
+        ri.examComment = body.examComments[sid];
+      }
       return ri;
     });
 
@@ -572,5 +583,20 @@ export class TeacherController {
       order: { createdAt: 'DESC' },
       relations: ['items'],
     });
+  }
+
+  // GET /teacher/report-dates — Teacher reads active report dates
+  @UseGuards(JwtAuthGuard)
+  @Get('report-dates')
+  async getReportDates(@Query('month') month?: string) {
+    if (month) {
+      const start = `${month}-01`;
+      const end = `${month}-31`;
+      return this.reportDateRepo.createQueryBuilder('rd')
+        .where('rd.date >= :start AND rd.date <= :end', { start, end })
+        .orderBy('rd.date', 'ASC')
+        .getMany();
+    }
+    return this.reportDateRepo.find({ order: { date: 'ASC' } });
   }
 }

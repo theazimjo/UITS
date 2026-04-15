@@ -51,15 +51,20 @@ export class StaffController {
     return this.staffService.remove(+id);
   }
 
-  @Post(':id/monthly-report')
-  createMonthlyReport(@Param('id') id: string, @Body() data: any) {
-    if (isNaN(+id)) throw new NotFoundException('Invalid ID');
-    return this.staffService.createMonthlyReport(+id, data);
-  }
-
   @Get(':id/monthly-reports')
   getMonthlyReports(@Param('id') id: string, @Query('month') month?: string) {
     if (isNaN(+id)) throw new NotFoundException('Invalid ID');
     return this.staffService.getMonthlyReports(+id, month);
+  }
+
+  // --- Report Date Calendar (Admin) ---
+  @Get('report-dates/all')
+  getReportDates(@Query('month') month?: string) {
+    return this.staffService.getReportDates(month);
+  }
+
+  @Post('report-dates/toggle')
+  toggleReportDate(@Body('date') date: string) {
+    return this.staffService.toggleReportDate(date);
   }
 }

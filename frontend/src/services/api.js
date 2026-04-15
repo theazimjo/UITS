@@ -106,5 +106,10 @@ export const getMonthlyReports = (teacherId, month) => api.get(`/staff/${teacher
 // Monthly Reports (Teacher-side)
 export const sendTeacherReport = (data) => api.post('/teacher/send-report', data);
 export const getMyTeacherReports = (month) => api.get('/teacher/my-reports', { params: { month } });
+export const getTeacherReportDates = (month) => api.get('/teacher/report-dates', { params: { month } });
+
+// Report Dates (Calendar)
+export const getAdminReportDates = (month) => api.get('/staff/report-dates/all', { params: { month } });
+export const toggleAdminReportDate = (date) => api.post('/staff/report-dates/toggle', { date });
 
 export default api;

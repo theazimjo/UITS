@@ -6,6 +6,7 @@ import { Group } from '../groups/entities/group.entity';
 import { StaffPayment, StaffPaymentType } from './entities/staff-payment.entity';
 import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
+import { ReportDate } from './entities/report-date.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -17,6 +18,8 @@ export class StaffService {
     private readonly staffPaymentRepository: Repository<StaffPayment>,
     @InjectRepository(MonthlyReport)
     private readonly monthlyReportRepo: Repository<MonthlyReport>,
+    @InjectRepository(ReportDate)
+    private readonly reportDateRepo: Repository<ReportDate>,
   ) {}
 
   async findAll(): Promise<Staff[]> {
@@ -237,5 +240,30 @@ export class StaffService {
       order: { createdAt: 'DESC' },
       relations: ['items'],
     });
+  }
+
+  // --- Report Dates (Calendar) ---
+  async getReportDates(month?: string): Promise<ReportDate[]> {
+    if (month) {
+      // month is 'YYYY-MM'
+      const start = `${month}-01`;
+      const end = `${month}-31`;
+      return this.reportDateRepo.createQueryBuilder('rd')
+        .where('rd.date >= :start AND rd.date <= :end', { start, end })
+        .orderBy('rd.date', 'ASC')
+        .getMany();
+    }
+    return this.reportDateRepo.find({ order: { date: 'ASC' } });
+  }
+
+  async toggleReportDate(date: string): Promise<ReportDate | { deleted: boolean }> {
+    const existing = await this.reportDateRepo.findOne({ where: { date } });
+    if (existing) {
+      await this.reportDateRepo.remove(existing);
+      return { deleted: true };
+    } else {
+      const newDate = this.reportDateRepo.create({ date });
+      return this.reportDateRepo.save(newDate);
+    }
   }
 }

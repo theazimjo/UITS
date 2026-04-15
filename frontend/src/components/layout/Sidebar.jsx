@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Users, LayoutDashboard, BookOpen, Wallet, UserSquare2, LogOut, Hexagon,
-  BarChart3, Settings
+  BarChart3, Settings, FileText
 } from 'lucide-react';
 
 const Sidebar = ({ onLogout }) => {
@@ -12,6 +12,7 @@ const Sidebar = ({ onLogout }) => {
     { to: '/students', icon: <Users size={18} />, label: 'Talabalar' },
     { to: '/payments', icon: <Wallet size={18} />, label: 'To\'lovlar' },
     { to: '/staff', icon: <UserSquare2 size={18} />, label: 'Xodimlar' },
+    { to: '/reports', icon: <FileText size={18} />, label: 'Hisobotlar' },
     { to: '/finance', icon: <BarChart3 size={18} />, label: 'Moliya' },
     { to: '/settings', icon: <Settings size={18} />, label: 'Sozlanmalar' },
   ];

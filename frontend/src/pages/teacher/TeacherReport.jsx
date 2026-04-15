@@ -1,30 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../store/useStore';
-import { sendTeacherReport, getMyTeacherReports } from '../../services/api';
+import { getTeacherReportDates, sendTeacherReport, getMyTeacherReports } from '../../services/api';
 import {
   FileText, Send, ChevronLeft, ChevronRight, Users,
   CheckCircle2, AlertCircle, ChevronDown, ChevronUp,
-  Award, Star, X, Loader2, Clock
+  Award, Star, X, Loader2, Clock, CalendarDays
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const PERIOD_LABELS = {
-  '10_DAY': '1–10 kunlar',
-  '20_DAY': '11–20 kunlar',
-  'END_MONTH': '21–oy oxiri',
-};
-
-const getPeriodLabel = (type) => PERIOD_LABELS[type] || type;
-
-const getCurrentPeriod = (currentMonth) => {
-  const today = new Date();
-  const day = today.getDate();
-  const [year, month] = currentMonth.split('-').map(Number);
-  const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
-  if (!isCurrentMonth) return null;
-  if (day <= 10) return '10_DAY';
-  if (day <= 20) return '20_DAY';
-  return 'END_MONTH';
+const getPeriodLabel = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${d.getDate()}-${d.toLocaleString('uz-UZ', { month: 'short' })}`;
 };
 
 const TeacherReport = () => {
@@ -39,23 +26,41 @@ const TeacherReport = () => {
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reportSummary, setReportSummary] = useState('');
+  const [examScores, setExamScores] = useState({});
+  const [examComments, setExamComments] = useState({});
   const [isSending, setIsSending] = useState(false);
 
-  // History
+  // History & Dates
   const [reports, setReports] = useState([]);
+  const [reportDates, setReportDates] = useState([]); // Admin configured dates
+  const [activeDate, setActiveDate] = useState(null); // Which date the teacher selected
   const [reportsLoading, setReportsLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     refreshAllRows(currentMonth);
-    fetchReports(currentMonth);
+    fetchData(currentMonth);
   }, [currentMonth]);
 
-  const fetchReports = async (month) => {
+  const fetchData = async (month) => {
     setReportsLoading(true);
     try {
-      const res = await getMyTeacherReports(month);
-      setReports(res.data || []);
+      const [repRes, datesRes] = await Promise.all([
+        getMyTeacherReports(month),
+        getTeacherReportDates(month),
+      ]);
+      setReports(repRes.data || []);
+      const dates = datesRes.data || [];
+      setReportDates(dates);
+      
+      // Auto-select first unsubmitted date
+      if (dates.length > 0) {
+        const submittedMap = new Set((repRes.data || []).map(r => r.reportType)); // reportType is now dateStr
+        const firstUnsubmitted = dates.find(d => !submittedMap.has(d.date));
+        setActiveDate(firstUnsubmitted ? firstUnsubmitted.date : dates[dates.length - 1].date);
+      } else {
+        setActiveDate(null);
+      }
     } catch { /* silent */ }
     finally { setReportsLoading(false); }
   };
@@ -86,7 +91,7 @@ const TeacherReport = () => {
     }
   };
 
-  const period = getCurrentPeriod(currentMonth);
+  const period = activeDate;
   const existingReport = reports.find(r => r.reportType === period);
 
   const openModal = () => {
@@ -115,12 +120,16 @@ const TeacherReport = () => {
         studentIds: Array.from(selectedIds),
         studentNames,
         groupNames,
+        examScores,
+        examComments,
       });
       toast.success("Hisobot adminga muvaffaqiyatli yuborildi! ✅");
       setIsModalOpen(false);
       setSelectedIds(new Set());
       setReportSummary('');
-      fetchReports(currentMonth);
+      setExamScores({});
+      setExamComments({});
+      fetchData(currentMonth);
     } catch {
       toast.error("Hisobotni yuborishda xatolik yuz berdi!");
     } finally {
@@ -147,21 +156,26 @@ const TeacherReport = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Period dots */}
-          {period && (
-            <div className="flex items-center gap-1.5">
-              {['10_DAY', '20_DAY', 'END_MONTH'].map(p => {
+          {/* Period dots / Timeline */}
+          {reportDates.length > 0 && (
+            <div className="flex items-center gap-2 mr-2 bg-gray-100 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10">
+              <CalendarDays size={14} className="text-gray-400" />
+              {reportDates.map(rd => {
+                const p = rd.date;
                 const done = reports.find(r => r.reportType === p);
                 return (
-                  <div
+                  <button
                     key={p}
                     title={getPeriodLabel(p)}
-                    className={`w-2.5 h-2.5 rounded-full border-2 transition-all ${
+                    onClick={() => setActiveDate(p)}
+                    className={`w-4 h-4 rounded-full border-[3px] transition-all cursor-pointer hover:scale-125 ${
                       done
-                        ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_5px_rgba(16,185,129,0.5)]'
-                        : p === period
-                          ? 'bg-blue-500 border-blue-400 shadow-[0_0_5px_rgba(59,130,246,0.5)] animate-pulse'
-                          : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
+                        ? p === activeDate
+                          ? 'bg-emerald-500 border-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                          : 'bg-emerald-500 border-white dark:border-black'
+                        : p === activeDate
+                          ? 'bg-blue-500 border-blue-200 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse'
+                          : 'bg-gray-300 dark:bg-gray-600 border-white dark:border-black'
                     }`}
                   />
                 );
@@ -216,14 +230,14 @@ const TeacherReport = () => {
             </div>
             <div>
               <p className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white">
-                {period ? `Joriy davr: ${getPeriodLabel(period)}` : 'Boshqa oy tanlangan'}
+                {period ? `Tanlangan sana: ${getPeriodLabel(period)}` : "Ushbu oyda admin hisobot kunlarini belgilanmagan"}
               </p>
               <p className="text-[11px] text-gray-500">
                 {period
                   ? existingReport
-                    ? `✅ Bu davr uchun hisobot ${new Date(existingReport.createdAt).toLocaleDateString('uz-UZ')} da yuborilgan`
+                    ? `✅ Ushbu sana uchun hisobot ${new Date(existingReport.createdAt).toLocaleDateString('uz-UZ')} da yuborilgan`
                     : "Hali hisobot yuborilmagan — o'quvchilarni tanlab yuboring"
-                  : 'Faqat joriy oy uchun hisobot yuborish mumkin'
+                  : "Yuqoridan sana tanlang"
                 }
               </p>
             </div>
@@ -381,9 +395,9 @@ const TeacherReport = () => {
                   >
                     <div className="flex items-center gap-4">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                        report.reportType === 'END_MONTH' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
+                        report.items?.some(i => i.examScore != null) ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
                       }`}>
-                        {report.reportType === 'END_MONTH' ? <Award size={18} /> : <FileText size={18} />}
+                        {report.items?.some(i => i.examScore != null) ? <Award size={18} /> : <FileText size={18} />}
                       </div>
                       <div>
                         <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
@@ -399,12 +413,8 @@ const TeacherReport = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        report.reportType === 'END_MONTH'
-                          ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
-                          : 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
-                      }`}>
-                        {report.reportType === 'END_MONTH' ? 'OY OXIRI' : 'ORALIQ'}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50/50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800`}>
+                        {report.reportType}
                       </span>
                       {expandedId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                     </div>
@@ -418,6 +428,9 @@ const TeacherReport = () => {
                             <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
                             <th className="px-3 py-2 text-left font-medium">Guruh</th>
                             <th className="px-3 py-2 text-center font-medium">To'lov</th>
+                            {report.items?.some(i => i.examScore != null) && (
+                              <th className="px-3 py-2 text-left font-medium">Imtihon Balli</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
@@ -436,6 +449,16 @@ const TeacherReport = () => {
                                   {item.paymentStatus || '—'}
                                 </span>
                               </td>
+                              {report.items?.some(i => i.examScore != null) && (
+                                <td className="px-3 py-2.5">
+                                  {item.examScore != null ? (
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-blue-600 dark:text-blue-400">{item.examScore}</span>
+                                      {item.examComment && <span className="text-[11px] text-gray-500 truncate max-w-[150px]" title={item.examComment}>- {item.examComment}</span>}
+                                    </div>
+                                  ) : <span className="text-gray-400">—</span>}
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -482,27 +505,55 @@ const TeacherReport = () => {
             </div>
 
             {/* Selected Students List */}
-            <div className="px-6 pt-5">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Tanlangan o'quvchilar</p>
-              <div className="max-h-[180px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
-                {filteredStudents.filter(s => selectedIds.has(s.id)).map(s => (
-                  <div key={s.id} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
-                    <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
-                      {s.name?.charAt(0)}
+            {(() => {
+              const isEndMonth = reportDates.length > 0 && activeDate === reportDates[reportDates.length - 1]?.date;
+              return (
+              <div className="px-6 pt-5">
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Tanlangan o'quvchilar</p>
+                <div className="max-h-[350px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                  {filteredStudents.filter(s => selectedIds.has(s.id)).map(s => (
+                    <div key={s.id} className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 flex gap-3 flex-col sm:flex-row sm:items-start">
+                      <div className="flex items-center gap-3 w-full sm:w-1/2">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
+                          {s.name?.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-semibold text-[#1d1d1f] dark:text-white truncate">{s.name}</p>
+                          <p className="text-[10px] text-gray-400">{s.groupName}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          s.isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
+                        } shrink-0`}>
+                          {s.isPaid ? "To'langan" : "To'lanmagan"}
+                        </span>
+                      </div>
+                      
+                      {isEndMonth && (
+                        <div className="w-full sm:w-1/2 flex items-center gap-2">
+                          <input
+                            type="number"
+                            placeholder="Baho/Ball"
+                            min="0"
+                            max="100"
+                            value={examScores[s.id] || ''}
+                            onChange={(e) => setExamScores(prev => ({ ...prev, [s.id]: e.target.value }))}
+                            className="w-[80px] bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] focus:ring-1 focus:ring-blue-500 outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Izoh..."
+                            value={examComments[s.id] || ''}
+                            onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
+                            className="flex-1 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] focus:ring-1 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[#1d1d1f] dark:text-white truncate">{s.name}</p>
-                      <p className="text-[10px] text-gray-400">{s.groupName}</p>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      s.isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
-                    }`}>
-                      {s.isPaid ? "To'langan" : "To'lanmagan"}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+              );
+            })()}
 
             {/* Summary Input */}
             <div className="px-6 pt-4 pb-2">
