@@ -50,4 +50,16 @@ export class StaffController {
     if (isNaN(+id)) return Promise.resolve();
     return this.staffService.remove(+id);
   }
+
+  @Post(':id/monthly-report')
+  createMonthlyReport(@Param('id') id: string, @Body() data: any) {
+    if (isNaN(+id)) throw new NotFoundException('Invalid ID');
+    return this.staffService.createMonthlyReport(+id, data);
+  }
+
+  @Get(':id/monthly-reports')
+  getMonthlyReports(@Param('id') id: string, @Query('month') month?: string) {
+    if (isNaN(+id)) throw new NotFoundException('Invalid ID');
+    return this.staffService.getMonthlyReports(+id, month);
+  }
 }

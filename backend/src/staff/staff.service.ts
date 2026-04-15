@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Staff } from './entities/staff.entity';
 import { Group } from '../groups/entities/group.entity';
 import { StaffPayment, StaffPaymentType } from './entities/staff-payment.entity';
+import { MonthlyReport } from './entities/monthly-report.entity';
+import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -13,6 +15,8 @@ export class StaffService {
     private readonly staffRepository: Repository<Staff>,
     @InjectRepository(StaffPayment)
     private readonly staffPaymentRepository: Repository<StaffPayment>,
+    @InjectRepository(MonthlyReport)
+    private readonly monthlyReportRepo: Repository<MonthlyReport>,
   ) {}
 
   async findAll(): Promise<Staff[]> {
@@ -171,5 +175,67 @@ export class StaffService {
 
   async remove(id: number): Promise<void> {
     await this.staffRepository.delete(id);
+  }
+
+  async createMonthlyReport(teacherId: number, data: {
+    month: string;
+    reportType: string;
+    summary?: string;
+    items: {
+      studentId: number;
+      studentName: string;
+      groupName: string;
+      attendanceCount: number;
+      paymentStatus: string;
+      examScore?: number;
+      examComment?: string;
+      note?: string;
+    }[];
+  }): Promise<MonthlyReport> {
+    // Check if report already exists for this teacher/month/type
+    const existing = await this.monthlyReportRepo.findOne({
+      where: {
+        teacherId,
+        month: data.month,
+        reportType: data.reportType,
+      },
+    });
+
+    if (existing) {
+      // Update existing report: delete old items and replace
+      await this.monthlyReportRepo.manager.delete(MonthlyReportItem, { reportId: existing.id });
+      existing.summary = data.summary || existing.summary;
+      existing.items = data.items.map(item => {
+        const ri = new MonthlyReportItem();
+        Object.assign(ri, item);
+        return ri;
+      });
+      return this.monthlyReportRepo.save(existing);
+    }
+
+    const report = this.monthlyReportRepo.create({
+      teacherId,
+      month: data.month,
+      reportType: data.reportType,
+      summary: data.summary || '',
+      items: data.items.map(item => {
+        const ri = new MonthlyReportItem();
+        Object.assign(ri, item);
+        return ri;
+      }),
+    });
+
+    return this.monthlyReportRepo.save(report);
+  }
+
+  async getMonthlyReports(teacherId: number, month?: string): Promise<MonthlyReport[]> {
+    const where: any = { teacherId };
+    if (month) where.month = month;
+
+    return this.monthlyReportRepo.find({
+      where,
+      order: { createdAt: 'DESC' },
+      relations: ['items'],
+    });
   }
 }

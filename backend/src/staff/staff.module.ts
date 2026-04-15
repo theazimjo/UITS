@@ -13,6 +13,8 @@ import { Payment } from '../payments/entities/payment.entity';
 import { GroupPhase } from '../groups/entities/group-phase.entity';
 import { AttendanceRecord } from '../students/entities/attendance-record.entity';
 import { Grade } from '../students/entities/grade.entity';
+import { MonthlyReport } from './entities/monthly-report.entity';
+import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { Grade } from '../students/entities/grade.entity';
       GroupPhase,
       AttendanceRecord,
       Grade,
+      MonthlyReport,
+      MonthlyReportItem,
     ]),
   ],
   providers: [StaffService],

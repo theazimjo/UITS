@@ -4,10 +4,12 @@ import {
   Phone, BookOpen,
   ChevronLeft, Calendar, Clock, MapPin, Trash2,
   Users, Search, CheckCircle2, AlertCircle,
-  ChevronRight, CreditCard, Percent, Briefcase, Edit
+  ChevronRight, CreditCard, Percent, Briefcase, Edit,
+  FileText, Send, Star, ChevronDown, ChevronUp, Award
 } from 'lucide-react';
-import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment } from '../services/api';
+import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment, createMonthlyReport, getMonthlyReports } from '../services/api';
 import Modal from '../components/common/Modal';
+import toast from 'react-hot-toast';
 
 import useStore from '../store/useStore';
 
@@ -17,10 +19,19 @@ const StaffDetail = () => {
   const { setStaff: updateGlobalStaff } = useStore();
   const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, students, salary
+  const [activeTab, setActiveTab] = useState('overview'); // overview, students, salary, reports
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
   const [salaryData, setSalaryData] = useState({ total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [], payments: [] });
+
+  // Report state
+  const [reports, setReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState(new Set());
+  const [reportData, setReportData] = useState({}); // { studentId: { examScore, examComment, note, attendanceCount, paymentStatus } }
+  const [reportSummary, setReportSummary] = useState('');
+  const [reportSending, setReportSending] = useState(false);
+  const [expandedReportId, setExpandedReportId] = useState(null);
 
   // Edit state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -72,6 +83,119 @@ const StaffDetail = () => {
   useEffect(() => {
     fetchData();
   }, [id, currentMonth]);
+
+  useEffect(() => {
+    if (activeTab === 'reports' && staff) {
+      fetchReports();
+    }
+  }, [activeTab, currentMonth]);
+
+  const fetchReports = async () => {
+    try {
+      setReportsLoading(true);
+      const res = await getMonthlyReports(id, currentMonth);
+      setReports(res.data || []);
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  const getCurrentPeriod = () => {
+    const today = new Date();
+    const day = today.getDate();
+    const [year, month] = currentMonth.split('-').map(Number);
+    const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
+    if (!isCurrentMonth) return null;
+    if (day <= 10) return '10_DAY';
+    if (day <= 20) return '20_DAY';
+    return 'END_MONTH';
+  };
+
+  const getPeriodLabel = (type) => {
+    switch (type) {
+      case '10_DAY': return '1-10 kunlar';
+      case '20_DAY': return '11-20 kunlar';
+      case 'END_MONTH': return '21-oy oxiri';
+      default: return type;
+    }
+  };
+
+  const toggleStudentSelection = (studentId) => {
+    setSelectedStudents(prev => {
+      const next = new Set(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
+  };
+
+  const selectAllStudents = () => {
+    if (selectedStudents.size === allStudents.length) {
+      setSelectedStudents(new Set());
+    } else {
+      setSelectedStudents(new Set(allStudents.map(s => s.id)));
+    }
+  };
+
+  const updateStudentReportData = (studentId, field, value) => {
+    setReportData(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || {}),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSendReport = async () => {
+    const period = getCurrentPeriod();
+    if (!period) {
+      toast.error("Faqat joriy oy uchun hisobot jo'natish mumkin!");
+      return;
+    }
+    if (selectedStudents.size === 0) {
+      toast.error("Kamida 1 ta o'quvchi tanlang!");
+      return;
+    }
+
+    const items = allStudents
+      .filter(s => selectedStudents.has(s.id))
+      .map(s => {
+        const data = reportData[s.id] || {};
+        return {
+          studentId: s.id,
+          studentName: s.name,
+          groupName: s.groupName,
+          attendanceCount: parseInt(data.attendanceCount) || 0,
+          paymentStatus: s.isPaid ? "To'langan" : "To'lanmagan",
+          examScore: period === 'END_MONTH' ? (parseFloat(data.examScore) || null) : null,
+          examComment: period === 'END_MONTH' ? (data.examComment || null) : null,
+          note: data.note || null,
+        };
+      });
+
+    try {
+      setReportSending(true);
+      await createMonthlyReport(id, {
+        month: currentMonth,
+        reportType: period,
+        summary: reportSummary,
+        items,
+      });
+      toast.success("Hisobot muvaffaqiyatli jo'natildi!");
+      setSelectedStudents(new Set());
+      setReportData({});
+      setReportSummary('');
+      fetchReports();
+    } catch (err) {
+      console.error('Error sending report:', err);
+      toast.error("Hisobotni jo'natishda xatolik!");
+    } finally {
+      setReportSending(false);
+    }
+  };
 
   const handleEditClick = () => {
     setEditFormData({
@@ -356,7 +480,8 @@ const StaffDetail = () => {
               {[
                 { id: 'overview', label: "Asosiy", icon: <BookOpen size={14} /> },
                 { id: 'students', label: "O'quvchilar", count: allStudents.length, icon: <Users size={14} /> },
-                { id: 'salary', label: "Maosh va Tushum", icon: <CreditCard size={14} /> }
+                { id: 'salary', label: "Maosh va Tushum", icon: <CreditCard size={14} /> },
+                { id: 'reports', label: "Oylik Hisobot", icon: <FileText size={14} /> }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -887,6 +1012,367 @@ const StaffDetail = () => {
                     </button>
                   </div>
                 </Modal>
+              </div>
+            )}
+
+            {/* TAB 4: OYLIK HISOBOT */}
+            {activeTab === 'reports' && (
+              <div className="space-y-6 animate-fade-in">
+
+                {/* Period Info Bar */}
+                {(() => {
+                  const period = getCurrentPeriod();
+                  const existingReport = reports.find(r => r.reportType === period);
+                  return (
+                    <div className={`flex items-center justify-between p-4 rounded-2xl border shadow-sm backdrop-blur-md ${
+                      period
+                        ? existingReport
+                          ? 'bg-green-50/60 dark:bg-green-900/10 border-green-200/50 dark:border-green-800/30'
+                          : 'bg-[#007aff]/5 dark:bg-[#007aff]/10 border-[#007aff]/20'
+                        : 'bg-gray-50/60 dark:bg-white/5 border-gray-200/50 dark:border-white/10'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          period
+                            ? existingReport
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
+                              : 'bg-[#007aff]/10 text-[#007aff]'
+                            : 'bg-gray-100 dark:bg-white/10 text-gray-400'
+                        }`}>
+                          <FileText size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white">
+                            {period ? `Joriy davr: ${getPeriodLabel(period)}` : "Boshqa oy tanlangan"}
+                          </p>
+                          <p className="text-[11px] text-gray-500">
+                            {period
+                              ? existingReport
+                                ? `✅ Bu davr uchun hisobot ${new Date(existingReport.createdAt).toLocaleDateString('uz-UZ')} da jo'natilgan`
+                                : "Hali hisobot jo'natilmagan"
+                              : "Faqat joriy oy uchun hisobot jo'natish mumkin"
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      {period && (
+                        <div className="flex items-center gap-2">
+                          {['10_DAY', '20_DAY', 'END_MONTH'].map(p => {
+                            const exists = reports.find(r => r.reportType === p);
+                            return (
+                              <div key={p} className={`w-3 h-3 rounded-full border-2 transition-all ${
+                                exists
+                                  ? 'bg-green-500 border-green-400 shadow-[0_0_6px_rgba(34,197,94,0.5)]'
+                                  : p === period
+                                    ? 'bg-[#007aff] border-[#007aff] shadow-[0_0_6px_rgba(0,122,255,0.5)] animate-pulse'
+                                    : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
+                              }`} title={getPeriodLabel(p)} />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Students Selection Card */}
+                {getCurrentPeriod() && (
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-gray-200/50 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">O'quvchilar</h3>
+                        <span className="text-[11px] text-gray-500">{selectedStudents.size}/{allStudents.length} tanlangan</span>
+                      </div>
+                      <button
+                        onClick={selectAllStudents}
+                        className="text-[12px] font-medium text-[#007aff] hover:underline"
+                      >
+                        {selectedStudents.size === allStudents.length ? 'Barchasini olib tashlash' : 'Barchasini tanlash'}
+                      </button>
+                    </div>
+
+                    <div className="divide-y divide-gray-200/30 dark:divide-white/5 max-h-[500px] overflow-y-auto">
+                      {allStudents.length > 0 ? allStudents.map((s, idx) => {
+                        const isSelected = selectedStudents.has(s.id);
+                        const data = reportData[s.id] || {};
+                        const isEndMonth = getCurrentPeriod() === 'END_MONTH';
+
+                        return (
+                          <div key={`${s.id}-${idx}`} className={`transition-all ${
+                            isSelected ? 'bg-[#007aff]/5 dark:bg-[#007aff]/10' : 'hover:bg-black/5 dark:hover:bg-white/5'
+                          }`}>
+                            {/* Student Row */}
+                            <div
+                              className="px-5 py-3 flex items-center gap-4 cursor-pointer"
+                              onClick={() => toggleStudentSelection(s.id)}
+                            >
+                              {/* Checkbox */}
+                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
+                                isSelected
+                                  ? 'bg-[#007aff] border-[#007aff] shadow-sm'
+                                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black/20'
+                              }`}>
+                                {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                              </div>
+
+                              {/* Avatar & Name */}
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center font-medium text-[11px] text-[#1d1d1f] dark:text-white shadow-sm shrink-0">
+                                  {s.name?.substring(0, 1)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-[13px] font-medium text-[#1d1d1f] dark:text-white truncate">{s.name}</p>
+                                  <p className="text-[11px] text-gray-500 truncate">{s.groupName}</p>
+                                </div>
+                              </div>
+
+                              {/* Payment Status */}
+                              <div className={`flex items-center gap-1 text-[11px] font-medium shrink-0 px-2 py-0.5 rounded-full border ${
+                                s.isPaid
+                                  ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200 dark:border-green-800'
+                                  : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800'
+                              }`}>
+                                {s.isPaid ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                                {s.isPaid ? "To'langan" : "To'lanmagan"}
+                              </div>
+                            </div>
+
+                            {/* Expanded Details (only when selected) */}
+                            {isSelected && (
+                              <div className="px-5 pb-4 pl-14 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fade-in">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Kelgan kunlar</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="31"
+                                    placeholder="0"
+                                    value={data.attendanceCount || ''}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => updateStudentReportData(s.id, 'attendanceCount', e.target.value)}
+                                    className="w-full bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none shadow-inner"
+                                  />
+                                </div>
+
+                                {isEndMonth && (
+                                  <>
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                        <Award size={10} className="text-[#ff9500]" /> Imtihon bali
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        placeholder="0-100"
+                                        value={data.examScore || ''}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => updateStudentReportData(s.id, 'examScore', e.target.value)}
+                                        className="w-full bg-[#ff9500]/5 dark:bg-[#ff9500]/10 border border-[#ff9500]/20 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-[#ff9500] focus:ring-2 focus:ring-[#ff9500]/50 outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Imtihon izohi</label>
+                                      <input
+                                        type="text"
+                                        placeholder="Izoh..."
+                                        value={data.examComment || ''}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => updateStudentReportData(s.id, 'examComment', e.target.value)}
+                                        className="w-full bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none shadow-inner"
+                                      />
+                                    </div>
+                                  </>
+                                )}
+
+                                <div className={isEndMonth ? 'sm:col-span-3' : 'sm:col-span-2'}>
+                                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Qo'shimcha izoh</label>
+                                  <input
+                                    type="text"
+                                    placeholder="O'quvchi haqida qo'shimcha..."
+                                    value={data.note || ''}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => updateStudentReportData(s.id, 'note', e.target.value)}
+                                    className="w-full bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none shadow-inner"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }) : (
+                        <div className="py-12 text-center text-gray-500">
+                          <Users size={32} className="mx-auto mb-3 opacity-20" />
+                          <p className="text-[13px]">Ushbu oyda o'quvchilar topilmadi</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Summary & Send */}
+                    {allStudents.length > 0 && (
+                      <div className="p-4 border-t border-gray-200/50 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 space-y-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-500 mb-1">UMUMIY XULOSA</label>
+                          <textarea
+                            value={reportSummary}
+                            onChange={(e) => setReportSummary(e.target.value)}
+                            placeholder="Hisobot uchun umumiy xulosa yozing..."
+                            className="w-full bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none shadow-inner min-h-[60px] resize-none"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[12px] text-gray-500">
+                            <span className="font-semibold text-[#007aff]">{selectedStudents.size}</span> ta o'quvchi tanlangan
+                            {getCurrentPeriod() === 'END_MONTH' && <span className="ml-2 text-[#ff9500]">• Imtihon natijalarini kiriting</span>}
+                          </p>
+                          <button
+                            onClick={handleSendReport}
+                            disabled={reportSending || selectedStudents.size === 0}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-b from-[#007aff] to-[#005bb5] hover:from-[#0062cc] hover:to-[#004a94] disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-[13px] font-semibold transition-all shadow-md border border-[#004a94] disabled:border-gray-400 disabled:cursor-not-allowed"
+                          >
+                            {reportSending ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Send size={16} />
+                            )}
+                            {reportSending ? 'Jo\'natilmoqda...' : 'Hisobotni Jo\'natish'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Report History */}
+                <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10">
+                    <h3 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2">
+                      <FileText size={16} className="text-[#007aff]" />
+                      Hisobotlar tarixi — {getMonthName(currentMonth)}
+                    </h3>
+                  </div>
+
+                  {reportsLoading ? (
+                    <div className="py-12 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : reports.length > 0 ? (
+                    <div className="divide-y divide-gray-200/30 dark:divide-white/5">
+                      {reports.map(report => (
+                        <div key={report.id}>
+                          {/* Report Header */}
+                          <div
+                            className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
+                            onClick={() => setExpandedReportId(expandedReportId === report.id ? null : report.id)}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                                report.reportType === 'END_MONTH'
+                                  ? 'bg-[#ff9500]/10 text-[#ff9500]'
+                                  : 'bg-[#007aff]/10 text-[#007aff]'
+                              }`}>
+                                {report.reportType === 'END_MONTH' ? <Award size={20} /> : <FileText size={20} />}
+                              </div>
+                              <div>
+                                <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
+                                  {getPeriodLabel(report.reportType)}
+                                  <span className="ml-2 text-[11px] font-normal text-gray-400">
+                                    {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </p>
+                                <p className="text-[11px] text-gray-500">
+                                  {report.items?.length || 0} ta o'quvchi • {report.summary ? `"${report.summary.substring(0, 50)}${report.summary.length > 50 ? '...' : ''}"` : 'Xulosa kiritilmagan'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                report.reportType === 'END_MONTH'
+                                  ? 'bg-[#ff9500]/10 text-[#ff9500] border-[#ff9500]/20'
+                                  : 'bg-[#34c759]/10 text-[#34c759] border-[#34c759]/20'
+                              }`}>
+                                {report.reportType === 'END_MONTH' ? 'OY OXIRI' : 'ORALIQ'}
+                              </span>
+                              {expandedReportId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                            </div>
+                          </div>
+
+                          {/* Expanded Items */}
+                          {expandedReportId === report.id && (
+                            <div className="bg-gray-50/50 dark:bg-black/10 border-t border-gray-200/30 dark:border-white/5">
+                              <table className="w-full text-[12px]">
+                                <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500">
+                                  <tr>
+                                    <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
+                                    <th className="px-3 py-2 text-left font-medium">Guruh</th>
+                                    <th className="px-3 py-2 text-center font-medium">Davomat</th>
+                                    <th className="px-3 py-2 text-center font-medium">To'lov</th>
+                                    {report.reportType === 'END_MONTH' && (
+                                      <th className="px-3 py-2 text-center font-medium">Imtihon</th>
+                                    )}
+                                    <th className="px-3 py-2 text-left font-medium">Izoh</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                                  {(report.items || []).map(item => (
+                                    <tr key={item.id} className="hover:bg-white/40 dark:hover:bg-white/5">
+                                      <td className="px-5 py-2.5 font-medium text-[#1d1d1f] dark:text-white">{item.studentName}</td>
+                                      <td className="px-3 py-2.5 text-gray-500">{item.groupName}</td>
+                                      <td className="px-3 py-2.5 text-center">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#007aff]/10 text-[#007aff] font-bold text-[11px]">
+                                          {item.attendanceCount} kun
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2.5 text-center">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                          item.paymentStatus?.includes("To'langan")
+                                            ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200'
+                                            : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200'
+                                        }`}>
+                                          {item.paymentStatus}
+                                        </span>
+                                      </td>
+                                      {report.reportType === 'END_MONTH' && (
+                                        <td className="px-3 py-2.5 text-center">
+                                          {item.examScore !== null && item.examScore !== undefined ? (
+                                            <div>
+                                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[11px] ${
+                                                item.examScore >= 80 ? 'bg-green-100 text-green-700' :
+                                                item.examScore >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
+                                              }`}>
+                                                <Star size={10} /> {item.examScore}
+                                              </span>
+                                              {item.examComment && <p className="text-[10px] text-gray-400 mt-0.5">{item.examComment}</p>}
+                                            </div>
+                                          ) : (
+                                            <span className="text-gray-300">—</span>
+                                          )}
+                                        </td>
+                                      )}
+                                      <td className="px-3 py-2.5 text-gray-500 italic text-[11px]">{item.note || '—'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              {report.summary && (
+                                <div className="mx-5 mb-4 mt-2 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                  <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Umumiy xulosa</p>
+                                  <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center text-gray-500">
+                      <FileText size={32} className="mx-auto mb-3 opacity-20" />
+                      <p className="text-[13px]">Ushbu oyda hisobotlar mavjud emas</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
