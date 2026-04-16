@@ -8,17 +8,12 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const getPeriodLabel = (dateStr) => {
-  if (!dateStr || !dateStr.includes('-')) return dateStr;
-  try {
-    const parts = dateStr.split('-');
-    if (parts.length < 3) return dateStr;
-    const day = parseInt(parts[2]);
-    const monthIdx = parseInt(parts[1]) - 1;
-    const months = ['yan', 'fed', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
-    return `${day}-${months[monthIdx] || parts[1]}`;
-  } catch {
-    return dateStr;
+const getPeriodLabel = (type) => {
+  switch (type) {
+    case '10_DAY': return '1-10 kunlar';
+    case '20_DAY': return '11-20 kunlar';
+    case 'END_MONTH': return '21-oy oxiri';
+    default: return type;
   }
 };
 
@@ -40,8 +35,7 @@ const TeacherReport = () => {
 
   // History & Dates
   const [reports, setReports] = useState([]);
-  const [reportDates, setReportDates] = useState([]); // Admin configured dates
-  const [activeDate, setActiveDate] = useState(null); // Which date the teacher selected
+  const [activeDate, setActiveDate] = useState(null); // Which period ID is selected
   const [reportsLoading, setReportsLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -53,21 +47,20 @@ const TeacherReport = () => {
   const fetchData = async (month) => {
     setReportsLoading(true);
     try {
-      const [repRes, datesRes] = await Promise.all([
-        getMyTeacherReports(month),
-        getTeacherReportDates(month),
-      ]);
+      const repRes = await getMyTeacherReports(month);
       setReports(repRes.data || []);
-      const dates = datesRes.data || [];
-      setReportDates(dates);
       
-      // Auto-select first unsubmitted date
-      if (dates.length > 0) {
-        const submittedMap = new Set((repRes.data || []).map(r => r.reportType)); // reportType is now dateStr
-        const firstUnsubmitted = dates.find(d => !submittedMap.has(d.date));
-        setActiveDate(firstUnsubmitted ? firstUnsubmitted.date : dates[dates.length - 1].date);
+      // Auto-select based on current day if viewing current month
+      const now = new Date();
+      const isCurrentMonth = now.toISOString().slice(0, 7) === month;
+      if (isCurrentMonth) {
+        const day = now.getDate();
+        if (day <= 10) setActiveDate('10_DAY');
+        else if (day <= 20) setActiveDate('20_DAY');
+        else setActiveDate('END_MONTH');
       } else {
-        setActiveDate(null);
+        // Just select 10_DAY by default for other months
+        setActiveDate('10_DAY');
       }
     } catch { /* silent */ }
     finally { setReportsLoading(false); }
@@ -164,32 +157,29 @@ const TeacherReport = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Period dots / Timeline */}
-          {reportDates.length > 0 && (
-            <div className="flex items-center gap-2 mr-2 bg-gray-100 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10">
-              <CalendarDays size={14} className="text-gray-400" />
-              {reportDates.map(rd => {
-                const p = rd.date;
-                const done = reports.find(r => r.reportType === p);
-                return (
-                  <button
-                    key={p}
-                    title={getPeriodLabel(p)}
-                    onClick={() => setActiveDate(p)}
-                    className={`w-4 h-4 rounded-full border-[3px] transition-all cursor-pointer hover:scale-125 ${
-                      done
-                        ? p === activeDate
-                          ? 'bg-emerald-500 border-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
-                          : 'bg-emerald-500 border-white dark:border-black'
-                        : p === activeDate
-                          ? 'bg-blue-500 border-blue-200 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse'
-                          : 'bg-gray-300 dark:bg-gray-600 border-white dark:border-black'
-                    }`}
-                  />
-                );
-              })}
-            </div>
-          )}
+          {/* Period Selection Tabs */}
+          <div className="flex items-center p-1 bg-gray-200/80 dark:bg-black/40 rounded-xl border border-black/5 dark:border-white/10 shadow-inner mr-2">
+            {[
+              { id: '10_DAY', label: '1-10' },
+              { id: '20_DAY', label: '11-20' },
+              { id: 'END_MONTH', label: '21-31' }
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => setActiveDate(p.id)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all relative ${
+                  activeDate === p.id 
+                    ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                {p.label}
+                {reports.some(r => r.reportType === p.id) && (
+                  <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
 
           {/* Month nav */}
           <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
@@ -238,14 +228,14 @@ const TeacherReport = () => {
             </div>
             <div>
               <p className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white">
-                {period ? `Tanlangan sana: ${getPeriodLabel(period)}` : "Ushbu oyda admin hisobot kunlarini belgilanmagan"}
+                {period ? `Tanlangan davr: ${getPeriodLabel(period)}` : "Hisobot davrini tanlang"}
               </p>
               <p className="text-[11px] text-gray-500">
                 {period
                   ? existingReport
-                    ? `✅ Ushbu sana uchun hisobot ${new Date(existingReport.createdAt).toLocaleDateString('uz-UZ')} da yuborilgan`
+                    ? `✅ Ushbu davr uchun hisobot ${new Date(existingReport.createdAt).toLocaleDateString('uz-UZ')} da yuborilgan`
                     : "Hali hisobot yuborilmagan — o'quvchilarni tanlab yuboring"
-                  : "Yuqoridan sana tanlang"
+                  : "Yuqoridan kerakli davrni tanlang"
                 }
               </p>
             </div>
@@ -514,7 +504,7 @@ const TeacherReport = () => {
 
             {/* Selected Students List */}
             {(() => {
-              const isEndMonth = reportDates.length > 0 && activeDate === reportDates[reportDates.length - 1]?.date;
+              const isEndMonth = period === 'END_MONTH';
               return (
               <div className="px-6 pt-5">
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Tanlangan o'quvchilar</p>

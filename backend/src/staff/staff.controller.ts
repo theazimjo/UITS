@@ -57,14 +57,4 @@ export class StaffController {
     return this.staffService.getMonthlyReports(+id, month);
   }
 
-  // --- Report Date Calendar (Admin) ---
-  @Get('report-dates/all')
-  getReportDates(@Query('month') month?: string) {
-    return this.staffService.getReportDates(month);
-  }
-
-  @Post('report-dates/toggle')
-  toggleReportDate(@Body('date') date: string) {
-    return this.staffService.toggleReportDate(date);
-  }
 }

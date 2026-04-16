@@ -243,27 +243,5 @@ export class StaffService {
   }
 
   // --- Report Dates (Calendar) ---
-  async getReportDates(month?: string): Promise<ReportDate[]> {
-    if (month && month.includes('-')) {
-      const [year, m] = month.split('-').map(Number);
-      const start = `${month}-01`;
-      // Calculate last day of month
-      return this.reportDateRepo.createQueryBuilder('rd')
-        .where('CAST(rd.date AS TEXT) LIKE :pattern', { pattern: `${month}-%` })
-        .orderBy('rd.date', 'ASC')
-        .getMany();
-    }
-    return this.reportDateRepo.find({ order: { date: 'ASC' } });
-  }
-
-  async toggleReportDate(date: string): Promise<ReportDate | { deleted: boolean }> {
-    const existing = await this.reportDateRepo.findOne({ where: { date } });
-    if (existing) {
-      await this.reportDateRepo.remove(existing);
-      return { deleted: true };
-    } else {
-      const newDate = this.reportDateRepo.create({ date });
-      return this.reportDateRepo.save(newDate);
-    }
-  }
+  // Report dates logic removed in favor of static periods
 }

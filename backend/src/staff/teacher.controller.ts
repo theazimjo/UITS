@@ -585,16 +585,5 @@ export class TeacherController {
     });
   }
 
-  // GET /teacher/report-dates — Teacher reads active report dates
-  @UseGuards(JwtAuthGuard)
-  @Get('report-dates')
-  async getReportDates(@Query('month') month?: string) {
-    if (month && month.includes('-')) {
-      return this.reportDateRepo.createQueryBuilder('rd')
-        .where('CAST(rd.date AS TEXT) LIKE :pattern', { pattern: `${month}-%` })
-        .orderBy('rd.date', 'ASC')
-        .getMany();
-    }
-    return this.reportDateRepo.find({ order: { date: 'ASC' } });
-  }
+}
 }
