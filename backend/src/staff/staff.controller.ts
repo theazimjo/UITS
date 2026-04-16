@@ -57,4 +57,10 @@ export class StaffController {
     return this.staffService.getMonthlyReports(+id, month);
   }
 
+  @Roles('admin')
+  @Get('reports/all')
+  getAllMonthlyReports(@Query('month') month?: string) {
+    return this.staffService.getAllMonthlyReports(month);
+  }
+
 }

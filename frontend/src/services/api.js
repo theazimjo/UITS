@@ -103,6 +103,7 @@ export const saveGrade = (data) => api.post('/teacher/grade', data);
 // Monthly Reports (Admin-side)
 export const createMonthlyReport = (teacherId, data) => api.post(`/staff/${teacherId}/monthly-report`, data);
 export const getMonthlyReports = (teacherId, month) => api.get(`/staff/${teacherId}/monthly-reports`, { params: { month } });
+export const getAllMonthlyReports = (month) => api.get('/staff/reports/all', { params: { month } });
 
 // Monthly Reports (Teacher-side)
 export const sendTeacherReport = (data) => api.post('/teacher/send-report', data);

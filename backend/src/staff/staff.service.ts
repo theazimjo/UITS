@@ -242,6 +242,17 @@ export class StaffService {
     });
   }
 
+  async getAllMonthlyReports(month?: string): Promise<MonthlyReport[]> {
+    const where: any = {};
+    if (month) where.month = month;
+
+    return this.monthlyReportRepo.find({
+      where,
+      order: { createdAt: 'DESC' },
+      relations: ['items'],
+    });
+  }
+
   async deleteMonthlyReport(id: number, teacherId: number): Promise<void> {
     const report = await this.monthlyReportRepo.findOne({ where: { id, teacherId } });
     if (!report) throw new NotFoundException('Report not found or access denied');
