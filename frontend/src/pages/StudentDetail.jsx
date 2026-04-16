@@ -6,7 +6,8 @@ import {
   CreditCard, ArrowRight, History, CheckCircle, RefreshCw,
   ChevronRight, Fingerprint, GraduationCap, Building
 } from 'lucide-react';
-import { getStudentById, getPaymentsByStudent, getStudentAttendance, updateStudent } from '../services/api';
+import { getStudentById, getPaymentsByStudent, getStudentAttendance, updateStudent, getStudentExams } from '../services/api';
+import { Award } from 'lucide-react';
 
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
@@ -25,6 +26,7 @@ const StudentDetail = () => {
   const [payments, setPayments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [grades, setGrades] = useState([]);
+  const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [attLoading, setAttLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
@@ -47,7 +49,22 @@ const StudentDetail = () => {
     if (activeTab === 'attendance') {
       fetchAttendanceData();
     }
+    if (activeTab === 'exams') {
+      fetchExams();
+    }
   }, [viewDate, activeTab]);
+
+  const fetchExams = async () => {
+    try {
+      setAttLoading(true);
+      const res = await getStudentExams(id);
+      setExams(res.data || []);
+    } catch (err) {
+      console.error('Error fetching exams:', err);
+    } finally {
+      setAttLoading(false);
+    }
+  };
 
   const fetchStudentData = async () => {
     try {
@@ -203,7 +220,8 @@ const StudentDetail = () => {
             { id: 'info', label: 'Ma\'lumot', icon: <Info size={14} /> },
             { id: 'groups', label: 'Guruhlar', icon: <BookOpen size={14} /> },
             { id: 'payments', label: 'To\'lovlar', icon: <CreditCard size={14} /> },
-            { id: 'attendance', label: 'Davomat', icon: <History size={14} /> }
+            { id: 'attendance', label: 'Davomat', icon: <History size={14} /> },
+            { id: 'exams', label: 'Imtihonlar', icon: <Award size={14} /> }
           ].map(t => (
             <button
               key={t.id}
@@ -540,6 +558,50 @@ const StudentDetail = () => {
               </div>
 
               {/* Calendar Grid */}
+            </div>
+          )}
+
+          {/* TAB 5: EXAMS */}
+          {activeTab === 'exams' && (
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden animate-fade-in">
+              <div className="p-4 border-b border-gray-200/50 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                <h3 className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white">Imtihon natijalari</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[13px]">
+                  <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10">
+                    <tr>
+                      <th className="px-5 py-2.5 font-medium">Sana</th>
+                      <th className="px-5 py-2.5 font-medium">Guruh</th>
+                      <th className="px-5 py-2.5 font-medium text-center">Joriy</th>
+                      <th className="px-5 py-2.5 font-medium text-center">Nazariy</th>
+                      <th className="px-5 py-2.5 font-medium text-center">Amaliy</th>
+                      <th className="px-5 py-2.5 font-medium text-center">Umumiy</th>
+                      <th className="px-5 py-2.5 font-medium text-center">Foiz</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                    {exams.map(ex => (
+                      <tr key={ex.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <td className="px-5 py-3 text-gray-500">{ex.month}</td>
+                        <td className="px-5 py-3 font-medium text-[#1d1d1f] dark:text-white">{ex.group?.name}</td>
+                        <td className="px-5 py-3 text-center text-blue-600 dark:text-blue-400 font-bold">{ex.currentAverage}</td>
+                        <td className="px-5 py-3 text-center">{ex.theoryScore}</td>
+                        <td className="px-5 py-3 text-center">{ex.practiceScore}</td>
+                        <td className="px-5 py-3 text-center font-bold">{ex.totalScore}</td>
+                        <td className="px-5 py-3 text-center">
+                          <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg font-bold">
+                            {ex.percentage}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {exams.length === 0 && (
+                      <tr><td colSpan="7" className="py-12 text-center text-gray-400">Imtihon natijalari topilmadi</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

@@ -173,7 +173,7 @@ const Settings = () => {
                             type="text"
                             value={profile.name}
                             onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                            placeholder="Masalan: Azimjon Abdullaev"
+                            placeholder=""
                             className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-5 py-3 text-[14px] outline-none focus:border-[#007aff] transition-all"
                           />
                           <p className="text-[11px] text-gray-400 ml-2 italic">Hozirgi: {profile.name || 'Set emas'}</p>

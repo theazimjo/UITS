@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import useStore from '../../store/useStore';
 import { sendTeacherReport, getMyTeacherReports, deleteTeacherReport } from '../../services/api';
 import {
@@ -13,7 +14,7 @@ const getPeriodLabel = (type) => {
   switch (type) {
     case '10_DAY': return '1-10 kunlar';
     case '20_DAY': return '11-20 kunlar';
-    case 'END_MONTH': return '21-oy oxiri';
+    case 'EXAM': return 'Imtihon';
     default: return type;
   }
 };
@@ -33,6 +34,11 @@ const TeacherReport = () => {
   const [reportSummary, setReportSummary] = useState('');
   const [examScores, setExamScores] = useState({});
   const [examComments, setExamComments] = useState({});
+  const [theoryScores, setTheoryScores] = useState({});
+  const [practiceScores, setPracticeScores] = useState({});
+  const [currentAverages, setCurrentAverages] = useState({});
+  const [totalScores, setTotalScores] = useState({});
+  const [percentages, setPercentages] = useState({});
   const [isSending, setIsSending] = useState(false);
 
   // History & Dates
@@ -53,7 +59,7 @@ const TeacherReport = () => {
     try {
       const repRes = await getMyTeacherReports(month);
       setReports(repRes.data || []);
-      
+
       // Auto-select based on current day if viewing current month
       const now = new Date();
       const isCurrentMonth = now.toISOString().slice(0, 7) === month;
@@ -61,7 +67,7 @@ const TeacherReport = () => {
         const day = now.getDate();
         if (day <= 10) setActiveDate('10_DAY');
         else if (day <= 20) setActiveDate('20_DAY');
-        else setActiveDate('END_MONTH');
+        else setActiveDate('EXAM');
       } else {
         // Just select 10_DAY by default for other months
         setActiveDate('10_DAY');
@@ -69,6 +75,38 @@ const TeacherReport = () => {
     } catch { /* silent */ }
     finally { setReportsLoading(false); }
   };
+
+  const fetchAverages = async () => {
+    if (activeDate !== 'EXAM' || selectedGroup === 'all') return;
+    try {
+      const groupObj = students.find(s => s.groupName === selectedGroup);
+      if (!groupObj?.groupId) return;
+
+      const res = await axios.get(`http://localhost:3001/teacher/current-averages`, {
+        params: { month: currentMonth, groupId: groupObj.groupId },
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+      });
+      setCurrentAverages(res.data || {});
+      
+      // Also pre-fill total scores if we have averages
+      const newTotals = { ...totalScores };
+      Object.keys(res.data).forEach(sid => {
+        const avg = res.data[sid] || 0;
+        const theory = theoryScores[sid] || 0;
+        const practice = practiceScores[sid] || 0;
+        newTotals[sid] = parseFloat((avg + parseFloat(theory) + parseFloat(practice)).toFixed(2));
+      });
+      setTotalScores(newTotals);
+    } catch (e) {
+      console.error("Error fetching averages:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (activeDate === 'EXAM' && selectedGroup !== 'all') {
+      fetchAverages();
+    }
+  }, [activeDate, selectedGroup, currentMonth]);
 
   const changeMonth = (delta) => {
     const [y, m] = currentMonth.split('-').map(Number);
@@ -85,13 +123,13 @@ const TeacherReport = () => {
       .filter(r => r.reportType === activeDate)
       .flatMap(r => r.items?.map(i => i.studentId) || [])
   );
-  
+
   const hasReportForPeriod = reports.some(r => r.reportType === activeDate);
 
   const filteredStudents = students.filter(s => {
     const matchesGroup = selectedGroup === 'all' || s.groupName === selectedGroup;
     const isReported = reportedStudentIds.has(s.id);
-    
+
     if (listFilter === 'pending') return matchesGroup && !isReported;
     if (listFilter === 'reported') return matchesGroup && isReported;
     return matchesGroup;
@@ -151,18 +189,35 @@ const TeacherReport = () => {
     setEditingReportId(report.id);
     setActiveDate(report.reportType);
     setReportSummary(report.summary || '');
-    
+
     const pickedIds = new Set(report.items.map(item => item.studentId));
     setSelectedIds(pickedIds);
 
     const scores = {};
     const comments = {};
+    const theories = {};
+    const practices = {};
+    const averages = {};
+    const totals = {};
+    const percs = {};
+
     report.items.forEach(item => {
       if (item.examScore != null) scores[item.studentId] = item.examScore;
       if (item.examComment) comments[item.studentId] = item.examComment;
+      if (item.theoryScore != null) theories[item.studentId] = item.theoryScore;
+      if (item.practiceScore != null) practices[item.studentId] = item.practiceScore;
+      if (item.currentAverage != null) averages[item.studentId] = item.currentAverage;
+      if (item.totalScore != null) totals[item.studentId] = item.totalScore;
+      if (item.percentage != null) percs[item.studentId] = item.percentage;
     });
+
     setExamScores(scores);
     setExamComments(comments);
+    setTheoryScores(theories);
+    setPracticeScores(practices);
+    setCurrentAverages(averages);
+    setTotalScores(totals);
+    setPercentages(percs);
 
     setIsModalOpen(true);
   };
@@ -189,6 +244,11 @@ const TeacherReport = () => {
         groupNames,
         examScores,
         examComments,
+        theoryScores,
+        practiceScores,
+        currentAverages,
+        totalScores,
+        percentages,
         mode: isEditingReport ? 'replace' : 'merge'
       });
       toast.success(isEditingReport ? "Hisobot yangilandi! ✅" : "Hisobot yuborildi! ✅");
@@ -229,16 +289,15 @@ const TeacherReport = () => {
             {[
               { id: '10_DAY', label: '1-10' },
               { id: '20_DAY', label: '11-20' },
-              { id: 'END_MONTH', label: '21-31' }
+              { id: 'EXAM', label: 'Imtihon' }
             ].map(p => (
               <button
                 key={p.id}
                 onClick={() => setActiveDate(p.id)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all relative ${
-                  activeDate === p.id 
-                    ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm' 
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all relative ${activeDate === p.id
+                    ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
+                  }`}
               >
                 {p.label}
                 {reports.some(r => r.reportType === p.id) && (
@@ -276,21 +335,19 @@ const TeacherReport = () => {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
         {/* Period Status Banner */}
-        <div className={`flex items-center justify-between p-4 rounded-2xl border shadow-sm backdrop-blur-md ${
-          period
+        <div className={`flex items-center justify-between p-4 rounded-2xl border shadow-sm backdrop-blur-md ${period
             ? hasReportForPeriod
               ? 'bg-emerald-50/60 dark:bg-emerald-900/10 border-emerald-200/50 dark:border-emerald-800/30'
               : 'bg-blue-50/60 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-800/30'
             : 'bg-gray-50/60 dark:bg-white/5 border-gray-200/50 dark:border-white/10'
-        }`}>
+          }`}>
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              period
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${period
                 ? hasReportForPeriod
                   ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
                   : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
                 : 'bg-gray-100 dark:bg-white/10 text-gray-400'
-            }`}>
+              }`}>
               <FileText size={20} />
             </div>
             <div>
@@ -331,8 +388,8 @@ const TeacherReport = () => {
               onClick={() => setListFilter(tab.id)}
               className={`
                 flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all
-                ${listFilter === tab.id 
-                  ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm' 
+                ${listFilter === tab.id
+                  ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
               `}
             >
@@ -401,18 +458,16 @@ const TeacherReport = () => {
                     <tr
                       key={s.id}
                       onClick={() => toggleSelect(s.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected
+                      className={`cursor-pointer transition-colors ${isSelected
                           ? 'bg-blue-50/60 dark:bg-blue-900/10 hover:bg-blue-50/80'
                           : 'hover:bg-black/5 dark:hover:bg-white/5'
-                      } ${reportedStudentIds.has(s.id) && listFilter === 'all' ? 'opacity-50' : ''}`}
+                        } ${reportedStudentIds.has(s.id) && listFilter === 'all' ? 'opacity-50' : ''}`}
                     >
                       <td className="pl-5 pr-3 py-3">
-                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                          isSelected
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected
                             ? 'bg-blue-500 border-blue-500 shadow-sm'
                             : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black/20'
-                        }`}>
+                          }`}>
                           {isSelected && <CheckCircle2 size={13} className="text-white" />}
                         </div>
                       </td>
@@ -439,11 +494,10 @@ const TeacherReport = () => {
                       </td>
                       <td className="px-3 py-3 text-gray-500 text-[12px]">{s.groupName || '—'}</td>
                       <td className="px-3 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          s.isPaid
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${s.isPaid
                             ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800'
                             : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800'
-                        }`}>
+                          }`}>
                           {s.isPaid ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
                           {s.isPaid ? "To'langan" : "To'lanmagan"}
                         </span>
@@ -492,107 +546,105 @@ const TeacherReport = () => {
               {reports
                 .filter(r => r.reportType === activeDate)
                 .map(report => (
-                <div key={report.id}>
-                  <div
-                    className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
-                    onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                        report.items?.some(i => i.examScore != null) ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
-                      }`}>
-                        {report.items?.some(i => i.examScore != null) ? <Award size={18} /> : <FileText size={18} />}
+                  <div key={report.id}>
+                    <div
+                      className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
+                      onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${report.items?.some(i => i.examScore != null) ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
+                          }`}>
+                          {report.items?.some(i => i.examScore != null) ? <Award size={18} /> : <FileText size={18} />}
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
+                            {getPeriodLabel(report.reportType)}
+                            <span className="ml-2 text-[11px] font-normal text-gray-400">
+                              {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-gray-500">
+                            {report.items?.length || 0} ta o'quvchi
+                            {report.summary ? ` • "${report.summary.substring(0, 50)}${report.summary.length > 50 ? '...' : ''}"` : ''}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
-                          {getPeriodLabel(report.reportType)}
-                          <span className="ml-2 text-[11px] font-normal text-gray-400">
-                            {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </p>
-                        <p className="text-[11px] text-gray-500">
-                          {report.items?.length || 0} ta o'quvchi
-                          {report.summary ? ` • "${report.summary.substring(0, 50)}${report.summary.length > 50 ? '...' : ''}"` : ''}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEditReport(report); }}
+                            className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500 rounded-lg transition-colors"
+                            title="Tahrirlash"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteReport(report.id); }}
+                            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded-lg transition-colors"
+                            title="O'chirish"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50/50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800`}>
+                          {report.reportType}
+                        </span>
+                        {expandedId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleEditReport(report); }}
-                          className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500 rounded-lg transition-colors"
-                          title="Tahrirlash"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleDeleteReport(report.id); }}
-                          className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded-lg transition-colors"
-                          title="O'chirish"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50/50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800`}>
-                        {report.reportType}
-                      </span>
-                      {expandedId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                    </div>
-                  </div>
 
-                  {expandedId === report.id && (
-                    <div className="overflow-x-auto bg-gray-50/50 dark:bg-black/10 border-t border-gray-200/30 dark:border-white/5">
-                      <table className="w-full text-[12px]">
-                        <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500">
-                          <tr>
-                            <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
-                            <th className="px-3 py-2 text-left font-medium">Guruh</th>
-                            <th className="px-3 py-2 text-center font-medium">To'lov</th>
-                            {report.items?.some(i => i.examScore != null) && (
-                              <th className="px-3 py-2 text-left font-medium">Imtihon Balli</th>
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                          {(report.items || []).map(item => (
-                            <tr key={item.id} className="hover:bg-white/40 dark:hover:bg-white/5">
-                              <td className="px-5 py-2.5 font-medium text-[#1d1d1f] dark:text-white">{item.studentName}</td>
-                              <td className="px-3 py-2.5 text-gray-500">{item.groupName || '—'}</td>
-                              <td className="px-3 py-2.5 text-center">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                  item.paymentStatus?.includes("To'langan")
-                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                    : item.paymentStatus
-                                      ? 'bg-red-50 text-red-500 border-red-200'
-                                      : 'text-gray-400 border-gray-200'
-                                }`}>
-                                  {item.paymentStatus || '—'}
-                                </span>
-                              </td>
+                    {expandedId === report.id && (
+                      <div className="overflow-x-auto bg-gray-50/50 dark:bg-black/10 border-t border-gray-200/30 dark:border-white/5">
+                        <table className="w-full text-[12px]">
+                          <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500">
+                            <tr>
+                              <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
+                              <th className="px-3 py-2 text-left font-medium">Guruh</th>
+                              <th className="px-3 py-2 text-center font-medium">To'lov</th>
                               {report.items?.some(i => i.examScore != null) && (
-                                <td className="px-3 py-2.5">
-                                  {item.examScore != null ? (
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-bold text-blue-600 dark:text-blue-400">{item.examScore}</span>
-                                      {item.examComment && <span className="text-[11px] text-gray-500 truncate max-w-[150px]" title={item.examComment}>- {item.examComment}</span>}
-                                    </div>
-                                  ) : <span className="text-gray-400">—</span>}
-                                </td>
+                                <th className="px-3 py-2 text-left font-medium">Imtihon Balli</th>
                               )}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {report.summary && (
-                        <div className="mx-5 my-3 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Umumiy xulosa</p>
-                          <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                          </thead>
+                          <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                            {(report.items || []).map(item => (
+                              <tr key={item.id} className="hover:bg-white/40 dark:hover:bg-white/5">
+                                <td className="px-5 py-2.5 font-medium text-[#1d1d1f] dark:text-white">{item.studentName}</td>
+                                <td className="px-3 py-2.5 text-gray-500">{item.groupName || '—'}</td>
+                                <td className="px-3 py-2.5 text-center">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.paymentStatus?.includes("To'langan")
+                                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                      : item.paymentStatus
+                                        ? 'bg-red-50 text-red-500 border-red-200'
+                                        : 'text-gray-400 border-gray-200'
+                                    }`}>
+                                    {item.paymentStatus || '—'}
+                                  </span>
+                                </td>
+                                {report.items?.some(i => i.examScore != null) && (
+                                  <td className="px-3 py-2.5">
+                                    {item.examScore != null ? (
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-blue-600 dark:text-blue-400">{item.examScore}</span>
+                                        {item.examComment && <span className="text-[11px] text-gray-500 truncate max-w-[150px]" title={item.examComment}>- {item.examComment}</span>}
+                                      </div>
+                                    ) : <span className="text-gray-400">—</span>}
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {report.summary && (
+                          <div className="mx-5 my-3 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Umumiy xulosa</p>
+                            <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
           )}
         </div>
@@ -626,59 +678,137 @@ const TeacherReport = () => {
 
             {/* Selected Students List */}
             {(() => {
-              const isEndMonth = period === 'END_MONTH';
+              const isExam = period === 'EXAM';
               return (
-              <div className="px-6 pt-5">
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Tanlangan o'quvchilar</p>
-                <div className="max-h-[350px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
-                  {filteredStudents.filter(s => selectedIds.has(s.id)).map(s => (
-                    <div key={s.id} className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 flex gap-3 flex-col sm:flex-row sm:items-start">
-                      <div className="flex items-center gap-3 w-full sm:w-1/2">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
-                          {s.name?.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-bold text-[#1d1d1f] dark:text-white truncate">
-                            {s.name}
-                            {reportedStudentIds.has(s.id) && (
-                              <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">
-                                <CheckCircle2 size={10} /> Yuborilgan
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[12px] text-gray-400 font-medium">#{s.id} • {s.groupName || 'Guruhsiz'}</p>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          s.isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
-                        } shrink-0`}>
-                          {s.isPaid ? "To'langan" : "To'lanmagan"}
-                        </span>
-                      </div>
-                      
-                      {isEndMonth && (
-                        <div className="w-full sm:w-1/2 flex items-center gap-2">
-                          <input
-                            type="number"
-                            placeholder="Baho/Ball"
-                            min="0"
-                            max="100"
-                            value={examScores[s.id] || ''}
-                            onChange={(e) => setExamScores(prev => ({ ...prev, [s.id]: e.target.value }))}
-                            className="w-[80px] bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] focus:ring-1 focus:ring-blue-500 outline-none"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Izoh..."
-                            value={examComments[s.id] || ''}
-                            onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                            className="flex-1 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] focus:ring-1 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                      )}
+                <div className="px-6 pt-5">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">
+                    {isExam ? "Imtihon natijalari jadvali" : "Tanlangan o'quvchilar"}
+                  </p>
+                  
+                  {isExam ? (
+                    <div className="overflow-x-auto border border-gray-100 dark:border-white/5 rounded-2xl">
+                      <table className="w-full text-left text-[12px] whitespace-nowrap">
+                        <thead className="bg-gray-50/50 dark:bg-black/30 text-gray-400 font-bold uppercase tracking-tight text-[10px]">
+                          <tr>
+                            <th className="px-4 py-3">O'quvchi</th>
+                            <th className="px-2 py-3 text-center">Joriy</th>
+                            <th className="px-2 py-3 text-center">Nazariy</th>
+                            <th className="px-2 py-3 text-center">Amaliy</th>
+                            <th className="px-2 py-3 text-center">Umumiy</th>
+                            <th className="px-2 py-3 text-center">Foiz %</th>
+                            <th className="px-4 py-3">Izoh</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                          {filteredStudents.filter(s => selectedIds.has(s.id)).map(s => {
+                            const avg = currentAverages[s.id] || 0;
+                            const theory = theoryScores[s.id] || '';
+                            const practice = practiceScores[s.id] || '';
+                            
+                            const calculateTotal = (t, p) => {
+                              const total = parseFloat(avg) + (parseFloat(t) || 0) + (parseFloat(p) || 0);
+                              return parseFloat(total.toFixed(2));
+                            };
+
+                            const handleScoreChange = (sid, type, val) => {
+                              if (type === 'theory') {
+                                setTheoryScores(prev => ({ ...prev, [sid]: val }));
+                                const newTotal = calculateTotal(val, practiceScores[sid]);
+                                setTotalScores(prev => ({ ...prev, [sid]: newTotal }));
+                              } else {
+                                setPracticeScores(prev => ({ ...prev, [sid]: val }));
+                                const newTotal = calculateTotal(theoryScores[sid], val);
+                                setTotalScores(prev => ({ ...prev, [sid]: newTotal }));
+                              }
+                            };
+
+                            return (
+                              <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                                <td className="px-4 py-3 font-semibold text-[#1d1d1f] dark:text-white">
+                                  {s.name}
+                                </td>
+                                <td className="px-2 py-3 text-center">
+                                  <input 
+                                    type="number" 
+                                    value={currentAverages[s.id] || ''} 
+                                    onChange={(e) => setCurrentAverages(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                    className="w-14 bg-blue-50/50 dark:bg-blue-900/10 border-none rounded text-center font-bold text-blue-600 outline-none" 
+                                  />
+                                </td>
+                                <td className="px-2 py-3 text-center">
+                                  <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={theoryScores[s.id] || ''}
+                                    onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
+                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none" 
+                                  />
+                                </td>
+                                <td className="px-2 py-3 text-center">
+                                  <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={practiceScores[s.id] || ''}
+                                    onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
+                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none" 
+                                  />
+                                </td>
+                                <td className="px-2 py-3 text-center font-bold text-[#1d1d1f] dark:text-white">
+                                  {totalScores[s.id] || calculateTotal(theoryScores[s.id] || 0, practiceScores[s.id] || 0)}
+                                </td>
+                                <td className="px-2 py-3 text-center">
+                                  <input 
+                                    type="number" 
+                                    placeholder="%"
+                                    value={percentages[s.id] || ''}
+                                    onChange={(e) => setPercentages(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none" 
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <input 
+                                    type="text" 
+                                    placeholder="..."
+                                    value={examComments[s.id] || ''}
+                                    onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                    className="w-full min-w-[100px] bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded px-2 py-1 outline-none" 
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="max-h-[350px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                      {filteredStudents.filter(s => selectedIds.has(s.id)).map(s => (
+                        <div key={s.id} className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 flex gap-3 flex-col sm:flex-row sm:items-start">
+                          <div className="flex items-center gap-3 w-full sm:w-1/2">
+                            <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
+                              {s.name?.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[14px] font-bold text-[#1d1d1f] dark:text-white truncate">
+                                {s.name}
+                                {reportedStudentIds.has(s.id) && (
+                                  <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                                    <CheckCircle2 size={10} /> Yuborilgan
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-[12px] text-gray-400 font-medium">#{s.id} • {s.groupName || 'Guruhsiz'}</p>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
+                              } shrink-0`}>
+                              {s.isPaid ? "To'langan" : "To'lanmagan"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
               );
             })()}
 

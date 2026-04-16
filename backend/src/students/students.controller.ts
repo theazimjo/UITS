@@ -30,6 +30,12 @@ export class StudentsController {
     return this.studentsService.getExternalAttendance(+id, date);
   }
 
+  @Get(':id/exams')
+  findExams(@Param('id') id: string) {
+    if (isNaN(+id)) return [];
+    return this.studentsService.findExams(+id);
+  }
+
   @Post(':id')
   async update(@Param('id') id: string, @Body() data: Partial<Student>): Promise<Student | null> {
     if (isNaN(+id)) return null;

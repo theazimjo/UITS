@@ -29,7 +29,7 @@ export class MonthlyReport {
 
   @Column({
     type: 'enum',
-    enum: ['10_DAY', '20_DAY', 'END_MONTH'],
+    enum: ['10_DAY', '20_DAY', 'EXAM'],
   })
   reportType: string;
 

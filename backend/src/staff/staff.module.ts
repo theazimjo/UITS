@@ -16,6 +16,7 @@ import { Grade } from '../students/entities/grade.entity';
 import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
+import { Exam } from './entities/exam.entity';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ReportDate } from './entities/report-date.entity';
       MonthlyReport,
       MonthlyReportItem,
       ReportDate,
+      Exam,
     ]),
   ],
   providers: [StaffService],

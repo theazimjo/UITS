@@ -25,6 +25,7 @@ import { Grade } from '../students/entities/grade.entity';
 import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
+import { Exam } from './entities/exam.entity';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -55,6 +56,8 @@ export class TeacherController {
     private readonly monthlyReportRepo: Repository<MonthlyReport>,
     @InjectRepository(ReportDate)
     private readonly reportDateRepo: Repository<ReportDate>,
+    @InjectRepository(Exam)
+    private readonly examRepo: Repository<Exam>,
   ) { }
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -233,6 +236,42 @@ export class TeacherController {
     });
 
     return Array.from(studentMap.values());
+  }
+
+  // GET /teacher/current-averages?month=YYYY-MM&groupId=ID
+  @UseGuards(JwtAuthGuard)
+  @Get('current-averages')
+  async getCurrentAverages(
+    @Req() req: any,
+    @Query('month') monthStr: string,
+    @Query('groupId') groupId: string,
+  ) {
+    const targetMonth = monthStr || new Date().toISOString().slice(0, 7);
+    const monthStart = `${targetMonth}-01`;
+    const [year, month] = targetMonth.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const monthEnd = `${targetMonth}-${String(daysInMonth).padStart(2, '0')}`;
+
+    const grades = await this.gradeRepo.createQueryBuilder('g')
+      .where('g.groupId = :groupId', { groupId: parseInt(groupId) })
+      .andWhere('g.date >= :start AND g.date <= :end', { start: monthStart, end: monthEnd })
+      .getMany();
+
+    // Group by student and average
+    const studentGrades: { [id: number]: number[] } = {};
+    grades.forEach(g => {
+      if (!studentGrades[g.studentId]) studentGrades[g.studentId] = [];
+      studentGrades[g.studentId].push(Number(g.score));
+    });
+
+    const averages: { [id: number]: number } = {};
+    Object.keys(studentGrades).forEach(sid => {
+      const scores = studentGrades[sid];
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      averages[sid] = parseFloat(avg.toFixed(2));
+    });
+
+    return averages;
   }
 
   // GET /teacher/my-attendance?date=YYYY-MM-DD&sync=true — attendance for teacher's students
@@ -530,6 +569,14 @@ export class TeacherController {
     groupNames: { [id: number]: string };
     examScores?: { [id: number]: number };
     examComments?: { [id: number]: string };
+    
+    // New exam fields
+    theoryScores?: { [id: number]: number };
+    practiceScores?: { [id: number]: number };
+    currentAverages?: { [id: number]: number };
+    totalScores?: { [id: number]: number };
+    percentages?: { [id: number]: number };
+    
     mode?: 'merge' | 'replace';
   }) {
     const staffId = req.user.userId;
@@ -542,9 +589,19 @@ export class TeacherController {
       ri.groupName = body.groupNames?.[sid] || '';
       ri.attendanceCount = 0;
       ri.paymentStatus = '';
+      
+      // Legacy examScore support
       if (body.examScores?.[sid]) {
         ri.examScore = Number(body.examScores[sid]);
       }
+      
+      // New Detailed Exam fields
+      if (body.theoryScores?.[sid]) ri.theoryScore = Number(body.theoryScores[sid]);
+      if (body.practiceScores?.[sid]) ri.practiceScore = Number(body.practiceScores[sid]);
+      if (body.currentAverages?.[sid]) ri.currentAverage = Number(body.currentAverages[sid]);
+      if (body.totalScores?.[sid]) ri.totalScore = Number(body.totalScores[sid]);
+      if (body.percentages?.[sid]) ri.percentage = Number(body.percentages[sid]);
+
       if (body.examComments?.[sid]) {
         ri.examComment = body.examComments[sid];
       }
@@ -558,7 +615,29 @@ export class TeacherController {
       summary: body.summary || '',
       items,
     });
-    return this.monthlyReportRepo.save(report);
+    
+    const savedReport = await this.monthlyReportRepo.save(report);
+
+    // If it's an EXAM, also save to dedicated Exam table for student profile lookups
+    if (body.reportType === 'EXAM') {
+      const examRecords = (body.studentIds || []).map(sid => {
+        return this.examRepo.create({
+          studentId: sid,
+          teacherId: staffId,
+          groupId: parseInt(Object.keys(body.groupNames).find(key => body.groupNames[key] === body.groupNames[sid]) || '0'), // Best effort to find groupId
+          month: body.month,
+          theoryScore: body.theoryScores?.[sid] || 0,
+          practiceScore: body.practiceScores?.[sid] || 0,
+          currentAverage: body.currentAverages?.[sid] || 0,
+          totalScore: body.totalScores?.[sid] || 0,
+          percentage: body.percentages?.[sid] || 0,
+          note: body.examComments?.[sid] || ''
+        });
+      });
+      await this.examRepo.save(examRecords);
+    }
+
+    return savedReport;
   }
 
   // GET /teacher/my-reports — teacher reads their own reports

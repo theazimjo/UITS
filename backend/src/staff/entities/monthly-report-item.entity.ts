@@ -39,6 +39,21 @@ export class MonthlyReportItem {
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   examScore: number;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  currentAverage: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  theoryScore: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  practiceScore: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  totalScore: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  percentage: number;
+
   @Column({ type: 'text', nullable: true })
   examComment: string;
 

@@ -7,6 +7,7 @@ import * as https from 'https';
 import { StudentStatus } from './enums/student-status.enum';
 import { AttendanceRecord } from './entities/attendance-record.entity';
 import { Grade } from './entities/grade.entity';
+import { Exam } from '../staff/entities/exam.entity';
 
 // Optimized agent for high-concurrency parallel requests (31 days)
 const httpsAgent = new https.Agent({
@@ -30,7 +31,17 @@ export class StudentsService {
     private readonly attendanceRecordRepo: Repository<AttendanceRecord>,
     @InjectRepository(Grade)
     private readonly gradeRepo: Repository<Grade>,
+    @InjectRepository(Exam)
+    private readonly examRepo: Repository<Exam>,
   ) {}
+
+  async findExams(studentId: number): Promise<Exam[]> {
+    return this.examRepo.find({
+      where: { studentId },
+      order: { month: 'DESC' },
+      relations: ['teacher', 'group'],
+    });
+  }
 
   async onApplicationBootstrap() {
     const tables = await this.studentsRepository.query(
