@@ -8,6 +8,7 @@ import {
   ForbiddenException,
   Post,
   Body,
+  Delete,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -529,6 +530,7 @@ export class TeacherController {
     groupNames: { [id: number]: string };
     examScores?: { [id: number]: number };
     examComments?: { [id: number]: string };
+    mode?: 'merge' | 'replace';
   }) {
     const staffId = req.user.userId;
 
@@ -548,18 +550,6 @@ export class TeacherController {
       }
       return ri;
     });
-
-    // Upsert: update if exists
-    const existing = await this.monthlyReportRepo.findOne({
-      where: { teacherId: staffId, month: body.month, reportType: body.reportType },
-    });
-
-    if (existing) {
-      await this.monthlyReportRepo.manager.delete(MonthlyReportItem, { reportId: existing.id });
-      existing.summary = body.summary || '';
-      existing.items = items;
-      return this.monthlyReportRepo.save(existing);
-    }
 
     const report = this.monthlyReportRepo.create({
       teacherId: staffId,
@@ -585,5 +575,12 @@ export class TeacherController {
     });
   }
 
-}
+  @UseGuards(JwtAuthGuard)
+  @Delete('reports/:id')
+  async deleteReport(@Req() req: any, @Param('id') id: number) {
+    const teacherId = req.user.userId;
+    const report = await this.monthlyReportRepo.findOne({ where: { id, teacherId } });
+    if (!report) throw new ForbiddenException('Report not found or access denied');
+    return this.monthlyReportRepo.remove(report);
+  }
 }

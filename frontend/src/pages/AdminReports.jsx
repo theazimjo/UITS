@@ -155,49 +155,65 @@ const AdminReports = () => {
             ) : (
               <div className="space-y-6">
                 {['10_DAY', '20_DAY', 'END_MONTH'].map(type => {
-                  const report = reports.find(r => r.reportType === type);
-                  const isExpanded = expandedReportId === type;
-
-                  return (
-                    <div 
-                      key={type}
-                      className={`
-                        bg-white dark:bg-white/5 rounded-3xl border border-gray-200/50 dark:border-white/10 overflow-hidden transition-all duration-300
-                        ${report ? 'shadow-sm' : 'opacity-60 bg-gray-50/50 dark:bg-transparent border-dashed'}
-                      `}
-                    >
+                  const matchingReports = reports.filter(r => r.reportType === type);
+                  
+                  if (matchingReports.length === 0) {
+                    return (
                       <div 
-                        className={`p-6 flex items-center justify-between cursor-pointer ${report ? 'hover:bg-gray-50/50 dark:hover:bg-white/5' : ''}`}
-                        onClick={() => report && setExpandedReportId(isExpanded ? null : type)}
+                        key={type}
+                        className="bg-white dark:bg-white/5 rounded-3xl border border-dashed border-gray-200/50 dark:border-white/10 opacity-60 bg-gray-50/50 dark:bg-transparent"
                       >
-                        <div className="flex items-center gap-5">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-                            report 
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600' 
-                              : 'bg-gray-100 dark:bg-white/10 text-gray-400'
-                          }`}>
-                            {type === 'END_MONTH' ? <Award size={28} /> : <FileText size={28} />}
-                          </div>
-                          <div>
-                            <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">
-                              {getPeriodLabel(type)}
-                            </h3>
-                            <div className="flex items-center gap-3 mt-1">
-                              {report ? (
-                                <>
-                                  <span className="text-[12px] text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">Yuborilgan</span>
-                                  <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                                    <Clock size={12} /> {new Date(report.createdAt).toLocaleString('uz-UZ')}
-                                  </span>
-                                </>
-                              ) : (
+                        <div className="p-6 flex items-center justify-between">
+                          <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gray-100 dark:bg-white/10 text-gray-400">
+                              {type === 'END_MONTH' ? <Award size={28} /> : <FileText size={28} />}
+                            </div>
+                            <div>
+                              <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">
+                                {getPeriodLabel(type)}
+                              </h3>
+                              <div className="mt-1">
                                 <span className="text-[12px] text-gray-400 font-bold bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-full">Yuborilmagan</span>
-                              )}
+                              </div>
                             </div>
                           </div>
                         </div>
+                      </div>
+                    );
+                  }
 
-                        {report && (
+                  return matchingReports.map(report => {
+                    const isExpanded = expandedReportId === report.id;
+
+                    return (
+                      <div 
+                        key={report.id}
+                        className="bg-white dark:bg-white/5 rounded-3xl border border-gray-200/50 dark:border-white/10 overflow-hidden shadow-sm transition-all duration-300"
+                      >
+                        <div 
+                          className="p-6 flex items-center justify-between cursor-pointer hover:bg-gray-50/50 dark:hover:bg-white/5"
+                          onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
+                        >
+                          <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-600">
+                              {type === 'END_MONTH' ? <Award size={28} /> : <FileText size={28} />}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">
+                                  {getPeriodLabel(type)}
+                                </h3>
+                                <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-600 px-1.5 py-0.5 rounded group-hover:scale-105 transition-transform">{report.reportType}</span>
+                              </div>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-[12px] text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">Yuborilgan</span>
+                                <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                                  <Clock size={12} /> {new Date(report.createdAt).toLocaleString('uz-UZ')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="flex items-center gap-4">
                             <div className="text-right hidden sm:block">
                               <p className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">{report.items?.length || 0} ta o'quvchi</p>
@@ -207,78 +223,78 @@ const AdminReports = () => {
                               {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                             </button>
                           </div>
-                        )}
-                      </div>
+                        </div>
 
-                      {report && isExpanded && (
-                        <div className="p-6 pt-0 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-black/10 animate-slide-down">
-                          {report.summary && (
-                            <div className="my-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800/30">
-                              <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                                <AlertCircle size={14} /> Umumiy xulosa
-                              </p>
-                              <p className="text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed italic">
-                                "{report.summary}"
-                              </p>
-                            </div>
-                          )}
+                        {isExpanded && (
+                          <div className="p-6 pt-0 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-black/10 animate-slide-down">
+                            {report.summary && (
+                              <div className="my-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800/30">
+                                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                  <AlertCircle size={14} /> Umumiy xulosa
+                                </p>
+                                <p className="text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed italic">
+                                  "{report.summary}"
+                                </p>
+                              </div>
+                            )}
 
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-[13px]">
-                              <thead>
-                                <tr className="text-gray-400 border-b border-gray-200 dark:border-white/5">
-                                  <th className="py-3 font-semibold px-2">O'quvchi</th>
-                                  <th className="py-3 font-semibold px-2">Guruh</th>
-                                  <th className="py-3 font-semibold px-2 text-center">Davomat</th>
-                                  <th className="py-3 font-semibold px-2 text-center">To'lov</th>
-                                  {type === 'END_MONTH' && <th className="py-3 font-semibold px-2 text-center">Imtihon</th>}
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                {report.items?.map((item, idx) => (
-                                  <tr key={idx} className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
-                                    <td className="py-4 px-2">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600">
-                                          {item.studentName?.charAt(0)}
-                                        </div>
-                                        <span className="font-semibold text-[#1d1d1f] dark:text-white">{item.studentName}</span>
-                                      </div>
-                                    </td>
-                                    <td className="py-4 px-2 text-gray-500">{item.groupName}</td>
-                                    <td className="py-4 px-2 text-center">
-                                      <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-2 py-0.5 rounded-full font-bold text-[11px]">
-                                        {item.attendanceCount > 0 ? `${item.attendanceCount} kun` : "Olingan"}
-                                      </span>
-                                    </td>
-                                    <td className="py-4 px-2 text-center">
-                                      <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
-                                        item.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
-                                      }`}>
-                                        {item.paymentStatus === 'paid' ? "To'langan" : "To'lanmagan"}
-                                      </span>
-                                    </td>
-                                    {type === 'END_MONTH' && (
-                                      <td className="py-4 px-2 text-center">
-                                        <div className="flex flex-col items-center">
-                                          <span className="text-[13px] font-bold text-blue-600">{item.examScore ?? '-'}</span>
-                                          {item.examComment && (
-                                            <span className="text-[10px] text-gray-400 max-w-[120px] truncate" title={item.examComment}>
-                                              {item.examComment}
-                                            </span>
-                                          )}
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-[13px]">
+                                <thead>
+                                  <tr className="text-gray-400 border-b border-gray-200 dark:border-white/5">
+                                    <th className="py-3 font-semibold px-2">O'quvchi</th>
+                                    <th className="py-3 font-semibold px-2">Guruh</th>
+                                    <th className="py-3 font-semibold px-2 text-center">Davomat</th>
+                                    <th className="py-3 font-semibold px-2 text-center">To'lov</th>
+                                    {type === 'END_MONTH' && <th className="py-3 font-semibold px-2 text-center">Imtihon</th>}
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                  {report.items?.map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+                                      <td className="py-4 px-2">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600">
+                                            {item.studentName?.charAt(0)}
+                                          </div>
+                                          <span className="font-semibold text-[#1d1d1f] dark:text-white">{item.studentName}</span>
                                         </div>
                                       </td>
-                                    )}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                      <td className="py-4 px-2 text-gray-500">{item.groupName}</td>
+                                      <td className="py-4 px-2 text-center">
+                                        <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-2 py-0.5 rounded-full font-bold text-[11px]">
+                                          {item.attendanceCount > 0 ? `${item.attendanceCount} kun` : "Olingan"}
+                                        </span>
+                                      </td>
+                                      <td className="py-4 px-2 text-center">
+                                        <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
+                                          item.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
+                                        }`}>
+                                          {item.paymentStatus === 'paid' ? "To'langan" : "To'lanmagan"}
+                                        </span>
+                                      </td>
+                                      {type === 'END_MONTH' && (
+                                        <td className="py-4 px-2 text-center">
+                                          <div className="flex flex-col items-center">
+                                            <span className="text-[13px] font-bold text-blue-600">{item.examScore ?? '-'}</span>
+                                            {item.examComment && (
+                                              <span className="text-[10px] text-gray-400 max-w-[120px] truncate" title={item.examComment}>
+                                                {item.examComment}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                      )}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
+                        )}
+                      </div>
+                    );
+                  });
                 })}
               </div>
             )}

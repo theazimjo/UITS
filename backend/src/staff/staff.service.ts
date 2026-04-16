@@ -242,6 +242,12 @@ export class StaffService {
     });
   }
 
+  async deleteMonthlyReport(id: number, teacherId: number): Promise<void> {
+    const report = await this.monthlyReportRepo.findOne({ where: { id, teacherId } });
+    if (!report) throw new NotFoundException('Report not found or access denied');
+    await this.monthlyReportRepo.remove(report);
+  }
+
   // --- Report Dates (Calendar) ---
   // Report dates logic removed in favor of static periods
 }

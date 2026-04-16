@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../store/useStore';
-import { getTeacherReportDates, sendTeacherReport, getMyTeacherReports } from '../../services/api';
+import { sendTeacherReport, getMyTeacherReports, deleteTeacherReport } from '../../services/api';
 import {
   FileText, Send, ChevronLeft, ChevronRight, Users,
   CheckCircle2, AlertCircle, ChevronDown, ChevronUp,
-  Award, Star, X, Loader2, Clock, CalendarDays
+  Award, Star, X, Loader2, Clock, CalendarDays,
+  Pencil, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -22,6 +23,7 @@ const TeacherReport = () => {
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [listFilter, setListFilter] = useState('all'); // 'all', 'pending', 'reported'
 
   // Table multi-select
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -38,6 +40,8 @@ const TeacherReport = () => {
   const [activeDate, setActiveDate] = useState(null); // Which period ID is selected
   const [reportsLoading, setReportsLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [isEditingReport, setIsEditingReport] = useState(false);
+  const [editingReportId, setEditingReportId] = useState(null);
 
   useEffect(() => {
     refreshAllRows(currentMonth);
@@ -74,7 +78,24 @@ const TeacherReport = () => {
 
   const students = allStudents || [];
   const uniqueGroups = [...new Set(students.map(s => s.groupName).filter(Boolean))];
-  const filteredStudents = selectedGroup === 'all' ? students : students.filter(s => s.groupName === selectedGroup);
+
+  // Get all reported student IDs for the active period (could be spread across multiple reports)
+  const reportedStudentIds = new Set(
+    reports
+      .filter(r => r.reportType === activeDate)
+      .flatMap(r => r.items?.map(i => i.studentId) || [])
+  );
+  
+  const hasReportForPeriod = reports.some(r => r.reportType === activeDate);
+
+  const filteredStudents = students.filter(s => {
+    const matchesGroup = selectedGroup === 'all' || s.groupName === selectedGroup;
+    const isReported = reportedStudentIds.has(s.id);
+    
+    if (listFilter === 'pending') return matchesGroup && !isReported;
+    if (listFilter === 'reported') return matchesGroup && isReported;
+    return matchesGroup;
+  });
 
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
@@ -85,19 +106,64 @@ const TeacherReport = () => {
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === filteredStudents.length) {
-      setSelectedIds(new Set());
+    const visibleIds = filteredStudents.map(s => s.id);
+    const allVisibleSelected = visibleIds.every(id => selectedIds.has(id));
+
+    if (allVisibleSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        visibleIds.forEach(id => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(filteredStudents.map(s => s.id)));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        visibleIds.forEach(id => next.add(id));
+        return next;
+      });
     }
   };
 
   const period = activeDate;
-  const existingReport = reports.find(r => r.reportType === period);
 
   const openModal = () => {
     if (!period) return toast.error("Faqat joriy oy uchun hisobot jo'natish mumkin!");
     if (selectedIds.size === 0) return toast.error("Kamida 1 ta o'quvchi tanlang!");
+    setIsEditingReport(false);
+    setEditingReportId(null);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteReport = async (id) => {
+    if (!window.confirm('Haqiqatdan ham ushbu hisobotni o\'chirmoqchimisiz?')) return;
+    try {
+      await deleteTeacherReport(id);
+      toast.success('Hisobot o\'chirildi');
+      fetchData(currentMonth);
+    } catch (e) {
+      toast.error('O\'chirishda xatolik yuz berdi');
+    }
+  };
+
+  const handleEditReport = (report) => {
+    // Fill state
+    setIsEditingReport(true);
+    setEditingReportId(report.id);
+    setActiveDate(report.reportType);
+    setReportSummary(report.summary || '');
+    
+    const pickedIds = new Set(report.items.map(item => item.studentId));
+    setSelectedIds(pickedIds);
+
+    const scores = {};
+    const comments = {};
+    report.items.forEach(item => {
+      if (item.examScore != null) scores[item.studentId] = item.examScore;
+      if (item.examComment) comments[item.studentId] = item.examComment;
+    });
+    setExamScores(scores);
+    setExamComments(comments);
+
     setIsModalOpen(true);
   };
 
@@ -123,8 +189,9 @@ const TeacherReport = () => {
         groupNames,
         examScores,
         examComments,
+        mode: isEditingReport ? 'replace' : 'merge'
       });
-      toast.success("Hisobot adminga muvaffaqiyatli yuborildi! ✅");
+      toast.success(isEditingReport ? "Hisobot yangilandi! ✅" : "Hisobot yuborildi! ✅");
       setIsModalOpen(false);
       setSelectedIds(new Set());
       setReportSummary('');
@@ -211,7 +278,7 @@ const TeacherReport = () => {
         {/* Period Status Banner */}
         <div className={`flex items-center justify-between p-4 rounded-2xl border shadow-sm backdrop-blur-md ${
           period
-            ? existingReport
+            ? hasReportForPeriod
               ? 'bg-emerald-50/60 dark:bg-emerald-900/10 border-emerald-200/50 dark:border-emerald-800/30'
               : 'bg-blue-50/60 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-800/30'
             : 'bg-gray-50/60 dark:bg-white/5 border-gray-200/50 dark:border-white/10'
@@ -219,7 +286,7 @@ const TeacherReport = () => {
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
               period
-                ? existingReport
+                ? hasReportForPeriod
                   ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
                   : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
                 : 'bg-gray-100 dark:bg-white/10 text-gray-400'
@@ -232,8 +299,8 @@ const TeacherReport = () => {
               </p>
               <p className="text-[11px] text-gray-500">
                 {period
-                  ? existingReport
-                    ? `✅ Ushbu davr uchun hisobot ${new Date(existingReport.createdAt).toLocaleDateString('uz-UZ')} da yuborilgan`
+                  ? hasReportForPeriod
+                    ? `ℹ️ Ushbu davr uchun hisobot yuborilgan. Yangi o'quvchilarni tanlab, yana alohida hisobot yuborishingiz mumkin.`
                     : "Hali hisobot yuborilmagan — o'quvchilarni tanlab yuboring"
                   : "Yuqoridan kerakli davrni tanlang"
                 }
@@ -250,6 +317,34 @@ const TeacherReport = () => {
               Hisobot Yuborish ({selectedIds.size})
             </button>
           )}
+        </div>
+
+        {/* List Filter Tabs */}
+        <div className="flex items-center gap-1 bg-gray-200/50 dark:bg-black/20 p-1 rounded-xl border border-gray-200/50 dark:border-white/10 w-fit">
+          {[
+            { id: 'all', label: 'Barchasi', icon: Users },
+            { id: 'pending', label: 'Yuborilmaganlar', icon: AlertCircle },
+            { id: 'reported', label: 'Yuborilganlar', icon: CheckCircle2 }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setListFilter(tab.id)}
+              className={`
+                flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-bold transition-all
+                ${listFilter === tab.id 
+                  ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}
+              `}
+            >
+              <tab.icon size={14} />
+              {tab.label}
+              {tab.id === 'pending' && reportedStudentIds.size < students.length && (
+                <span className="ml-1 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full text-[10px]">
+                  {students.length - reportedStudentIds.size}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* Students Table */}
@@ -310,7 +405,7 @@ const TeacherReport = () => {
                         isSelected
                           ? 'bg-blue-50/60 dark:bg-blue-900/10 hover:bg-blue-50/80'
                           : 'hover:bg-black/5 dark:hover:bg-white/5'
-                      }`}
+                      } ${reportedStudentIds.has(s.id) && listFilter === 'all' ? 'opacity-50' : ''}`}
                     >
                       <td className="pl-5 pr-3 py-3">
                         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
@@ -330,7 +425,16 @@ const TeacherReport = () => {
                               {s.name?.charAt(0)}
                             </div>
                           )}
-                          <span className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[180px]">{s.name}</span>
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[180px]">
+                              {s.name}
+                            </span>
+                            {reportedStudentIds.has(s.id) && (
+                              <span className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
+                                <CheckCircle2 size={10} /> Yuborilgan
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-3 py-3 text-gray-500 text-[12px]">{s.groupName || '—'}</td>
@@ -385,7 +489,9 @@ const TeacherReport = () => {
             </div>
           ) : (
             <div className="divide-y divide-gray-200/30 dark:divide-white/5">
-              {reports.map(report => (
+              {reports
+                .filter(r => r.reportType === activeDate)
+                .map(report => (
                 <div key={report.id}>
                   <div
                     className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
@@ -410,7 +516,23 @@ const TeacherReport = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleEditReport(report); }}
+                          className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500 rounded-lg transition-colors"
+                          title="Tahrirlash"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteReport(report.id); }}
+                          className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded-lg transition-colors"
+                          title="O'chirish"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50/50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800`}>
                         {report.reportType}
                       </span>
@@ -516,8 +638,15 @@ const TeacherReport = () => {
                           {s.name?.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-semibold text-[#1d1d1f] dark:text-white truncate">{s.name}</p>
-                          <p className="text-[10px] text-gray-400">{s.groupName}</p>
+                          <p className="text-[14px] font-bold text-[#1d1d1f] dark:text-white truncate">
+                            {s.name}
+                            {reportedStudentIds.has(s.id) && (
+                              <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                                <CheckCircle2 size={10} /> Yuborilgan
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-[12px] text-gray-400 font-medium">#{s.id} • {s.groupName || 'Guruhsiz'}</p>
                         </div>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           s.isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'

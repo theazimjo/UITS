@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
 });
 
 api.interceptors.request.use((config) => {
@@ -67,6 +67,7 @@ export const getPaymentsByGroup = (groupId) => api.get(`/payments/group/${groupI
 export const getPaymentsByStudentAndGroup = (studentId, groupId) => api.get(`/payments/student/${studentId}/group/${groupId}`);
 export const getPaymentsByStudent = (studentId) => api.get(`/payments/student/${studentId}`);
 export const createPayment = (data) => api.post('/payments', data);
+export const updatePayment = (id, data) => api.patch(`/payments/${id}`, data);
 export const deletePayment = (id) => api.delete(`/payments/${id}`);
 
 export const getFields = () => api.get('/groups/fields');
@@ -106,6 +107,6 @@ export const getMonthlyReports = (teacherId, month) => api.get(`/staff/${teacher
 // Monthly Reports (Teacher-side)
 export const sendTeacherReport = (data) => api.post('/teacher/send-report', data);
 export const getMyTeacherReports = (month) => api.get('/teacher/my-reports', { params: { month } });
-export const getMyTeacherReports = (month) => api.get('/teacher/my-reports', { params: { month } });
+export const deleteTeacherReport = (id) => api.delete(`/teacher/reports/${id}`);
 
 export default api;

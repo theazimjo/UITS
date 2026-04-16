@@ -40,4 +40,7 @@ export class Payment {
 
   @Column({ nullable: true })
   collectedBy: string;
+
+  @Column({ type: 'text', nullable: true })
+  comment: string;
 }

@@ -93,6 +93,21 @@ export class PaymentsService {
     });
   }
 
+  async update(id: number, data: any) {
+    const payment = await this.paymentRepository.findOne({ where: { id } });
+    if (!payment) return null;
+    
+    // Merge new data into existing payment
+    Object.assign(payment, data);
+    
+    // If student/group/teacher are provided as objects, handle them
+    if (data.student) payment.student = data.student;
+    if (data.group) payment.group = data.group;
+    if (data.teacher) payment.teacher = data.teacher;
+
+    return this.paymentRepository.save(payment);
+  }
+
   async remove(id: number) {
     await this.paymentRepository.delete(id);
   }

@@ -45,4 +45,10 @@ export class PaymentsController {
     if (isNaN(+id)) throw new BadRequestException('Invalid ID');
     return this.paymentsService.remove(+id);
   }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() data: any) {
+    if (isNaN(+id)) throw new BadRequestException('Invalid ID');
+    return this.paymentsService.update(+id, data);
+  }
 }

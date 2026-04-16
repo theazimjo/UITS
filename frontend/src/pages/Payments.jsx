@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   CreditCard, Search, Plus, Trash2, Calendar,
   BookOpen, DollarSign, ChevronLeft, ChevronRight,
-  Filter, User, Percent, AlertTriangle, X, CheckCircle
+  Filter, User, Percent, AlertTriangle, X, CheckCircle, Edit3
 } from 'lucide-react';
-import { getPayments, createPayment, deletePayment } from '../services/api';
+import { getPayments, createPayment, deletePayment, updatePayment } from '../services/api';
 import Modal from '../components/common/Modal'; // Ensure this uses a matching macOS design if possible
 
 import useStore from '../store/useStore';
@@ -34,13 +34,17 @@ const Payments = () => {
     month: new Date().toISOString().substring(0, 7),
     teacherId: '',
     paymentType: 'CASH',
-    paymentDate: new Date().toISOString().split('T')[0]
+    paymentDate: new Date().toISOString().split('T')[0],
+    comment: ''
   });
 
   const [studentSearch, setStudentSearch] = useState('');
   const [isStudentListOpen, setIsStudentListOpen] = useState(false);
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]); // [{id, name}]
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
 
   useEffect(() => {
     fetchPayments();
@@ -61,7 +65,19 @@ const Payments = () => {
   const handleCreatePayment = async (e) => {
     e.preventDefault();
     try {
-      if (isMultiSelect && selectedStudents.length > 0) {
+      if (isEditing) {
+        // Edit mode
+        const payload = {
+          ...formData,
+          student: { id: parseInt(formData.studentId) },
+          group: { id: parseInt(formData.groupId) },
+          teacher: formData.teacherId ? { id: parseInt(formData.teacherId) } : undefined,
+          amount: parseFloat(formData.amount),
+          discount: parseFloat(formData.discount || 0),
+          penalty: parseFloat(formData.penalty || 0)
+        };
+        await updatePayment(editId, payload);
+      } else if (isMultiSelect && selectedStudents.length > 0) {
         // Bulk creation
         const requests = selectedStudents.map(s => {
           const payload = {
@@ -92,11 +108,30 @@ const Payments = () => {
       await fetchPayments();
       setIsModalOpen(false);
       resetForm();
-      toast.success("To'lov muvaffaqiyatli saqlandi");
+      toast.success(isEditing ? "To'lov o'zgartirildi" : "To'lov muvaffaqiyatli saqlandi");
     } catch (err) {
-      console.error('Error creating payment:', err);
-      toast.error("To'lovni saqlashda muammo yuzaga keldi.");
+      console.error('Error handling payment:', err);
+      toast.error("Amalni bajarishda muammo yuzaga keldi.");
     }
+  };
+
+  const handleEdit = (p) => {
+    setIsEditing(true);
+    setEditId(p.id);
+    setFormData({
+      studentId: p.student?.id?.toString(),
+      groupId: p.group?.id?.toString(),
+      amount: p.amount?.toString(),
+      discount: p.discount?.toString() || '0',
+      penalty: p.penalty?.toString() || '0',
+      month: p.month,
+      teacherId: p.teacher?.id?.toString() || '',
+      paymentType: p.paymentType || 'CASH',
+      paymentDate: p.paymentDate,
+      comment: p.comment || ''
+    });
+    setStudentSearch(p.student?.name || '');
+    setIsModalOpen(true);
   };
 
   const resetForm = () => {
@@ -109,11 +144,14 @@ const Payments = () => {
       month: new Date().toISOString().substring(0, 7),
       teacherId: '',
       paymentType: 'CASH',
-      paymentDate: new Date().toISOString().split('T')[0]
+      paymentDate: new Date().toISOString().split('T')[0],
+      comment: ''
     });
     setStudentSearch('');
     setSelectedStudents([]);
     setIsMultiSelect(false);
+    setIsEditing(false);
+    setEditId(null);
   };
 
   const getTeacherForMonth = (groupId, month) => {
@@ -293,7 +331,7 @@ const Payments = () => {
 
           {/* Add Button */}
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => { resetForm(); setIsModalOpen(true); }}
             className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-[#007aff] hover:bg-[#0062cc] text-white border border-[#005bb5]"
           >
             <Plus size={14} />
@@ -339,7 +377,14 @@ const Payments = () => {
                             <div className="w-8 h-8 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-[11px] shadow-sm">
                               {p.student?.name?.substring(0, 1).toUpperCase()}
                             </div>
-                            <span className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">{p.student?.name}</span>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">{p.student?.name}</span>
+                              {p.comment && (
+                                <span className="text-[10px] text-gray-500 italic mt-0.5 line-clamp-1" title={p.comment}>
+                                  {p.comment}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-5 py-3">
@@ -381,13 +426,22 @@ const Payments = () => {
                           </div>
                         </td>
                         <td className="px-5 py-3 text-right">
-                          <button
-                            onClick={() => handleDelete(p.id)}
-                            className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#ff3b30]/10 text-gray-400 hover:text-[#ff3b30] rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                            title="O'chirish"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleEdit(p)}
+                              className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#007aff]/10 text-gray-400 hover:text-[#007aff] rounded-md transition-colors"
+                              title="Tahrirlash"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(p.id)}
+                              className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#ff3b30]/10 text-gray-400 hover:text-[#ff3b30] rounded-md transition-colors"
+                              title="O'chirish"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -450,8 +504,11 @@ const Payments = () => {
       {/* CREATE PAYMENT MODAL (Mac OS styling embedded for form) */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Yangi to'lov"
+        onClose={() => {
+          setIsModalOpen(false);
+          resetForm();
+        }}
+        title={isEditing ? "To'lovni tahrirlash" : "Yangi to'lov"}
       >
         <form onSubmit={handleCreatePayment} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
 
@@ -732,6 +789,16 @@ const Payments = () => {
                   required
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">IZOH (IXTIYORIY)</label>
+              <textarea
+                value={formData.comment}
+                onChange={e => setFormData({ ...formData, comment: e.target.value })}
+                placeholder="To'lov haqida qo'shimcha ma'lumot..."
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner h-16 resize-none"
+              />
             </div>
           </div>
 

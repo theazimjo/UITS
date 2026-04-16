@@ -12,7 +12,7 @@ import { Staff } from './staff.entity';
 import { MonthlyReportItem } from './monthly-report-item.entity';
 
 @Entity()
-@Index(['teacherId', 'month', 'reportType'], { unique: true })
+@Index(['teacherId', 'month', 'reportType'])
 export class MonthlyReport {
   @PrimaryGeneratedColumn()
   id: number;
