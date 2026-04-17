@@ -57,6 +57,9 @@ export class MonthlyReportItem {
   @Column({ type: 'text', nullable: true })
   examComment: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  examStatus: string; // O'tdi / O'tmadi
+
   @Column({ type: 'text', nullable: true })
   note: string;
 }

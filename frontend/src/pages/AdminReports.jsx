@@ -129,6 +129,7 @@ const ReportModal = ({ report, teacher, currentMonth, onClose }) => {
                                                         <th className="py-3 px-2 font-medium text-center">Amaliy</th>
                                                         <th className="py-3 px-2 font-medium text-center">Umumiy</th>
                                                         <th className="py-3 px-2 font-medium text-center">Foiz %</th>
+                                                        <th className="py-3 px-2 font-medium text-center">Natija</th>
                                                     </>
                                                 ) : (
                                                     <>
@@ -156,6 +157,14 @@ const ReportModal = ({ report, teacher, currentMonth, onClose }) => {
                                                             <td className="py-3 px-2 text-center">
                                                                 <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md font-bold">
                                                                     {item.percentage || 0}%
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-2 text-center">
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${item.examStatus === "O'tdi" || !item.examStatus
+                                                                        ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                        : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                                    }`}>
+                                                                    {item.examStatus || "O'tdi"}
                                                                 </span>
                                                             </td>
                                                         </>

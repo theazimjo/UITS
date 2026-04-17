@@ -31,6 +31,8 @@ export const getStaff = () => api.get('/staff');
 export const getStaffById = (id) => api.get(`/staff/${id}`);
 export const getStaffSalary = (id, month) => api.get(`/staff/${id}/salary?month=${month}`);
 export const addStaffPayment = (id, data) => api.post(`/staff/${id}/payments`, data);
+export const updateStaffPayment = (paymentId, data) => api.patch(`/staff/payments/${paymentId}`, data);
+export const deleteStaffPayment = (paymentId) => api.delete(`/staff/payments/${paymentId}`);
 
 // Finance
 export const getFinanceStats = (month) => api.get('/finance/stats', { params: { month } });

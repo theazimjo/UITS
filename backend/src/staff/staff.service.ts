@@ -156,6 +156,20 @@ export class StaffService {
     });
     return this.staffPaymentRepository.save(payment);
   }
+  
+  async updatePayment(paymentId: number, data: Partial<StaffPayment>): Promise<StaffPayment> {
+    const payment = await this.staffPaymentRepository.findOne({ where: { id: paymentId } });
+    if (!payment) throw new NotFoundException('Payment not found');
+    
+    Object.assign(payment, data);
+    return this.staffPaymentRepository.save(payment);
+  }
+
+  async deletePayment(paymentId: number): Promise<void> {
+    const payment = await this.staffPaymentRepository.findOne({ where: { id: paymentId } });
+    if (!payment) throw new NotFoundException('Payment not found');
+    await this.staffPaymentRepository.remove(payment);
+  }
 
   async create(staff: Partial<Staff>): Promise<Staff> {
     if (staff.password) {

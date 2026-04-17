@@ -39,6 +39,7 @@ const TeacherReport = () => {
   const [currentAverages, setCurrentAverages] = useState({});
   const [totalScores, setTotalScores] = useState({});
   const [percentages, setPercentages] = useState({});
+  const [examStatuses, setExamStatuses] = useState({});
   const [isSending, setIsSending] = useState(false);
 
   // History & Dates
@@ -87,7 +88,7 @@ const TeacherReport = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
       });
       setCurrentAverages(res.data || {});
-      
+
       // Also pre-fill total scores if we have averages
       const newTotals = { ...totalScores };
       Object.keys(res.data).forEach(sid => {
@@ -136,6 +137,7 @@ const TeacherReport = () => {
   });
 
   const toggleSelect = (id) => {
+    if (reportedStudentIds.has(id)) return; // Prevent re-reporting
     setSelectedIds(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -144,8 +146,8 @@ const TeacherReport = () => {
   };
 
   const toggleAll = () => {
-    const visibleIds = filteredStudents.map(s => s.id);
-    const allVisibleSelected = visibleIds.every(id => selectedIds.has(id));
+    const visibleIds = filteredStudents.filter(s => !reportedStudentIds.has(s.id)).map(s => s.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
 
     if (allVisibleSelected) {
       setSelectedIds(prev => {
@@ -200,6 +202,7 @@ const TeacherReport = () => {
     const averages = {};
     const totals = {};
     const percs = {};
+    const statuses = {};
 
     report.items.forEach(item => {
       if (item.examScore != null) scores[item.studentId] = item.examScore;
@@ -209,6 +212,7 @@ const TeacherReport = () => {
       if (item.currentAverage != null) averages[item.studentId] = item.currentAverage;
       if (item.totalScore != null) totals[item.studentId] = item.totalScore;
       if (item.percentage != null) percs[item.studentId] = item.percentage;
+      if (item.examStatus) statuses[item.studentId] = item.examStatus;
     });
 
     setExamScores(scores);
@@ -218,6 +222,7 @@ const TeacherReport = () => {
     setCurrentAverages(averages);
     setTotalScores(totals);
     setPercentages(percs);
+    setExamStatuses(statuses);
 
     setIsModalOpen(true);
   };
@@ -228,9 +233,12 @@ const TeacherReport = () => {
 
     const studentNames = {};
     const groupNames = {};
+    const groupIds = {};
     selectedStudents.forEach(s => {
       studentNames[s.id] = s.name;
       groupNames[s.id] = s.groupName || '';
+      // Try to get groupId from direct property, then from groups array
+      groupIds[s.id] = s.groupId || (s.groups && s.groups.length > 0 ? s.groups[0].id : 0);
     });
 
     try {
@@ -242,6 +250,7 @@ const TeacherReport = () => {
         studentIds: Array.from(selectedIds),
         studentNames,
         groupNames,
+        groupIds,
         examScores,
         examComments,
         theoryScores,
@@ -249,7 +258,9 @@ const TeacherReport = () => {
         currentAverages,
         totalScores,
         percentages,
-        mode: isEditingReport ? 'replace' : 'merge'
+        examStatuses,
+        mode: isEditingReport ? 'replace' : 'merge',
+        reportId: isEditingReport ? editingReportId : null
       });
       toast.success(isEditingReport ? "Hisobot yangilandi! ✅" : "Hisobot yuborildi! ✅");
       setIsModalOpen(false);
@@ -257,8 +268,14 @@ const TeacherReport = () => {
       setReportSummary('');
       setExamScores({});
       setExamComments({});
+      setTheoryScores({});
+      setPracticeScores({});
+      setTotalScores({});
+      setPercentages({});
+      setExamStatuses({});
       fetchData(currentMonth);
-    } catch {
+    } catch (err) {
+      console.error("Submission error:", err);
       toast.error("Hisobotni yuborishda xatolik yuz berdi!");
     } finally {
       setIsSending(false);
@@ -295,8 +312,8 @@ const TeacherReport = () => {
                 key={p.id}
                 onClick={() => setActiveDate(p.id)}
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all relative ${activeDate === p.id
-                    ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
               >
                 {p.label}
@@ -336,17 +353,17 @@ const TeacherReport = () => {
 
         {/* Period Status Banner */}
         <div className={`flex items-center justify-between p-4 rounded-2xl border shadow-sm backdrop-blur-md ${period
-            ? hasReportForPeriod
-              ? 'bg-emerald-50/60 dark:bg-emerald-900/10 border-emerald-200/50 dark:border-emerald-800/30'
-              : 'bg-blue-50/60 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-800/30'
-            : 'bg-gray-50/60 dark:bg-white/5 border-gray-200/50 dark:border-white/10'
+          ? hasReportForPeriod
+            ? 'bg-emerald-50/60 dark:bg-emerald-900/10 border-emerald-200/50 dark:border-emerald-800/30'
+            : 'bg-blue-50/60 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-800/30'
+          : 'bg-gray-50/60 dark:bg-white/5 border-gray-200/50 dark:border-white/10'
           }`}>
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${period
-                ? hasReportForPeriod
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
-                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
-                : 'bg-gray-100 dark:bg-white/10 text-gray-400'
+              ? hasReportForPeriod
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
+                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
+              : 'bg-gray-100 dark:bg-white/10 text-gray-400'
               }`}>
               <FileText size={20} />
             </div>
@@ -450,6 +467,7 @@ const TeacherReport = () => {
               <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
                 {filteredStudents.map(s => {
                   const isSelected = selectedIds.has(s.id);
+                  const isReported = reportedStudentIds.has(s.id);
                   const today = new Date().getDate();
                   const todayStatus = s.attendance?.[today];
                   const status = typeof todayStatus === 'object' ? todayStatus?.status : todayStatus;
@@ -458,15 +476,15 @@ const TeacherReport = () => {
                     <tr
                       key={s.id}
                       onClick={() => toggleSelect(s.id)}
-                      className={`cursor-pointer transition-colors ${isSelected
-                          ? 'bg-blue-50/60 dark:bg-blue-900/10 hover:bg-blue-50/80'
-                          : 'hover:bg-black/5 dark:hover:bg-white/5'
-                        } ${reportedStudentIds.has(s.id) && listFilter === 'all' ? 'opacity-50' : ''}`}
+                      className={`transition-colors ${isReported ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : 'cursor-pointer'} ${isSelected
+                        ? 'bg-blue-50/60 dark:bg-blue-900/10 hover:bg-blue-50/80'
+                        : 'hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
                     >
                       <td className="pl-5 pr-3 py-3">
                         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected
-                            ? 'bg-blue-500 border-blue-500 shadow-sm'
-                            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black/20'
+                          ? 'bg-blue-500 border-blue-500 shadow-sm'
+                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black/20'
                           }`}>
                           {isSelected && <CheckCircle2 size={13} className="text-white" />}
                         </div>
@@ -495,8 +513,8 @@ const TeacherReport = () => {
                       <td className="px-3 py-3 text-gray-500 text-[12px]">{s.groupName || '—'}</td>
                       <td className="px-3 py-3 text-center">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${s.isPaid
-                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800'
+                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800'
                           }`}>
                           {s.isPaid ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
                           {s.isPaid ? "To'langan" : "To'lanmagan"}
@@ -523,128 +541,177 @@ const TeacherReport = () => {
           )}
         </div>
 
-        {/* Report History */}
-        <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10">
-            <h3 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2">
-              <Clock size={16} className="text-blue-500" />
-              Hisobotlar tarixi — {monthLabel}
+        {/* Report History Section */}
+        <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden transition-all duration-300">
+          <div className="px-6 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10 flex items-center justify-between">
+            <h3 className="text-[15px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2.5">
+              <Clock size={18} className="text-blue-500" />
+              Hisobotlar tarixi
+              <span className="text-[12px] font-medium text-gray-400">— {monthLabel}</span>
             </h3>
           </div>
 
           {reportsLoading ? (
-            <div className="py-10 flex justify-center">
-              <Loader2 size={20} className="animate-spin text-blue-500" />
+            <div className="py-20 flex flex-col items-center justify-center gap-3">
+              <Loader2 size={24} className="animate-spin text-blue-500" />
+              <p className="text-[13px] text-gray-400 font-medium">Hisobotlar yuklanmoqda...</p>
             </div>
           ) : reports.length === 0 ? (
-            <div className="py-12 text-center text-gray-400">
-              <FileText size={28} className="mx-auto mb-2 opacity-20" />
-              <p className="text-[13px]">Bu oyda hisobotlar mavjud emas</p>
+            <div className="py-20 text-center">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText size={28} className="text-gray-300 dark:text-gray-600" />
+              </div>
+              <p className="text-[14px] font-medium text-gray-400 tracking-tight">Bu oyda hali hisobotlar mavjud emas</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200/30 dark:divide-white/5">
               {reports
-                .filter(r => r.reportType === activeDate)
-                .map(report => (
-                  <div key={report.id}>
-                    <div
-                      className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
-                      onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${report.items?.some(i => i.examScore != null) ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
-                          }`}>
-                          {report.items?.some(i => i.examScore != null) ? <Award size={18} /> : <FileText size={18} />}
-                        </div>
-                        <div>
-                          <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
-                            {getPeriodLabel(report.reportType)}
-                            <span className="ml-2 text-[11px] font-normal text-gray-400">
-                              {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </p>
-                          <p className="text-[11px] text-gray-500">
-                            {report.items?.length || 0} ta o'quvchi
-                            {report.summary ? ` • "${report.summary.substring(0, 50)}${report.summary.length > 50 ? '...' : ''}"` : ''}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEditReport(report); }}
-                            className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500 rounded-lg transition-colors"
-                            title="Tahrirlash"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteReport(report.id); }}
-                            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded-lg transition-colors"
-                            title="O'chirish"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50/50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800`}>
-                          {report.reportType}
-                        </span>
-                        {expandedId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                      </div>
-                    </div>
+                .filter(r => !activeDate || r.reportType === activeDate)
+                .map(report => {
+                  const isExam = report.reportType === 'EXAM';
+                  const passedCount = report.items?.filter(i => i.examStatus === "O'tdi").length || 0;
+                  const totalItems = report.items?.length || 0;
 
-                    {expandedId === report.id && (
-                      <div className="overflow-x-auto bg-gray-50/50 dark:bg-black/10 border-t border-gray-200/30 dark:border-white/5">
-                        <table className="w-full text-[12px]">
-                          <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500">
-                            <tr>
-                              <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
-                              <th className="px-3 py-2 text-left font-medium">Guruh</th>
-                              <th className="px-3 py-2 text-center font-medium">To'lov</th>
-                              {report.items?.some(i => i.examScore != null) && (
-                                <th className="px-3 py-2 text-left font-medium">Imtihon Balli</th>
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                            {(report.items || []).map(item => (
-                              <tr key={item.id} className="hover:bg-white/40 dark:hover:bg-white/5">
-                                <td className="px-5 py-2.5 font-medium text-[#1d1d1f] dark:text-white">{item.studentName}</td>
-                                <td className="px-3 py-2.5 text-gray-500">{item.groupName || '—'}</td>
-                                <td className="px-3 py-2.5 text-center">
-                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.paymentStatus?.includes("To'langan")
-                                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                      : item.paymentStatus
-                                        ? 'bg-red-50 text-red-500 border-red-200'
-                                        : 'text-gray-400 border-gray-200'
-                                    }`}>
-                                    {item.paymentStatus || '—'}
-                                  </span>
-                                </td>
-                                {report.items?.some(i => i.examScore != null) && (
-                                  <td className="px-3 py-2.5">
-                                    {item.examScore != null ? (
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-bold text-blue-600 dark:text-blue-400">{item.examScore}</span>
-                                        {item.examComment && <span className="text-[11px] text-gray-500 truncate max-w-[150px]" title={item.examComment}>- {item.examComment}</span>}
-                                      </div>
-                                    ) : <span className="text-gray-400">—</span>}
-                                  </td>
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {report.summary && (
-                          <div className="mx-5 my-3 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Umumiy xulosa</p>
-                            <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
+                  return (
+                    <div key={report.id} className="transition-all duration-200">
+                      <div
+                        className={`px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors group ${expandedId === report.id ? 'bg-blue-50/30 dark:bg-blue-900/5' : ''}`}
+                        onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 ${isExam ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'}`}>
+                            {isExam ? <Award size={22} strokeWidth={2.5} /> : <FileText size={22} strokeWidth={2.5} />}
                           </div>
-                        )}
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[14px] font-bold text-[#1d1d1f] dark:text-white tracking-tight">
+                                {getPeriodLabel(report.reportType)}
+                              </span>
+                              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400">
+                                {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-[11px] font-medium text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Users size={12} className="opacity-70" /> {totalItems} ta o'quvchi
+                              </span>
+                              {isExam && (
+                                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-500">
+                                  <CheckCircle2 size={12} /> {passedCount} ta o'tdi
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Clock size={12} className="opacity-70" /> {new Date(report.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleEditReport(report); }}
+                              className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500 rounded-xl transition-all"
+                              title="Tahrirlash"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteReport(report.id); }}
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded-xl transition-all"
+                              title="O'chirish"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                          <div className={`p-1 rounded-full transition-transform duration-300 ${expandedId === report.id ? 'rotate-180 bg-blue-100 dark:bg-blue-900/30 text-blue-600' : 'text-gray-400'}`}>
+                            <ChevronDown size={18} />
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {expandedId === report.id && (
+                        <div className="overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-black/10">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-[12px] border-collapse">
+                              <thead className="bg-gray-100/50 dark:bg-black/30 border-b border-gray-200/50 dark:border-white/10 uppercase tracking-wider text-[10px] font-bold text-gray-500">
+                                <tr>
+                                  <th className="px-6 py-3 text-left">O'quvchi</th>
+                                  <th className="px-4 py-3 text-left">Guruh</th>
+                                  {isExam ? (
+                                    <>
+                                      <th className="px-2 py-3 text-center">Joriy</th>
+                                      <th className="px-2 py-3 text-center">Nazariy</th>
+                                      <th className="px-2 py-3 text-center">Amaliy</th>
+                                      <th className="px-2 py-3 text-center">Umumiy</th>
+                                      <th className="px-2 py-3 text-center">Foiz</th>
+                                      <th className="px-4 py-3 text-center">Natija</th>
+                                    </>
+                                  ) : (
+                                    <th className="px-4 py-3 text-center">To'lov Statusi</th>
+                                  )}
+                                  <th className="px-6 py-3 text-left">Izoh</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                {(report.items || []).map(item => (
+                                  <tr key={item.id} className="hover:bg-white/60 dark:hover:bg-white/5 transition-colors">
+                                    <td className="px-6 py-3.5 font-bold text-[#1d1d1f] dark:text-white">{item.studentName}</td>
+                                    <td className="px-4 py-3.5 text-gray-500 font-medium">{item.groupName || '—'}</td>
+
+                                    {isExam ? (
+                                      <>
+                                        <td className="px-2 py-3.5 text-center font-bold text-blue-600 dark:text-blue-400">{item.currentAverage || 0}</td>
+                                        <td className="px-2 py-3.5 text-center text-gray-600 dark:text-gray-400">{item.theoryScore || 0}</td>
+                                        <td className="px-2 py-3.5 text-center text-gray-600 dark:text-gray-400">{item.practiceScore || 0}</td>
+                                        <td className="px-2 py-3.5 text-center font-extrabold text-[#1d1d1f] dark:text-white">{item.totalScore || 0}</td>
+                                        <td className="px-2 py-3.5 text-center">
+                                          <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold">
+                                            {item.percentage || 0}%
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${item.examStatus === "O'tdi" || !item.examStatus
+                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
+                                            : 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                            }`}>
+                                            {item.examStatus || "O'tdi"}
+                                          </span>
+                                        </td>
+                                      </>
+                                    ) : (
+                                      <td className="px-4 py-3.5 text-center">
+                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${item.paymentStatus?.includes("To'langan")
+                                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
+                                          : item.paymentStatus
+                                            ? 'bg-red-50 text-red-500 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                            : 'text-gray-400 border-gray-200 dark:border-white/10'
+                                          }`}>
+                                          {item.paymentStatus || '—'}
+                                        </span>
+                                      </td>
+                                    )}
+                                    <td className="px-6 py-3.5 text-[11px] text-gray-500 dark:text-gray-400 font-medium min-w-[150px]">
+                                      {item.examComment || item.note || '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {report.summary && (
+                            <div className="mx-6 my-4 p-4 bg-white/80 dark:bg-black/30 rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm">
+                              <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
+                                <Send size={12} /> Umumiy xulosa
+                              </p>
+                              <p className="text-[13px] text-[#1d1d1f] dark:text-gray-300 italic font-medium">"{report.summary}"</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>
@@ -654,7 +721,7 @@ const TeacherReport = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div
-            className="bg-white dark:bg-[#1c1c1e] w-full max-w-[520px] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden"
+            className="bg-white dark:bg-[#1c1c1e] w-full max-w-[650px] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden"
             style={{ animation: 'scaleIn 0.2s ease-out' }}
           >
             {/* Modal Header */}
@@ -684,7 +751,7 @@ const TeacherReport = () => {
                   <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">
                     {isExam ? "Imtihon natijalari jadvali" : "Tanlangan o'quvchilar"}
                   </p>
-                  
+
                   {isExam ? (
                     <div className="overflow-x-auto border border-gray-100 dark:border-white/5 rounded-2xl">
                       <table className="w-full text-left text-[12px] whitespace-nowrap">
@@ -696,6 +763,7 @@ const TeacherReport = () => {
                             <th className="px-2 py-3 text-center">Amaliy</th>
                             <th className="px-2 py-3 text-center">Umumiy</th>
                             <th className="px-2 py-3 text-center">Foiz %</th>
+                            <th className="px-2 py-3 text-center">Natija</th>
                             <th className="px-4 py-3">Izoh</th>
                           </tr>
                         </thead>
@@ -704,7 +772,7 @@ const TeacherReport = () => {
                             const avg = currentAverages[s.id] || 0;
                             const theory = theoryScores[s.id] || '';
                             const practice = practiceScores[s.id] || '';
-                            
+
                             const calculateTotal = (t, p) => {
                               const total = parseFloat(avg) + (parseFloat(t) || 0) + (parseFloat(p) || 0);
                               return parseFloat(total.toFixed(2));
@@ -728,50 +796,63 @@ const TeacherReport = () => {
                                   {s.name}
                                 </td>
                                 <td className="px-2 py-3 text-center">
-                                  <input 
-                                    type="number" 
-                                    value={currentAverages[s.id] || ''} 
+                                  <input
+                                    type="number"
+                                    value={currentAverages[s.id] || ''}
                                     onChange={(e) => setCurrentAverages(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                    className="w-14 bg-blue-50/50 dark:bg-blue-900/10 border-none rounded text-center font-bold text-blue-600 outline-none" 
+                                    className="w-14 bg-blue-50/50 dark:bg-blue-900/10 border-none rounded text-center font-bold text-blue-600 outline-none"
                                   />
                                 </td>
                                 <td className="px-2 py-3 text-center">
-                                  <input 
-                                    type="number" 
+                                  <input
+                                    type="number"
                                     placeholder="0"
                                     value={theoryScores[s.id] || ''}
                                     onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
-                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none" 
+                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none"
                                   />
                                 </td>
                                 <td className="px-2 py-3 text-center">
-                                  <input 
-                                    type="number" 
+                                  <input
+                                    type="number"
                                     placeholder="0"
                                     value={practiceScores[s.id] || ''}
                                     onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
-                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none" 
+                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none"
                                   />
                                 </td>
                                 <td className="px-2 py-3 text-center font-bold text-[#1d1d1f] dark:text-white">
                                   {totalScores[s.id] || calculateTotal(theoryScores[s.id] || 0, practiceScores[s.id] || 0)}
                                 </td>
                                 <td className="px-2 py-3 text-center">
-                                  <input 
-                                    type="number" 
+                                  <input
+                                    type="number"
                                     placeholder="%"
                                     value={percentages[s.id] || ''}
                                     onChange={(e) => setPercentages(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none" 
+                                    className="w-14 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded text-center outline-none"
                                   />
                                 </td>
+                                <td className="px-2 py-3 text-center">
+                                  <select
+                                    value={examStatuses[s.id] || "O'tdi"}
+                                    onChange={(e) => setExamStatuses(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                    className={`text-[10px] font-bold px-2 py-1 rounded-lg border outline-none transition-all ${(examStatuses[s.id] || "O'tdi") === "O'tdi"
+                                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
+                                      : 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                      }`}
+                                  >
+                                    <option value="O'tdi">O'tdi</option>
+                                    <option value="O'tmadi">O'tmadi</option>
+                                  </select>
+                                </td>
                                 <td className="px-4 py-3">
-                                  <input 
-                                    type="text" 
+                                  <input
+                                    type="text"
                                     placeholder="..."
                                     value={examComments[s.id] || ''}
                                     onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                    className="w-full min-w-[100px] bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded px-2 py-1 outline-none" 
+                                    className="w-full min-w-[100px] bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded px-2 py-1 outline-none"
                                   />
                                 </td>
                               </tr>

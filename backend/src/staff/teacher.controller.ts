@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Group } from '../groups/entities/group.entity';
 import { Enrollment } from '../groups/entities/enrollment.entity';
 import { Payment } from '../payments/entities/payment.entity';
@@ -567,6 +567,7 @@ export class TeacherController {
     studentIds: number[];
     studentNames: { [id: number]: string };
     groupNames: { [id: number]: string };
+    groupIds?: { [id: number]: number };
     examScores?: { [id: number]: number };
     examComments?: { [id: number]: string };
     
@@ -576,10 +577,32 @@ export class TeacherController {
     currentAverages?: { [id: number]: number };
     totalScores?: { [id: number]: number };
     percentages?: { [id: number]: number };
+    examStatuses?: { [id: number]: string };
     
     mode?: 'merge' | 'replace';
+    reportId?: number; // Added to identify the report being edited
   }) {
     const staffId = req.user.userId;
+
+    // Handle 'replace' mode: Delete old report and associated data before saving new one
+    if (body.mode === 'replace' && body.reportId) {
+      const existingReport = await this.monthlyReportRepo.findOne({
+        where: { id: body.reportId, teacherId: staffId }
+      });
+
+      if (existingReport) {
+        // Delete previous exam records for these students in this month/type
+        if (body.reportType === 'EXAM') {
+          await this.examRepo.delete({
+            teacherId: staffId,
+            month: body.month,
+            studentId: In(body.studentIds || [])
+          });
+        }
+        // Delete the report (cascade will handle items)
+        await this.monthlyReportRepo.remove(existingReport);
+      }
+    }
 
     // Build items from selected students
     const items = (body.studentIds || []).map(sid => {
@@ -601,6 +624,7 @@ export class TeacherController {
       if (body.currentAverages?.[sid]) ri.currentAverage = Number(body.currentAverages[sid]);
       if (body.totalScores?.[sid]) ri.totalScore = Number(body.totalScores[sid]);
       if (body.percentages?.[sid]) ri.percentage = Number(body.percentages[sid]);
+      if (body.examStatuses?.[sid]) ri.examStatus = body.examStatuses[sid];
 
       if (body.examComments?.[sid]) {
         ri.examComment = body.examComments[sid];
@@ -620,21 +644,27 @@ export class TeacherController {
 
     // If it's an EXAM, also save to dedicated Exam table for student profile lookups
     if (body.reportType === 'EXAM') {
-      const examRecords = (body.studentIds || []).map(sid => {
-        return this.examRepo.create({
-          studentId: sid,
-          teacherId: staffId,
-          groupId: parseInt(Object.keys(body.groupNames).find(key => body.groupNames[key] === body.groupNames[sid]) || '0'), // Best effort to find groupId
-          month: body.month,
-          theoryScore: body.theoryScores?.[sid] || 0,
-          practiceScore: body.practiceScores?.[sid] || 0,
-          currentAverage: body.currentAverages?.[sid] || 0,
-          totalScore: body.totalScores?.[sid] || 0,
-          percentage: body.percentages?.[sid] || 0,
-          note: body.examComments?.[sid] || ''
+      const examRecords = (body.studentIds || [])
+        .filter(sid => body.groupIds?.[sid] && body.groupIds[sid] > 0) // Prevent FK violations
+        .map(sid => {
+          return this.examRepo.create({
+            studentId: sid,
+            teacherId: staffId,
+            groupId: body.groupIds![sid],
+            month: body.month,
+            theoryScore: body.theoryScores?.[sid] || 0,
+            practiceScore: body.practiceScores?.[sid] || 0,
+            currentAverage: body.currentAverages?.[sid] || 0,
+            totalScore: body.totalScores?.[sid] || 0,
+            percentage: body.percentages?.[sid] || 0,
+            status: body.examStatuses?.[sid] || 'O\'tdi',
+            note: body.examComments?.[sid] || ''
+          });
         });
-      });
-      await this.examRepo.save(examRecords);
+
+      if (examRecords.length > 0) {
+        await this.examRepo.save(examRecords);
+      }
     }
 
     return savedReport;

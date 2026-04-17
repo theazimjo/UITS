@@ -578,6 +578,7 @@ const StudentDetail = () => {
                       <th className="px-5 py-2.5 font-medium text-center">Amaliy</th>
                       <th className="px-5 py-2.5 font-medium text-center">Umumiy</th>
                       <th className="px-5 py-2.5 font-medium text-center">Foiz</th>
+                      <th className="px-5 py-2.5 font-medium text-center">Natija</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
@@ -594,10 +595,19 @@ const StudentDetail = () => {
                             {ex.percentage}%
                           </span>
                         </td>
+                        <td className="px-5 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-lg font-bold text-[11px] ${
+                            ex.status === "O'tdi" || !ex.status
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {ex.status || "O'tdi"}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                     {exams.length === 0 && (
-                      <tr><td colSpan="7" className="py-12 text-center text-gray-400">Imtihon natijalari topilmadi</td></tr>
+                      <tr><td colSpan="8" className="py-12 text-center text-gray-400">Imtihon natijalari topilmadi</td></tr>
                     )}
                   </tbody>
                 </table>

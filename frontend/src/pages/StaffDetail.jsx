@@ -7,7 +7,7 @@ import {
   ChevronRight, CreditCard, Percent, Briefcase, Edit,
   FileText, Send, Star, ChevronDown, ChevronUp, Award
 } from 'lucide-react';
-import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment, createMonthlyReport, getMonthlyReports } from '../services/api';
+import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment, updateStaffPayment, deleteStaffPayment, createMonthlyReport, getMonthlyReports } from '../services/api';
 import Modal from '../components/common/Modal';
 import toast from 'react-hot-toast';
 
@@ -57,6 +57,8 @@ const StaffDetail = () => {
     date: new Date().toISOString().split('T')[0],
     comment: ''
   });
+  const [isEditingPayment, setIsEditingPayment] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
 
   // Calendar & Detail states
   const [isDayDetailModalOpen, setIsDayDetailModalOpen] = useState(false);
@@ -212,25 +214,69 @@ const StaffDetail = () => {
   const handleAddPayment = async (e) => {
     e.preventDefault();
     try {
-      await addStaffPayment(id, {
-        ...paymentFormData,
-        amount: parseFloat(paymentFormData.amount)
-      });
+      if (isEditingPayment) {
+        await updateStaffPayment(editingPaymentId, {
+          ...paymentFormData,
+          amount: parseFloat(paymentFormData.amount)
+        });
+        toast.success("To'lov o'zgartirildi");
+      } else {
+        await addStaffPayment(id, {
+          ...paymentFormData,
+          amount: parseFloat(paymentFormData.amount)
+        });
+        toast.success("To'lov saqlandi");
+      }
       setIsPaymentModalOpen(false);
-      setPaymentFormData({
-        amount: '',
-        month: currentMonth,
-        type: 'SALARY',
-        paymentType: 'Naqd',
-        date: new Date().toISOString().split('T')[0],
-        comment: ''
-      });
+      resetPaymentForm();
       // Refresh salary data
       const salaryRes = await getStaffSalary(id, currentMonth);
       setSalaryData(salaryRes.data);
     } catch (err) {
-      console.error('Error adding payment:', err);
-      alert("Xatolik: To'lovni saqlashda xato yuzaga keldi.");
+      console.error('Error handling payment:', err);
+      toast.error("Xatolik: To'lovni saqlashda xato yuzaga keldi.");
+    }
+  };
+
+  const resetPaymentForm = () => {
+    setPaymentFormData({
+      amount: '',
+      month: currentMonth,
+      type: 'SALARY',
+      paymentType: 'Naqd',
+      date: new Date().toISOString().split('T')[0],
+      comment: ''
+    });
+    setIsEditingPayment(false);
+    setEditingPaymentId(null);
+  };
+
+  const handleEditPayment = (p) => {
+    setIsEditingPayment(true);
+    setEditingPaymentId(p.id);
+    setPaymentFormData({
+      amount: p.amount.toString(),
+      month: p.month,
+      type: p.type,
+      paymentType: p.paymentType || 'Naqd',
+      date: p.date.split('T')[0],
+      comment: p.comment || ''
+    });
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleDeletePayment = async (paymentId) => {
+    if (window.confirm("Haqiqatdan ham bu to'lovni o'chirmoqchimisiz?")) {
+      try {
+        await deleteStaffPayment(paymentId);
+        toast.success("To'lov o'chirildi");
+        // Refresh salary data
+        const salaryRes = await getStaffSalary(id, currentMonth);
+        setSalaryData(salaryRes.data);
+      } catch (err) {
+        console.error('Error deleting payment:', err);
+        toast.error("To'lovni o'chirishda xatolik yuzaga keldi.");
+      }
     }
   };
 
@@ -498,7 +544,7 @@ const StaffDetail = () => {
                           <div
                             key={g.id}
                             onClick={() => navigate(`/groups/${g.id}`)}
-                            className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-200/50 dark:border-white/5 rounded-lg cursor-pointer hover:border-gray-300 dark:hover:border-white/20 transition-colors"
+                            className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-200/50 dark:border-gray-300 dark:hover:border-white/20 transition-colors"
                           >
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="font-semibold text-[14px] text-[#007aff]">{g.name}</h4>
@@ -766,11 +812,29 @@ const StaffDetail = () => {
                               {p.comment && <p className="text-[11px] text-gray-500 mt-1 italic">"{p.comment}"</p>}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className={`text-[15px] font-bold ${p.type === 'SALARY' ? 'text-[#34c759]' : 'text-[#af52de]'}`}>
-                              {p.amount.toLocaleString()} <span className="text-[11px] font-normal opacity-60">UZS</span>
-                            </p>
-                            <p className="text-[10px] text-gray-400">Tranzaksiya: #{p.id}</p>
+                          <div className="text-right flex items-center gap-4">
+                            <div>
+                              <p className={`text-[15px] font-bold ${p.type === 'SALARY' ? 'text-[#34c759]' : 'text-[#af52de]'}`}>
+                                {p.amount.toLocaleString()} <span className="text-[11px] font-normal opacity-60">UZS</span>
+                              </p>
+                              <p className="text-[10px] text-gray-400">Tranzaksiya: #{p.id}</p>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => handleEditPayment(p)}
+                                className="p-1.5 text-gray-400 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded-md transition-colors"
+                                title="Tahrirlash"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeletePayment(p.id)}
+                                className="p-1.5 text-gray-400 hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded-md transition-colors"
+                                title="O'chirish"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))
@@ -786,8 +850,11 @@ const StaffDetail = () => {
                 {/* PAYMENT MODAL */}
                 <Modal 
                   isOpen={isPaymentModalOpen} 
-                  onClose={() => setIsPaymentModalOpen(false)} 
-                  title={`${staff?.name} — Maosh to'lash`}
+                  onClose={() => {
+                    setIsPaymentModalOpen(false);
+                    resetPaymentForm();
+                  }} 
+                  title={isEditingPayment ? `${staff?.name} — To'lovni tahrirlash` : `${staff?.name} — Maosh to'lash`}
                 >
                   <form onSubmit={handleAddPayment} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
                     <div className="space-y-3.5">
@@ -879,7 +946,10 @@ const StaffDetail = () => {
                     <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
                       <button
                         type="button"
-                        onClick={() => setIsPaymentModalOpen(false)}
+                        onClick={() => {
+                          setIsPaymentModalOpen(false);
+                          resetPaymentForm();
+                        }}
                         className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
                       >
                         Bekor qilish
@@ -888,7 +958,7 @@ const StaffDetail = () => {
                         type="submit"
                         className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors"
                       >
-                        To'lovni tasdiqlash
+                        {isEditingPayment ? 'O\'zgarishlarni saqlash' : 'To\'lovni saqlash'}
                       </button>
                     </div>
                   </form>

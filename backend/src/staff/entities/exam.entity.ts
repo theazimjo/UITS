@@ -58,6 +58,9 @@ export class Exam {
   @Column({ type: 'text', nullable: true })
   note: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  status: string; // O'tdi / O'tmadi
+
   @CreateDateColumn()
   createdAt: Date;
 

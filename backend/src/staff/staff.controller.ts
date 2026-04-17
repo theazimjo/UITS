@@ -63,4 +63,17 @@ export class StaffController {
     return this.staffService.getAllMonthlyReports(month);
   }
 
+  @Roles('admin')
+  @Patch('payments/:paymentId')
+  updatePayment(@Param('paymentId') paymentId: string, @Body() data: any) {
+    if (isNaN(+paymentId)) throw new NotFoundException('Invalid Payment ID');
+    return this.staffService.updatePayment(+paymentId, data);
+  }
+
+  @Roles('admin')
+  @Delete('payments/:paymentId')
+  deletePayment(@Param('paymentId') paymentId: string) {
+    if (isNaN(+paymentId)) throw new NotFoundException('Invalid Payment ID');
+    return this.staffService.deletePayment(+paymentId);
+  }
 }
