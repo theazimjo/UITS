@@ -19,7 +19,8 @@ const StaffDetail = () => {
   const { setStaff: updateGlobalStaff } = useStore();
   const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, students, salary, reports
+  const [activeTab, setActiveTab] = useState('overview');
+  const [activeReportType, setActiveReportType] = useState('ALL'); // overview, students, salary, reports
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7));
   const [salaryData, setSalaryData] = useState({ total: 0, revenue: 0, kpi: 0, fixed: 0, breakdown: [], payments: [] });
@@ -1014,20 +1015,44 @@ const StaffDetail = () => {
 
                 {/* Report History */}
                 <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10">
+                  <div className="px-5 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <h3 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2">
                       <FileText size={16} className="text-[#007aff]" />
                       Hisobotlar tarixi — {getMonthName(currentMonth)}
                     </h3>
+
+                    {/* Filter Tabs */}
+                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-black/40 p-1 rounded-xl border border-black/5 dark:border-white/10">
+                      {[
+                        { id: 'ALL', label: 'Barchasi' },
+                        { id: '10_DAY', label: '1-10' },
+                        { id: '20_DAY', label: '11-20' },
+                        { id: 'EXAM', label: 'Imtihon' }
+                      ].map(type => (
+                        <button
+                          key={type.id}
+                          onClick={() => setActiveReportType(type.id)}
+                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
+                            activeReportType === type.id
+                              ? 'bg-white dark:bg-[#636366] text-[#007aff] dark:text-white shadow-sm'
+                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                          }`}
+                        >
+                          {type.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {reportsLoading ? (
                     <div className="py-12 flex items-center justify-center">
                       <div className="w-6 h-6 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin" />
                     </div>
-                  ) : reports.length > 0 ? (
+                  ) : reports.filter(r => activeReportType === 'ALL' || r.reportType === activeReportType).length > 0 ? (
                     <div className="divide-y divide-gray-200/30 dark:divide-white/5">
-                      {reports.map(report => (
+                      {reports
+                        .filter(r => activeReportType === 'ALL' || r.reportType === activeReportType)
+                        .map(report => (
                         <div key={report.id}>
                           {/* Report Header */}
                           <div

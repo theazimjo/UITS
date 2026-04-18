@@ -6,7 +6,7 @@ import {
   FileText, Send, ChevronLeft, ChevronRight, Users,
   CheckCircle2, AlertCircle, ChevronDown, ChevronUp,
   Award, Star, X, Loader2, Clock, CalendarDays,
-  Pencil, Trash2
+  Pencil, Trash2, DownloadCloud, Table as TableIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -20,7 +20,7 @@ const getPeriodLabel = (type) => {
 };
 
 const TeacherReport = () => {
-  const { students: allStudents, loading, refreshAllRows } = useStore();
+  const { students: allStudents, groups, loading, refreshAllRows } = useStore();
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedGroup, setSelectedGroup] = useState('all');
@@ -49,6 +49,7 @@ const TeacherReport = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [isEditingReport, setIsEditingReport] = useState(false);
   const [editingReportId, setEditingReportId] = useState(null);
+  const [activeTab, setActiveTab] = useState('HISTORY'); // 'HISTORY' or 'ANALYTICS'
 
   useEffect(() => {
     refreshAllRows(currentMonth);
@@ -280,6 +281,49 @@ const TeacherReport = () => {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    const data = flattenedExamData();
+    if (data.length === 0) return toast.error("Eksport qilish uchun ma'lumot yo'q");
+
+    const headers = ["O'quvchi", "Guruh", "Sana", "Joriy", "Nazariy", "Amaliy", "Umumiy", "Foiz", "Natija"];
+    const rows = data.map(i => {
+      const group = groups?.find(g => (i.groupId && g.id === i.groupId) || g.name === i.groupName);
+      const direction = i.direction || group?.direction?.name || group?.courseName || group?.directionName || group?.course?.name || i.groupName || '—';
+      return [
+        i.studentName,
+        direction,
+        new Date(i.createdAt).toLocaleDateString(),
+        i.currentAverage,
+        i.theoryScore,
+        i.practiceScore,
+        i.totalScore,
+        `${i.percentage}%`,
+        i.examStatus
+      ];
+    });
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Imtihon_Natijalari_${currentMonth}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const flattenedExamData = () => {
+    return reports
+      .filter(r => r.reportType === 'EXAM' && (selectedGroup === 'all' || r.items.some(i => i.groupName === selectedGroup)))
+      .flatMap(r => r.items.map(item => ({
+        ...item,
+        createdAt: r.createdAt
+      })))
+      .filter(item => selectedGroup === 'all' || item.groupName === selectedGroup);
   };
 
   const [year, month] = currentMonth.split('-').map(Number);
@@ -544,17 +588,98 @@ const TeacherReport = () => {
         {/* Report History Section */}
         <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden transition-all duration-300">
           <div className="px-6 py-4 border-b border-gray-200/50 dark:border-white/10 bg-white/40 dark:bg-black/10 flex items-center justify-between">
-            <h3 className="text-[15px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2.5">
-              <Clock size={18} className="text-blue-500" />
-              Hisobotlar tarixi
-              <span className="text-[12px] font-medium text-gray-400">— {monthLabel}</span>
-            </h3>
+            <div className="flex items-center gap-6">
+               <h3 className="text-[15px] font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2.5">
+                <Clock size={18} className="text-blue-500" />
+                Hisobotlar tarixi
+                <span className="text-[12px] font-medium text-gray-400">— {monthLabel}</span>
+              </h3>
+              
+              <div className="flex items-center p-1 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 shadow-inner">
+                <button 
+                  onClick={() => setActiveTab('HISTORY')}
+                  className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-2 ${activeTab === 'HISTORY' ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <FileText size={14} /> Tarix
+                </button>
+                <button 
+                  onClick={() => setActiveTab('ANALYTICS')}
+                  className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-2 ${activeTab === 'ANALYTICS' ? 'bg-white dark:bg-white/10 text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <TableIcon size={14} /> Natijalar (Excel)
+                </button>
+              </div>
+            </div>
+
+            {activeTab === 'ANALYTICS' && (
+              <button 
+                onClick={handleExportCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[12px] font-bold transition-all shadow-md active:scale-95"
+              >
+                <DownloadCloud size={14} /> CSV Yuklash
+              </button>
+            )}
           </div>
 
           {reportsLoading ? (
             <div className="py-20 flex flex-col items-center justify-center gap-3">
               <Loader2 size={24} className="animate-spin text-blue-500" />
               <p className="text-[13px] text-gray-400 font-medium">Hisobotlar yuklanmoqda...</p>
+            </div>
+          ) : activeTab === 'ANALYTICS' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px] border-collapse bg-white dark:bg-black/20">
+                <thead className="bg-[#f2f2f2] text-black uppercase tracking-tight text-[11px] font-bold border-b-2 border-black">
+                  <tr>
+                    <th className="px-3 py-2 border border-black text-center w-12">№</th>
+                    <th className="px-6 py-2 border border-black text-left sticky left-0 bg-[#f2f2f2] z-10">F.I.O</th>
+                    <th className="px-4 py-2 border border-black text-left">Yo'nalish</th>
+                    <th className="px-4 py-2 border border-black text-center">Joriy</th>
+                    <th className="px-4 py-2 border border-black text-center">Nazariy</th>
+                    <th className="px-4 py-2 border border-black text-center">Amaliy</th>
+                    <th className="px-4 py-2 border border-black text-center">Umumiy</th>
+                    <th className="px-4 py-2 border border-black text-center">Foiz %</th>
+                    <th className="px-4 py-2 border border-black text-center">Holati</th>
+                    <th className="px-6 py-2 border border-black text-left">Imtihon Sanasi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-white/5">
+                  {flattenedExamData().length > 0 ? flattenedExamData().map((item, idx) => (
+                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                      <td className="px-3 py-2 border border-black text-center font-medium">{idx + 1}</td>
+                      <td className="px-6 py-2 border border-black font-black text-[#1d1d1f] dark:text-white sticky left-0 bg-white dark:bg-[#1d1d1f] group-hover:bg-blue-50 transition-colors z-10">
+                        {item.studentName}
+                      </td>
+                      <td className="px-4 py-2 border border-black text-gray-700 dark:text-gray-300 font-medium whitespace-nowrap">
+                        {(() => {
+                          const group = groups?.find(g => (item.groupId && g.id === item.groupId) || g.name === item.groupName);
+                          // Prioritize direction name or course name over group name
+                          return item.direction || group?.direction?.name || group?.courseName || group?.directionName || group?.course?.name || item.groupName || '—';
+                        })()}
+                      </td>
+                      <td className="px-4 py-2 border border-black text-center font-bold text-blue-600 dark:text-blue-400">{item.currentAverage || 0}</td>
+                      <td className="px-4 py-2 border border-black text-center text-gray-800 dark:text-gray-200">{item.theoryScore || 0}</td>
+                      <td className="px-4 py-2 border border-black text-center text-gray-800 dark:text-gray-200">{item.practiceScore || 0}</td>
+                      <td className="px-4 py-2 border border-black text-center font-black text-black dark:text-white">{item.totalScore || 0}</td>
+                      <td className="px-4 py-2 border border-black text-center font-black">{item.percentage || 0}%</td>
+                      <td className="px-4 py-2 border border-black text-center">
+                        <span className="text-[12px] font-bold lowercase">
+                          {(!item.examStatus || item.examStatus === "O'tdi") ? "o'tdi" : "o'tmadi"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-2 border border-black text-gray-500 font-medium tabular-nums text-[12px]">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="10" className="py-20 text-center text-gray-400 font-medium italic border border-black">
+                        Ushbu guruh yoki oy uchun imtihon natijalari topilmadi
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           ) : reports.length === 0 ? (
             <div className="py-20 text-center">

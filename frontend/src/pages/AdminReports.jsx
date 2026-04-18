@@ -4,9 +4,10 @@ import {
     Users, Search, User, MoreHorizontal,
     LayoutDashboard, RefreshCw, ArrowLeft, Info,
     Download, Printer, X, Eye, TrendingUp, Target,
-    CheckCircle2, AlertCircle, Clock
+    CheckCircle2, AlertCircle, Clock, Table as TableIcon, DownloadCloud
 } from 'lucide-react';
 import { getStaff, getMonthlyReports, getAllMonthlyReports } from '../services/api';
+import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
 
 // ----------------------------------------------------------------------
@@ -20,6 +21,7 @@ const ReportModal = ({ report, teacher, currentMonth, onClose }) => {
             case '10_DAY': return "1-10 kunlik";
             case '20_DAY': return "11-20 kunlik";
             case 'END_MONTH': return "Oy yakuni";
+            case 'EXAM': return "Imtihon";
             default: return type;
         }
     };
@@ -227,6 +229,51 @@ const AdminReports = () => {
     const [loading, setLoading] = useState(true);
     const [reportsLoading, setReportsLoading] = useState(false);
     const [selectedReport, setSelectedReport] = useState(null);
+    const [activeType, setActiveType] = useState('ALL');
+    const { groups, refreshAllRows } = useStore();
+
+    const flattenedExamData = () => {
+        return reports
+            .filter(r => r.reportType === 'EXAM')
+            .flatMap(r => (r.items || []).map(item => ({
+                ...item,
+                createdAt: r.createdAt,
+                teacherName: staffList.find(s => s.id === r.teacherId)?.name || '—'
+            })));
+    };
+
+    const handleExportCSV = () => {
+        const data = flattenedExamData();
+        if (data.length === 0) return toast.error("Eksport qilish uchun ma'lumotlar yo'q");
+
+        const headers = ["№", "O'quvchi", "O'qituvchi", "Yo'nalish", "Joriy", "Nazariy", "Amaliy", "Umumiy", "Foiz %", "Holati", "Sana"];
+        const rows = data.map((item, idx) => {
+            const group = groups?.find(g => (item.groupId && g.id === item.groupId) || g.name === item.groupName);
+            const direction = item.direction || group?.direction?.name || group?.courseName || group?.directionName || group?.course?.name || item.groupName || '—';
+            return [
+                idx + 1,
+                `"${item.studentName}"`,
+                `"${item.teacherName}"`,
+                `"${direction}"`,
+                item.currentAverage || 0,
+                item.theoryScore || 0,
+                item.practiceScore || 0,
+                item.totalScore || 0,
+                `"${item.percentage || 0}%"`,
+                `"${(!item.examStatus || item.examStatus === "O'tdi") ? "o'tdi" : "o'tmadi"}"`,
+                `"${new Date(item.createdAt).toLocaleDateString()}"`
+            ];
+        });
+
+        const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute("download", `Imtihon_Natijalari_${currentMonth}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const fetchStaff = async () => {
         try {
@@ -259,7 +306,10 @@ const AdminReports = () => {
         }
     };
 
-    useEffect(() => { fetchStaff(); }, []);
+    useEffect(() => { 
+        fetchStaff(); 
+        refreshAllRows(); // Ensure global data like groups/courses is loaded
+    }, []);
     useEffect(() => { fetchReports(selectedStaffId, currentMonth); }, [selectedStaffId, currentMonth]);
 
     const changeMonth = (delta) => {
@@ -279,6 +329,7 @@ const AdminReports = () => {
             case '10_DAY': return "10-kunlik";
             case '20_DAY': return "20-kunlik";
             case 'END_MONTH': return "Oy yakuni";
+            case 'EXAM': return "Imtihon";
             default: return type;
         }
     };
@@ -325,8 +376,46 @@ const AdminReports = () => {
                     >
                         <RefreshCw size={18} className={reportsLoading ? 'animate-spin' : ''} />
                     </button>
+                    {activeType === 'EXAM' && reports.some(r => r.reportType === 'EXAM') && (
+                        <button
+                            onClick={handleExportCSV}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[12px] font-bold transition-all shadow-md active:scale-95"
+                        >
+                            <DownloadCloud size={14} /> CSV
+                        </button>
+                    )}
                 </div>
             </header>
+            
+            {/* Filtering Tabs */}
+            <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-start gap-2 overflow-x-auto scrollbar-hide">
+                {[
+                    { id: 'ALL', label: 'Barchasi', icon: <FileText size={14} /> },
+                    { id: '10_DAY', label: '1-10 kunlik', icon: <Calendar size={14} /> },
+                    { id: '20_DAY', label: '11-20 kunlik', icon: <Calendar size={14} /> },
+                    { id: 'EXAM', label: 'Imtihonlar', icon: <Target size={14} /> },
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveType(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap ${
+                            activeType === tab.id
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        }`}
+                    >
+                        {tab.icon}
+                        {tab.label}
+                        {tab.id !== 'ALL' && (
+                            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${
+                                activeType === tab.id ? 'bg-white/20' : 'bg-gray-200 dark:bg-gray-700'
+                            }`}>
+                                {reports.filter(r => r.reportType === tab.id).length}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
 
             <div className="flex-1 flex overflow-hidden">
 
@@ -375,9 +464,81 @@ const AdminReports = () => {
                             <RefreshCw size={32} className="animate-spin text-blue-500" />
                             <p className="text-sm font-medium">Ma'lumotlar yuklanmoqda...</p>
                         </div>
-                    ) : reports.length > 0 ? (
+                    ) : activeType === 'EXAM' ? (
+                        <div className="bg-white dark:bg-black/20 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-[12px] border-collapse">
+                                    <thead className="bg-[#f8f9fa] dark:bg-gray-800 text-gray-700 dark:text-gray-200 uppercase tracking-tight text-[10px] font-black border-b border-gray-200 dark:border-gray-700">
+                                        <tr>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center w-10">№</th>
+                                            <th className="px-6 py-3 border border-gray-200 dark:border-gray-700 text-left sticky left-0 bg-[#f8f9fa] dark:bg-gray-800 z-10">F.I.O</th>
+                                            <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">O'qituvchi</th>
+                                            <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">Yo'nalish</th>
+                                            <th className="px-2 py-3 border border-gray-200 dark:border-gray-700 text-center">Joriy</th>
+                                            <th className="px-2 py-3 border border-gray-200 dark:border-gray-700 text-center">Nazariy</th>
+                                            <th className="px-2 py-3 border border-gray-200 dark:border-gray-700 text-center">Amaliy</th>
+                                            <th className="px-2 py-3 border border-gray-200 dark:border-gray-700 text-center">Umumiy</th>
+                                            <th className="px-2 py-3 border border-gray-200 dark:border-gray-700 text-center">Foiz</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center">Natija</th>
+                                            <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">Sana</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 dark:divide-white/5">
+                                        {flattenedExamData().length > 0 ? (
+                                            flattenedExamData().map((item, idx) => (
+                                                <tr key={idx} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group">
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center text-gray-500 font-medium">{idx + 1}</td>
+                                                    <td className="px-6 py-2.5 border border-gray-100 dark:border-gray-800 font-bold text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-900 z-10 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/10">
+                                                        {item.studentName}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 font-medium">
+                                                        {item.teacherName}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 italic">
+                                                        {(() => {
+                                                            const group = groups?.find(g => (item.groupId && g.id === item.groupId) || g.name === item.groupName);
+                                                            // Prioritize direction name or course name over group name
+                                                            return item.direction || group?.direction?.name || group?.courseName || group?.directionName || group?.course?.name || item.groupName || '—';
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-2 py-2.5 border border-gray-100 dark:border-gray-800 text-center font-bold text-blue-600">{item.currentAverage || 0}</td>
+                                                    <td className="px-2 py-2.5 border border-gray-100 dark:border-gray-800 text-center">{item.theoryScore || 0}</td>
+                                                    <td className="px-2 py-2.5 border border-gray-100 dark:border-gray-800 text-center">{item.practiceScore || 0}</td>
+                                                    <td className="px-2 py-2.5 border border-gray-100 dark:border-gray-800 text-center font-black text-gray-900 dark:text-white">{item.totalScore || 0}</td>
+                                                    <td className="px-2 py-2.5 border border-gray-100 dark:border-gray-800 text-center">
+                                                        <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md font-bold text-[10px]">
+                                                            {item.percentage || 0}%
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center">
+                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${(!item.examStatus || item.examStatus === "O'tdi")
+                                                                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                            }`}>
+                                                            {(!item.examStatus || item.examStatus === "O'tdi") ? "o'tdi" : "o'tmadi"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-400 tabular-nums">
+                                                        {new Date(item.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="11" className="py-20 text-center text-gray-500">
+                                                    Imtihon natijalari mavjud emas
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : reports.filter(r => activeType === 'ALL' || r.reportType === activeType).length > 0 ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
-                            {reports.map((r) => {
+                            {reports
+                                .filter(r => activeType === 'ALL' || r.reportType === activeType)
+                                .map((r) => {
                                 const teacher = staffList.find(s => s.id === r.teacherId) || { name: 'Noma\'lum o\'qituvchi' };
                                 const studentsCount = r.items?.length || 0;
                                 const unpaidCount = r.items?.filter(i => i.paymentStatus !== 'paid').length || 0;
