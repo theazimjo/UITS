@@ -56,13 +56,16 @@ export class AppModule implements OnApplicationBootstrap {
     
     const admin = await this.usersService.findOne('admin');
     if (!admin) {
+      console.log('[AppBootstrap] Admin user not found. Creating default admin...');
       const hashedPassword = await bcrypt.hash('admin123', 10);
       await this.usersService.create({
         username: 'admin',
         password: hashedPassword,
         role: 'admin',
       });
-      console.log('Default admin user created: admin / admin123');
+      console.log('[AppBootstrap] Default admin created: admin / admin123');
+    } else {
+      console.log('[AppBootstrap] Admin user already exists.');
     }
   }
 }

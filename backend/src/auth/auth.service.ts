@@ -16,37 +16,53 @@ export class AuthService {
     private staffRepository: Repository<Staff>,
     @InjectRepository(Student)
     private studentRepository: Repository<Student>,
-  ) {}
+  ) { }
 
   async validateUser(username: string, pass: string): Promise<any> {
+    console.log(`[Auth] Attempt: ${username}`);
+
     // 1. Check Admin User
     const user = await this.usersService.findOne(username);
-    if (user && await bcrypt.compare(pass, user.password)) {
-      const { password, ...result } = user;
-      return result;
+    if (user) {
+      const isMatch = await bcrypt.compare(pass, user.password);
+      console.log(`[Auth] Admin found: ${username}, match: ${isMatch}`);
+      if (isMatch) {
+        const { password, ...result } = user;
+        return result;
+      }
     }
 
     // 2. Check Staff (Teacher)
     const staff = await this.staffRepository.findOne({ where: { username } });
-    if (staff && staff.password && await bcrypt.compare(pass, staff.password)) {
-      const { password, ...result } = staff;
-      return { ...result, role: 'teacher' };
+    if (staff) {
+      const isMatch = staff.password && await bcrypt.compare(pass, staff.password);
+      console.log(`[Auth] Staff found: ${username}, match: ${!!isMatch}`);
+      if (isMatch) {
+        const { password, ...result } = staff;
+        return { ...result, role: 'teacher' };
+      }
     }
 
     // 3. Check Parent (Login = Phone, Password = ExternalID)
-    const student = await this.studentRepository.findOne({ 
-      where: { parentPhone: username } 
+    const students = await this.studentRepository.find({
+      where: { parentPhone: username }
     });
-    // For MVP, we use externalId as a plaintext/direct password for parents
-    if (student && student.externalId === pass) {
-      return { 
-        id: student.id, 
-        username: student.parentPhone, 
-        role: 'parent',
-        name: student.parentName 
-      };
+
+    if (students.length > 0) {
+      const matchingStudent = students.find(s => s.externalId === pass);
+      console.log(`[Auth] Parent check for ${username}: total children found=${students.length}, match=${!!matchingStudent}`);
+
+      if (matchingStudent) {
+        return {
+          id: matchingStudent.id,
+          username: matchingStudent.parentPhone,
+          role: 'parent',
+          name: matchingStudent.parentName
+        };
+      }
     }
 
+    console.log(`[Auth] Login failed for ${username}`);
     return null;
   }
 
