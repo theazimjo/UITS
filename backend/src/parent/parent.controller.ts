@@ -24,7 +24,7 @@ export class ParentController {
     const parentPhone = req.user.username; // From AuthService validateUser
     return this.studentRepo.find({
       where: { parentPhone },
-      relations: ['enrollments', 'enrollments.group']
+      relations: ['enrollments', 'enrollments.group', 'enrollments.group.course', 'enrollments.group.teacher']
     });
   }
 

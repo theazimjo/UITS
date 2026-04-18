@@ -15,7 +15,8 @@ import {
   ArrowLeft,
   MessageSquare,
   BarChart3,
-  User
+  User,
+  History
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -234,14 +235,15 @@ const PaymentOverview = ({ payments }) => {
 }
 
 const ExamCard = ({ exam }) => {
-  const hasScore = exam.score !== undefined && exam.score !== null;
-  const scorePercent = hasScore ? exam.score : 0;
+  const hasPercentage = exam.percentage !== undefined && exam.percentage !== null;
+  const scorePercent = hasPercentage ? Number(exam.percentage) : 0;
   const monthNames = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
   
-  const examDate = exam.date ? new Date(exam.date) : null;
-  const monthLabel = examDate ? monthNames[examDate.getMonth()] : 'Yaqinda';
+  const examDate = exam.date ? new Date(exam.date) : (exam.month ? new Date(exam.month + '-01') : null);
+  const monthLabel = examDate ? monthNames[examDate.getMonth()] : 'Noma\'lum';
   
-  const isPassed = hasScore && exam.score >= 60;
+  const isPassed = exam.status ? (exam.status === "O'tdi" || exam.status === "Pass") : (hasPercentage && scorePercent >= 60);
+  const statusLabel = exam.status || (hasPercentage ? (isPassed ? "O'tdi" : "O'tmadi") : 'Kutilmoqda');
 
   return (
     <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-gray-100 dark:border-white/10 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-all h-full flex flex-col justify-between">
@@ -252,27 +254,38 @@ const ExamCard = ({ exam }) => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex flex-col">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Imtihon oyi</span>
+            <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none mb-1">Imtihon oyi</span>
             <span className={`text-[13px] font-black uppercase tracking-tight ${examDate ? 'text-blue-500' : 'text-amber-500'}`}>
               {monthLabel} {examDate ? examDate.getFullYear() : ''}
             </span>
           </div>
-          <div className={`text-[24px] font-black tabular-nums ${
-            !hasScore ? 'text-gray-400' :
+          <div className={`text-[28px] font-black tabular-nums ${
+            !hasPercentage ? 'text-gray-400' :
             isPassed ? 'text-emerald-500' : 'text-rose-500'
           }`}>
-            {hasScore ? `${exam.score}%` : 'N/A'}
+            {hasPercentage ? `${Math.round(scorePercent)}%` : 'N/A'}
           </div>
         </div>
         
-        <h4 className="text-[16px] font-bold mb-4 line-clamp-2 pr-10 min-h-[3rem]">
-          {exam.title || 'Imtihon nomi kiritilmagan'}
+        <h4 className="text-[18px] font-bold mb-6 line-clamp-2 pr-10">
+          {exam.group?.name || 'Umumiy imtihon'}
         </h4>
+        
+        <div className="grid grid-cols-2 gap-4 mb-6">
+           <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-2xl border border-gray-100 dark:border-white/5">
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Nazariy</p>
+              <p className="text-[15px] font-black text-gray-700 dark:text-gray-200">{exam.theoryScore || 0}</p>
+           </div>
+           <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-2xl border border-gray-100 dark:border-white/5">
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Amaliy</p>
+              <p className="text-[15px] font-black text-gray-700 dark:text-gray-200">{exam.practiceScore || 0}</p>
+           </div>
+        </div>
         
         <div className="h-2 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden mb-2 shadow-inner">
           <div
             className={`h-full rounded-full transition-all duration-1000 ${
-              !hasScore ? 'bg-gray-200' :
+              !hasPercentage ? 'bg-gray-200' :
               isPassed ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]'
             }`}
             style={{ width: `${scorePercent}%` }}
@@ -280,16 +293,23 @@ const ExamCard = ({ exam }) => {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-4">
-        <p className="text-[11px] text-gray-400 font-black uppercase tracking-widest">
-          Natija holati:
-        </p>
-        <span className={`text-[12px] font-black px-4 py-1 rounded-full uppercase tracking-tighter shadow-sm border ${
-          !hasScore ? 'bg-gray-50 text-gray-400 border-gray-100' :
-          isPassed ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
-        }`}>
-          {!hasScore ? 'Kutilmoqda' : isPassed ? 'O\'tdi' : 'O\'tmadi'}
-        </span>
+      <div className="mt-4">
+        {exam.note && (
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 italic mb-4 line-clamp-2">
+            "{exam.note}"
+          </p>
+        )}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-50 dark:border-white/5">
+          <p className="text-[11px] text-gray-400 font-black uppercase tracking-widest">
+            Natija holati:
+          </p>
+          <span className={`text-[12px] font-black px-4 py-1 rounded-full uppercase tracking-tighter shadow-sm border ${
+            !hasPercentage ? 'bg-gray-50 text-gray-400 border-gray-100' :
+            isPassed ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+          }`}>
+            {statusLabel}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -330,6 +350,92 @@ const ProgressReportCard = ({ report }) => {
         <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
         <span className="text-[11px] font-black text-[#1d1d1f] dark:text-gray-400 uppercase tracking-widest truncate">{report.group?.name || 'Umumiy dars'}</span>
       </div>
+    </div>
+  );
+};
+
+const EducationHistory = ({ enrollments }) => {
+  const current = enrollments?.filter(e => e.status === 'ACTIVE') || [];
+  const history = enrollments?.filter(e => e.status !== 'ACTIVE') || [];
+
+  return (
+    <div className="space-y-8">
+      {/* Current Courses */}
+      {current.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-[16px] font-black uppercase tracking-widest text-blue-500 pl-2">Hozirgi yo'nalish</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {current.map((e, idx) => (
+              <div key={idx} className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border-2 border-blue-500/20 shadow-xl shadow-blue-500/5 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all"></div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                    <BookOpen size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-[18px] font-black tracking-tight">{e.group?.course?.name || 'Tanlanmagan'}</h4>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">{e.group?.name || 'Guruh nomi yo\'q'}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-[13px]">
+                     <User size={14} className="text-gray-400" />
+                     <span className="text-gray-500">O'qituvchi:</span>
+                     <span className="font-bold text-gray-700 dark:text-gray-300">{e.group?.teacher?.name || 'Belgilanmagan'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[13px]">
+                     <Calendar size={14} className="text-gray-400" />
+                     <span className="text-gray-500">Boshlangan:</span>
+                     <span className="font-bold text-gray-700 dark:text-gray-300">{e.group?.startDate || 'Ma\'lum emas'}</span>
+                  </div>
+                </div>
+                <div className="mt-6 flex items-center gap-2">
+                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Ayni paytda o'qimoqda</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* History */}
+      {history.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-[16px] font-black uppercase tracking-widest text-gray-400 pl-2">O'quv tarixi</h3>
+          <div className="space-y-3">
+            {history.map((e, idx) => (
+              <div key={idx} className="bg-white/50 dark:bg-white/5 p-5 rounded-[2rem] border border-gray-100 dark:border-white/5 flex items-center justify-between group hover:bg-white dark:hover:bg-white/10 transition-all">
+                <div className="flex items-center gap-4">
+                   <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-400 group-hover:text-purple-500 transition-colors">
+                      <History size={18} />
+                   </div>
+                   <div>
+                      <h4 className="text-[15px] font-bold">{e.group?.course?.name || 'Eski kurs'}</h4>
+                      <p className="text-[11px] text-gray-400 font-semibold">{e.group?.name}</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-4">
+                   <div className="text-right hidden sm:block">
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Holat</p>
+                      <p className={`text-[12px] font-bold ${e.status === 'GRADUATED' ? 'text-purple-500' : 'text-gray-400'}`}>
+                        {e.status === 'GRADUATED' ? 'Tugatgan' : 'Tark etgan'}
+                      </p>
+                   </div>
+                   <div className={`w-2 h-2 rounded-full ${e.status === 'GRADUATED' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {current.length === 0 && history.length === 0 && (
+        <div className="py-12 text-center bg-gray-50 dark:bg-white/5 rounded-[2.5rem] border-2 border-dashed border-gray-100 dark:border-white/5">
+           <BookOpen size={32} className="mx-auto text-gray-200 mb-4" />
+           <p className="text-gray-400 font-bold italic text-[14px]">Hozircha o'quv yo'nalishlari mavjud emas</p>
+        </div>
+      )}
     </div>
   );
 };
@@ -510,15 +616,16 @@ const ParentDashboard = () => {
               </div>
             </div>
 
-            <div className="hidden lg:flex flex-col items-center justify-center w-40 h-40 bg-[#007aff] rounded-[2.5rem] shadow-2xl shadow-blue-500/30 text-white p-6 relative group active:scale-[0.98] transition-transform">
-              <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2.5rem]"></div>
-              <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">Umumiy Davomat</p>
-              <p className="text-[42px] font-black tracking-tighter tabular-nums">{attendanceData?.summary?.percentage || 0}<span className="text-[20px] ml-0.5">%</span></p>
-            </div>
+
           </div>
         </section>
 
-        {/* Dashboard Grid */}
+        {/* Education History & Current Directions */}
+        <section className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+           <EducationHistory enrollments={selectedChild?.enrollments} />
+        </section>
+
+        {/* Calendar & Attendance Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
 
           {/* Column 1: Attendance */}
