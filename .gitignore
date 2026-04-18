@@ -37,3 +37,16 @@ desktop.ini
 # Docker settings
 .docker-compose.lock
 .docker-config.json
+
+# Android/Flutter specific
+**/android/.gradle/
+**/android/app/build/
+**/android/build/
+**/android/local.properties
+**/android/GeneratedPluginRegistrant.java
+**/android/.idea/
+**/*.iml
+**/*.jks
+**/*.keystore
+**/android/app/src/main/res/drawable-*/
+**/android/app/src/main/res/mipmap-*/
