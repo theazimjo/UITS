@@ -238,10 +238,10 @@ const ExamCard = ({ exam }) => {
   const hasPercentage = exam.percentage !== undefined && exam.percentage !== null;
   const scorePercent = hasPercentage ? Number(exam.percentage) : 0;
   const monthNames = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
-  
+
   const examDate = exam.date ? new Date(exam.date) : (exam.month ? new Date(exam.month + '-01') : null);
   const monthLabel = examDate ? monthNames[examDate.getMonth()] : 'Noma\'lum';
-  
+
   const isPassed = exam.status ? (exam.status === "O'tdi" || exam.status === "Pass") : (hasPercentage && scorePercent >= 60);
   const statusLabel = exam.status || (hasPercentage ? (isPassed ? "O'tdi" : "O'tmadi") : 'Kutilmoqda');
 
@@ -250,7 +250,7 @@ const ExamCard = ({ exam }) => {
       <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
         <Award size={64} className="text-[#007aff]" />
       </div>
-      
+
       <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex flex-col">
@@ -259,35 +259,33 @@ const ExamCard = ({ exam }) => {
               {monthLabel} {examDate ? examDate.getFullYear() : ''}
             </span>
           </div>
-          <div className={`text-[28px] font-black tabular-nums ${
-            !hasPercentage ? 'text-gray-400' :
+          <div className={`text-[28px] font-black tabular-nums ${!hasPercentage ? 'text-gray-400' :
             isPassed ? 'text-emerald-500' : 'text-rose-500'
-          }`}>
+            }`}>
             {hasPercentage ? `${Math.round(scorePercent)}%` : 'N/A'}
           </div>
         </div>
-        
+
         <h4 className="text-[18px] font-bold mb-6 line-clamp-2 pr-10">
           {exam.group?.name || 'Umumiy imtihon'}
         </h4>
-        
+
         <div className="grid grid-cols-2 gap-4 mb-6">
-           <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-2xl border border-gray-100 dark:border-white/5">
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Nazariy</p>
-              <p className="text-[15px] font-black text-gray-700 dark:text-gray-200">{exam.theoryScore || 0}</p>
-           </div>
-           <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-2xl border border-gray-100 dark:border-white/5">
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Amaliy</p>
-              <p className="text-[15px] font-black text-gray-700 dark:text-gray-200">{exam.practiceScore || 0}</p>
-           </div>
+          <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-2xl border border-gray-100 dark:border-white/5">
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Nazariy</p>
+            <p className="text-[15px] font-black text-gray-700 dark:text-gray-200">{exam.theoryScore || 0}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-2xl border border-gray-100 dark:border-white/5">
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Amaliy</p>
+            <p className="text-[15px] font-black text-gray-700 dark:text-gray-200">{exam.practiceScore || 0}</p>
+          </div>
         </div>
-        
+
         <div className="h-2 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden mb-2 shadow-inner">
           <div
-            className={`h-full rounded-full transition-all duration-1000 ${
-              !hasPercentage ? 'bg-gray-200' :
+            className={`h-full rounded-full transition-all duration-1000 ${!hasPercentage ? 'bg-gray-200' :
               isPassed ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]'
-            }`}
+              }`}
             style={{ width: `${scorePercent}%` }}
           ></div>
         </div>
@@ -303,10 +301,9 @@ const ExamCard = ({ exam }) => {
           <p className="text-[11px] text-gray-400 font-black uppercase tracking-widest">
             Natija holati:
           </p>
-          <span className={`text-[12px] font-black px-4 py-1 rounded-full uppercase tracking-tighter shadow-sm border ${
-            !hasPercentage ? 'bg-gray-50 text-gray-400 border-gray-100' :
+          <span className={`text-[12px] font-black px-4 py-1 rounded-full uppercase tracking-tighter shadow-sm border ${!hasPercentage ? 'bg-gray-50 text-gray-400 border-gray-100' :
             isPassed ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
-          }`}>
+            }`}>
             {statusLabel}
           </span>
         </div>
@@ -379,19 +376,19 @@ const EducationHistory = ({ enrollments }) => {
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-[13px]">
-                     <User size={14} className="text-gray-400" />
-                     <span className="text-gray-500">O'qituvchi:</span>
-                     <span className="font-bold text-gray-700 dark:text-gray-300">{e.group?.teacher?.name || 'Belgilanmagan'}</span>
+                    <User size={14} className="text-gray-400" />
+                    <span className="text-gray-500">O'qituvchi:</span>
+                    <span className="font-bold text-gray-700 dark:text-gray-300">{e.group?.teacher?.name || 'Belgilanmagan'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[13px]">
-                     <Calendar size={14} className="text-gray-400" />
-                     <span className="text-gray-500">Boshlangan:</span>
-                     <span className="font-bold text-gray-700 dark:text-gray-300">{e.group?.startDate || 'Ma\'lum emas'}</span>
+                    <Calendar size={14} className="text-gray-400" />
+                    <span className="text-gray-500">Boshlangan:</span>
+                    <span className="font-bold text-gray-700 dark:text-gray-300">{e.group?.startDate || 'Ma\'lum emas'}</span>
                   </div>
                 </div>
                 <div className="mt-6 flex items-center gap-2">
-                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Ayni paytda o'qimoqda</span>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Ayni paytda o'qimoqda</span>
                 </div>
               </div>
             ))}
@@ -407,22 +404,22 @@ const EducationHistory = ({ enrollments }) => {
             {history.map((e, idx) => (
               <div key={idx} className="bg-white/50 dark:bg-white/5 p-5 rounded-[2rem] border border-gray-100 dark:border-white/5 flex items-center justify-between group hover:bg-white dark:hover:bg-white/10 transition-all">
                 <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-400 group-hover:text-purple-500 transition-colors">
-                      <History size={18} />
-                   </div>
-                   <div>
-                      <h4 className="text-[15px] font-bold">{e.group?.course?.name || 'Eski kurs'}</h4>
-                      <p className="text-[11px] text-gray-400 font-semibold">{e.group?.name}</p>
-                   </div>
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-400 group-hover:text-purple-500 transition-colors">
+                    <History size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-[15px] font-bold">{e.group?.course?.name || 'Eski kurs'}</h4>
+                    <p className="text-[11px] text-gray-400 font-semibold">{e.group?.name}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
-                   <div className="text-right hidden sm:block">
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Holat</p>
-                      <p className={`text-[12px] font-bold ${e.status === 'GRADUATED' ? 'text-purple-500' : 'text-gray-400'}`}>
-                        {e.status === 'GRADUATED' ? 'Tugatgan' : 'Tark etgan'}
-                      </p>
-                   </div>
-                   <div className={`w-2 h-2 rounded-full ${e.status === 'GRADUATED' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+                  <div className="text-right hidden sm:block">
+                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Holat</p>
+                    <p className={`text-[12px] font-bold ${e.status === 'GRADUATED' ? 'text-purple-500' : 'text-gray-400'}`}>
+                      {e.status === 'GRADUATED' ? 'Tugatgan' : 'Tark etgan'}
+                    </p>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full ${e.status === 'GRADUATED' ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
                 </div>
               </div>
             ))}
@@ -432,8 +429,8 @@ const EducationHistory = ({ enrollments }) => {
 
       {current.length === 0 && history.length === 0 && (
         <div className="py-12 text-center bg-gray-50 dark:bg-white/5 rounded-[2.5rem] border-2 border-dashed border-gray-100 dark:border-white/5">
-           <BookOpen size={32} className="mx-auto text-gray-200 mb-4" />
-           <p className="text-gray-400 font-bold italic text-[14px]">Hozircha o'quv yo'nalishlari mavjud emas</p>
+          <BookOpen size={32} className="mx-auto text-gray-200 mb-4" />
+          <p className="text-gray-400 font-bold italic text-[14px]">Hozircha o'quv yo'nalishlari mavjud emas</p>
         </div>
       )}
     </div>
@@ -622,7 +619,7 @@ const ParentDashboard = () => {
 
         {/* Education History & Current Directions */}
         <section className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-           <EducationHistory enrollments={selectedChild?.enrollments} />
+          <EducationHistory enrollments={selectedChild?.enrollments} />
         </section>
 
         {/* Calendar & Attendance Section */}
