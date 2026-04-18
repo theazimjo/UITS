@@ -26,22 +26,22 @@ import toast from 'react-hot-toast';
 
 const AttendanceCalendar = ({ records, currentViewDate, onMonthChange }) => {
   const [selectedDayDetail, setSelectedDayDetail] = useState(null);
-  
+
   const year = currentViewDate.getFullYear();
   const month = currentViewDate.getMonth();
-  
+
   const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
   const firstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
-  
+
   const daysCount = daysInMonth(year, month);
   const startOffset = (firstDayOfMonth(year, month) + 6) % 7; // Monday start
-  
+
   const monthNames = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
-  
+
   const calendarDays = useMemo(() => {
     const days = [];
     for (let i = 0; i < startOffset; i++) days.push({ type: 'empty' });
-    
+
     for (let d = 1; d <= daysCount; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const record = records?.find(r => r.date === dateStr);
@@ -82,7 +82,7 @@ const AttendanceCalendar = ({ records, currentViewDate, onMonthChange }) => {
           <Calendar className="text-[#007aff]" size={20} />
           Davomat
         </h3>
-        
+
         <div className="flex items-center justify-between bg-gray-50 dark:bg-white/5 p-1 rounded-2xl border border-gray-100 dark:border-white/5 min-w-[200px]">
           <button
             onClick={handlePrevMonth}
@@ -194,26 +194,26 @@ const PaymentOverview = ({ payments }) => {
         <button className="text-[11px] font-bold text-[#007aff] px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-full hover:bg-blue-100 transition-colors uppercase tracking-widest">Kvitansiyalar</button>
       </div>
 
-      <div className="overflow-x-auto -mx-6 px-6">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto -mx-6 px-6 no-scrollbar">
+        <table className="w-full text-left border-collapse min-w-[500px]">
           <thead>
             <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 dark:border-white/5">
-              <th className="pb-4 pl-2 whitespace-nowrap">Oy</th>
-              <th className="pb-4 whitespace-nowrap">Summa</th>
-              <th className="pb-4 whitespace-nowrap">Chegirma</th>
-              <th className="pb-4 whitespace-nowrap">Tushgan</th>
+              <th className="pb-4 pl-2 pr-4 whitespace-nowrap">Oy</th>
+              <th className="pb-4 pr-4 whitespace-nowrap">Summa</th>
+              <th className="pb-4 pr-4 whitespace-nowrap">Chegirma</th>
+              <th className="pb-4 pr-4 whitespace-nowrap">Tushgan</th>
               <th className="pb-4 text-right pr-2 whitespace-nowrap">Holat</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-white/5">
             {payments.length > 0 ? payments.map((p, i) => (
               <tr key={i} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 transition-all">
-                <td className="py-5 pl-2">
+                <td className="py-5 pl-2 pr-4">
                   <span className="text-[14px] font-bold whitespace-nowrap">{p.month || '...'}</span>
                 </td>
-                <td className="py-5 font-bold text-[13px] whitespace-nowrap tracking-tight">{formatCurrency(p.amount || 0)}</td>
-                <td className="py-5 font-bold text-[13px] text-emerald-500 whitespace-nowrap tracking-tight">-{formatCurrency(p.discount || 0)}</td>
-                <td className="py-5 font-bold text-[13px] whitespace-nowrap tracking-tight">{formatCurrency(p.amount - (p.discount || 0))}</td>
+                <td className="py-5 pr-4 font-bold text-[13px] whitespace-nowrap tracking-tight">{formatCurrency(p.amount || 0)}</td>
+                <td className="py-5 pr-4 font-bold text-[13px] text-emerald-500 whitespace-nowrap tracking-tight">-{formatCurrency(p.discount || 0)}</td>
+                <td className="py-5 pr-4 font-bold text-[13px] whitespace-nowrap tracking-tight">{formatCurrency(p.amount - (p.discount || 0))}</td>
                 <td className="py-5 text-right pr-2 whitespace-nowrap">
                   <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${p.amount > 1000 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'
                     }`}>
@@ -236,7 +236,13 @@ const PaymentOverview = ({ payments }) => {
 const ExamCard = ({ exam }) => {
   const hasScore = exam.score !== undefined && exam.score !== null;
   const scorePercent = hasScore ? exam.score : 0;
+  const monthNames = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
   
+  const examDate = exam.date ? new Date(exam.date) : null;
+  const monthLabel = examDate ? monthNames[examDate.getMonth()] : 'Yaqinda';
+  
+  const isPassed = hasScore && exam.score >= 60;
+
   return (
     <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-gray-100 dark:border-white/10 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-all h-full flex flex-col justify-between">
       <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
@@ -245,38 +251,44 @@ const ExamCard = ({ exam }) => {
       
       <div>
         <div className="flex items-center justify-between mb-4">
-          <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter shadow-sm ${exam.date ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/40' : 'text-amber-500 bg-amber-50 dark:bg-amber-900/40'
-            }`}>
-            {exam.date || 'Yaqinda'}
-          </span>
-          <div className={`text-[20px] font-black tabular-nums ${!hasScore ? 'text-gray-400' :
-              exam.score >= 80 ? 'text-emerald-500' : 'text-amber-500'
-            }`}>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Imtihon oyi</span>
+            <span className={`text-[13px] font-black uppercase tracking-tight ${examDate ? 'text-blue-500' : 'text-amber-500'}`}>
+              {monthLabel} {examDate ? examDate.getFullYear() : ''}
+            </span>
+          </div>
+          <div className={`text-[24px] font-black tabular-nums ${
+            !hasScore ? 'text-gray-400' :
+            isPassed ? 'text-emerald-500' : 'text-rose-500'
+          }`}>
             {hasScore ? `${exam.score}%` : 'N/A'}
           </div>
         </div>
+        
         <h4 className="text-[16px] font-bold mb-4 line-clamp-2 pr-10 min-h-[3rem]">
-          {exam.title || 'Imtihon nomi belgilanmagan'}
+          {exam.title || 'Imtihon nomi kiritilmagan'}
         </h4>
         
         <div className="h-2 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden mb-2 shadow-inner">
           <div
-            className={`h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,122,255,0.2)] ${!hasScore ? 'bg-gray-200' :
-                exam.score >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}
+            className={`h-full rounded-full transition-all duration-1000 ${
+              !hasScore ? 'bg-gray-200' :
+              isPassed ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]'
+            }`}
             style={{ width: `${scorePercent}%` }}
           ></div>
         </div>
       </div>
 
       <div className="flex items-center justify-between mt-4">
-        <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">
-          {hasScore ? 'Natija:' : 'Holat:'}
+        <p className="text-[11px] text-gray-400 font-black uppercase tracking-widest">
+          Natija holati:
         </p>
-        <span className={`text-[13px] font-black ${!hasScore ? 'text-gray-400' :
-            exam.score >= 80 ? 'text-emerald-500' : 'text-amber-500'
-          }`}>
-          {hasScore ? (exam.score >= 80 ? 'A+' : 'B') : 'Kutilayotgan'}
+        <span className={`text-[12px] font-black px-4 py-1 rounded-full uppercase tracking-tighter shadow-sm border ${
+          !hasScore ? 'bg-gray-50 text-gray-400 border-gray-100' :
+          isPassed ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+        }`}>
+          {!hasScore ? 'Kutilmoqda' : isPassed ? 'O\'tdi' : 'O\'tmadi'}
         </span>
       </div>
     </div>
@@ -295,28 +307,28 @@ const ProgressReportCard = ({ report }) => {
           {dateStr}
         </span>
         <div className="flex items-center gap-2">
-           <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/10 flex items-center justify-center border border-gray-100 dark:border-white/5 shadow-inner">
-              <User size={14} className="text-purple-400" />
-           </div>
-           <div className="text-left">
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none mb-0.5">O'qituvchi</p>
-              <p className="text-[12px] font-black text-gray-600 dark:text-gray-300 truncate max-w-[100px]">{report.teacher?.name || 'Belgilanmagan'}</p>
-           </div>
+          <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/10 flex items-center justify-center border border-gray-100 dark:border-white/5 shadow-inner">
+            <User size={14} className="text-purple-400" />
+          </div>
+          <div className="text-left">
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none mb-0.5">O'qituvchi</p>
+            <p className="text-[12px] font-black text-gray-600 dark:text-gray-300 truncate max-w-[100px]">{report.teacher?.name || 'Belgilanmagan'}</p>
+          </div>
         </div>
       </div>
-      
+
       <div className="flex-1">
         <div className="relative">
-           <QuoteIcon className="absolute -top-1 -left-1 text-purple-500/10 w-8 h-8 rotate-180" />
-           <p className="text-[15px] text-[#1d1d1f] dark:text-[#f5f5f7] leading-relaxed font-semibold italic pl-4 pb-4">
+          <QuoteIcon className="absolute -top-1 -left-1 text-purple-500/10 w-8 h-8 rotate-180" />
+          <p className="text-[15px] text-[#1d1d1f] dark:text-[#f5f5f7] leading-relaxed font-semibold italic pl-4 pb-4">
             {report.comment || 'Ushbu dars uchun o\'qituvchi tomonidan izoh qoldirilmagan.'}
           </p>
         </div>
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-50 dark:border-white/5 flex items-center gap-2">
-         <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
-         <span className="text-[11px] font-black text-[#1d1d1f] dark:text-gray-400 uppercase tracking-widest truncate">{report.group?.name || 'Umumiy dars'}</span>
+        <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
+        <span className="text-[11px] font-black text-[#1d1d1f] dark:text-gray-400 uppercase tracking-widest truncate">{report.group?.name || 'Umumiy dars'}</span>
       </div>
     </div>
   );
@@ -331,13 +343,13 @@ const QuoteIcon = ({ className }) => (
 const ParentDashboard = () => {
   const [children, setChildren] = useState([]);
   const [selectedChildId, setSelectedChildId] = useState(null);
-  
+
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
-  
+
   const [attendanceData, setAttendanceData] = useState(null);
   const [exams, setExams] = useState([]);
   const [payments, setPayments] = useState([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
@@ -370,7 +382,7 @@ const ParentDashboard = () => {
     try {
       setLoadingDetails(true);
       const formattedDate = viewDate.toISOString().split('T')[0];
-      
+
       const [attRes, examRes, payRes] = await Promise.all([
         getChildAttendance(id, formattedDate),
         getChildExams(id),
@@ -527,7 +539,7 @@ const ParentDashboard = () => {
               <div className="flex items-center justify-between mb-8 px-2">
                 <h3 className="text-[18px] font-black flex items-center gap-2">
                   <BarChart3 className="text-emerald-500" size={24} />
-                   Imtihon natijalari
+                  Imtihon natijalari
                 </h3>
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{exams.length} ta natija</span>
               </div>
@@ -548,7 +560,7 @@ const ParentDashboard = () => {
               <div className="flex items-center justify-between mb-8 px-2">
                 <h3 className="text-[18px] font-black flex items-center gap-2">
                   <MessageSquare className="text-purple-500" size={24} />
-                   O'zlashtirish reportlari
+                  O'zlashtirish reportlari
                 </h3>
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{reports.length} ta izoh</span>
               </div>
