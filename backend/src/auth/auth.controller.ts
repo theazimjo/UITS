@@ -7,6 +7,9 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() loginDto: any) {
+    if (!loginDto.username || !loginDto.password) {
+      throw new UnauthorizedException('Login va parol kiritilishi shart!');
+    }
     const user = await this.authService.validateUser(loginDto.username, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('Kiritilgan ma\'lumotlar xato!');

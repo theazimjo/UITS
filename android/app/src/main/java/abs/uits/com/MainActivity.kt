@@ -24,11 +24,18 @@ import abs.uits.com.ui.theme.UITSTheme
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 
+import abs.uits.com.ui.teacher.TeacherDashboardScreen
+import abs.uits.com.ui.parent.ParentDashboardScreen
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val tokenManager = TokenManager(applicationContext)
+        NetworkModule.initialize(tokenManager) // Initialize network with token manager
+        
         val authRepository = AuthRepository(NetworkModule.apiService, tokenManager)
         
         enableEdgeToEdge()
@@ -62,8 +69,30 @@ class MainActivity : ComponentActivity() {
                     }
                     
                     composable(Screen.AdminDashboard.route) { DashboardPlaceholder("Admin") }
-                    composable(Screen.TeacherDashboard.route) { DashboardPlaceholder("Ustoz") }
-                    composable(Screen.ParentDashboard.route) { DashboardPlaceholder("Ota-ona") }
+                    composable(Screen.TeacherDashboard.route) { 
+                        TeacherDashboardScreen(
+                            onLogout = {
+                                lifecycleScope.launch {
+                                    tokenManager.clear()
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    composable(Screen.ParentDashboard.route) { 
+                        ParentDashboardScreen(
+                            onLogout = {
+                                lifecycleScope.launch {
+                                    tokenManager.clear()
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

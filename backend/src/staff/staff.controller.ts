@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, NotFoundException, Request } from '@nestjs/common';
 import { StaffService } from './staff.service';
 import { Staff } from './entities/staff.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -13,6 +13,14 @@ export class StaffController {
   @Get()
   findAll(): Promise<Staff[]> {
     return this.staffService.findAll();
+  }
+
+  @Get('me')
+  async getMe(@Request() req: any): Promise<Staff | null> {
+    const user = req.user;
+    const staff = await this.staffService.findByUsername(user.username);
+    if (!staff) throw new NotFoundException('Xodim topilmadi');
+    return this.staffService.findOne(staff.id);
   }
 
   @Get(':id')

@@ -28,6 +28,10 @@ export class StaffService {
     return this.staffRepository.find({ relations: ['role'] });
   }
 
+  async findByUsername(username: string): Promise<Staff | null> {
+    return this.staffRepository.findOne({ where: { username } });
+  }
+
   async findOne(id: number): Promise<Staff | null> {
     const staff = await this.staffRepository.findOne({ 
       where: { id }, 
