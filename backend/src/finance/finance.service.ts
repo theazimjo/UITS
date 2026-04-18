@@ -4,6 +4,7 @@ import { Repository, Between } from 'typeorm';
 import { Payment } from '../payments/entities/payment.entity';
 import { StaffPayment } from '../staff/entities/staff-payment.entity';
 import { Expense } from '../expenses/entities/expense.entity';
+import { Income } from '../incomes/entities/income.entity';
 
 @Injectable()
 export class FinanceService {
@@ -14,6 +15,8 @@ export class FinanceService {
     private readonly staffPaymentRepository: Repository<StaffPayment>,
     @InjectRepository(Expense)
     private readonly expenseRepository: Repository<Expense>,
+    @InjectRepository(Income)
+    private readonly incomeRepository: Repository<Income>,
   ) {}
 
   private mapPaymentType(type: string): string {
@@ -39,15 +42,17 @@ export class FinanceService {
       const s = `${m}-01`;
       const e = `${m}-${String(last).padStart(2, '0')}`;
       const ges = await this.expenseRepository.find({ where: { date: Between(s, e) } });
+      const ois = await this.incomeRepository.find({ where: { date: Between(s, e) } });
 
-      const totalInc = incs.reduce((sum, p) => sum + Number(p.amount), 0);
+      const totalInc = incs.reduce((sum, p) => sum + Number(p.amount), 0) +
+                       ois.reduce((sum, p) => sum + Number(p.amount), 0);
       const totalExp = sps.reduce((sum, p) => sum + Number(p.amount), 0) + 
                        ges.reduce((sum, p) => sum + Number(p.amount), 0);
       return { totalInc, totalExp };
     };
 
     // Current month detailed data
-    const incomes = await this.paymentRepository.find({ where: { month: targetMonth } });
+    const studentPayments = await this.paymentRepository.find({ where: { month: targetMonth } });
     const staffPayments = await this.staffPaymentRepository.find({ where: { month: targetMonth } });
     
     const [yearVal, monthVal] = targetMonth.split('-').map(Number);
@@ -55,19 +60,32 @@ export class FinanceService {
     const start = `${targetMonth}-01`;
     const end = `${targetMonth}-${String(lastDay).padStart(2, '0')}`;
     const generalExpenses = await this.expenseRepository.find({ where: { date: Between(start, end) } });
+    const otherIncomes = await this.incomeRepository.find({ where: { date: Between(start, end) } });
 
-    const totalIncome = incomes.reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalStudentIncome = studentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalOtherIncome = otherIncomes.reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalIncome = totalStudentIncome + totalOtherIncome;
+
     const totalStaffExpense = staffPayments.reduce((sum, p) => sum + Number(p.amount), 0);
     const totalGeneralExpense = generalExpenses.reduce((sum, p) => sum + Number(p.amount), 0);
     const totalExpense = totalStaffExpense + totalGeneralExpense;
     const netProfit = totalIncome - totalExpense;
 
     // Breakdowns
-    const incomeByMethod = incomes.reduce((acc, p) => {
+    const incomeByMethod = {};
+    const incomeByCategory = {
+      "O'quv to'lovi": totalStudentIncome,
+    };
+
+    [...studentPayments, ...otherIncomes].forEach(p => {
       const m = this.mapPaymentType(p.paymentType);
-      acc[m] = (acc[m] || 0) + Number(p.amount);
-      return acc;
-    }, {});
+      incomeByMethod[m] = (incomeByMethod[m] || 0) + Number(p.amount);
+      
+      // Categorize Other Incomes
+      if ((p as any).category && (p as any).category !== "O'quv to'lovi") {
+        incomeByCategory[(p as any).category] = (incomeByCategory[(p as any).category] || 0) + Number(p.amount);
+      }
+    });
 
     const expenseByMethod = {};
     const expenseByCategory = {};
@@ -87,11 +105,14 @@ export class FinanceService {
 
     return {
       totalIncome,
+      totalStudentIncome,
+      totalOtherIncome,
       totalStaffExpense,
       totalGeneralExpense,
       totalExpense,
       netProfit,
       incomeByMethod,
+      incomeByCategory,
       expenseByMethod,
       expenseByCategory,
       month: targetMonth,
@@ -106,11 +127,15 @@ export class FinanceService {
     const start = `${targetMonth}-01`;
     const end = `${targetMonth}-${String(lastDay).padStart(2, '0')}`;
 
-    const [incomes, staffExpenses, generalExpenses] = await Promise.all([
+    const [incomes, otherIncomes, staffExpenses, generalExpenses] = await Promise.all([
       this.paymentRepository.find({ 
         where: { month: targetMonth }, 
         order: { paymentDate: 'DESC' },
         relations: ['student'] 
+      }),
+      this.incomeRepository.find({
+        where: { date: Between(start, end) },
+        order: { date: 'DESC' }
       }),
       this.staffPaymentRepository.find({ 
         where: { month: targetMonth }, 
@@ -131,6 +156,16 @@ export class FinanceService {
         amount: Number(item.amount),
         date: item.paymentDate,
         category: 'O\'quv to\'lovi',
+        paymentType: this.mapPaymentType(item.paymentType)
+      })),
+      ...otherIncomes.map(item => ({
+        id: `oinc_${item.id}`,
+        type: 'INCOME',
+        title: item.title,
+        amount: Number(item.amount),
+        date: item.date,
+        category: item.category,
+        comment: item.comment,
         paymentType: this.mapPaymentType(item.paymentType)
       })),
       ...staffExpenses.map(item => ({

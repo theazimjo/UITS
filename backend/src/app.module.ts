@@ -9,6 +9,7 @@ import { GroupsModule } from './groups/groups.module';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { IncomesModule } from './incomes/incomes.module';
 import { FinanceModule } from './finance/finance.module';
 import { User } from './users/entities/user.entity';
 import { UsersService } from './users/users.service';
@@ -38,6 +39,7 @@ import { ConfigModule } from '@nestjs/config';
     ActivityLogModule,
     DashboardModule,
     ExpensesModule,
+    IncomesModule,
     FinanceModule,
   ],
 })

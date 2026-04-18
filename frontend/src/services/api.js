@@ -42,6 +42,15 @@ export const getFinanceChart = () => api.get('/finance/chart');
 // Expenses
 export const getExpenses = () => api.get('/expenses');
 export const addExpense = (data) => api.post('/expenses', data);
+export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data);
+export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
+
+// Incomes
+export const getIncomes = () => api.get('/incomes');
+export const addIncome = (data) => api.post('/incomes', data);
+export const updateIncome = (id, data) => api.patch(`/incomes/${id}`, data);
+export const deleteIncome = (id) => api.delete(`/incomes/${id}`);
+
 export const createStaff = (data) => api.post('/staff', data);
 export const updateStaff = (id, data) => api.patch(`/staff/${id}`, data);
 export const deleteStaff = (id) => api.delete(`/staff/${id}`);

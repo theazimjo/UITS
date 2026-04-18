@@ -32,7 +32,7 @@ const Dashboard = () => {
 
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
-  
+
   // Attendance Stats
   const [attStats, setAttStats] = useState({
     expected: 0,
@@ -73,7 +73,7 @@ const Dashboard = () => {
       const [attRes, genRes, finRes] = await Promise.all([
         getDashboardAttendanceStats(date),
         getDashboardGeneralStats(date),
-        getFinanceChart() 
+        getFinanceChart()
       ]);
 
       if (attRes.data) setAttStats(attRes.data);
@@ -143,7 +143,7 @@ const Dashboard = () => {
       trend: 'neutral'
     },
     {
-      label: 'Bashorat qilingan tushum',
+      label: 'Kutilgan Tushum',
       value: (loading || loadingAtt) ? <Skeleton width="140px" height="32px" /> : formatCurrency(attStats.expectedMonthlyRevenue),
       icon: <Wallet size={24} />,
       color: 'purple',
@@ -169,10 +169,10 @@ const Dashboard = () => {
 
   return (
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f]">
-      
+
       {/* macOS Finder-style Toolbar */}
       <div className="min-h-[56px] py-3 lg:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4 z-30 sticky top-0">
-        
+
         {/* Title Area */}
         <div className="flex-shrink-0 flex items-center gap-3">
           <div className="p-1.5 bg-[#007aff] text-white rounded-md shadow-sm">
@@ -190,7 +190,7 @@ const Dashboard = () => {
 
         {/* Center/Right Actions Area */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
-          
+
           {/* Date Selector */}
           <div className="flex items-center gap-3 bg-white dark:bg-white/10 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm">
             <Calendar size={14} className="text-[#007aff]" />
@@ -219,7 +219,7 @@ const Dashboard = () => {
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 p-6 lg:p-10">
         <div className="max-w-[1700px] mx-auto space-y-10 animate-fade-in pb-10">
-          
+
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
             {statsList.map((stat, i) => (
@@ -255,7 +255,7 @@ const Dashboard = () => {
 
           {/* Middle Row: Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
+
             {/* Financial Dynamics Chart */}
             {/* Financial Dynamics Chart - Expanded to Full Width */}
             <div className="lg:col-span-3 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
@@ -287,12 +287,12 @@ const Dashboard = () => {
                     <AreaChart data={processedFinanceData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.08} />
@@ -309,34 +309,34 @@ const Dashboard = () => {
                         tick={{ fontSize: 11, fill: '#888', fontWeight: 700 }}
                       />
                       <Tooltip
-                        contentStyle={{ 
-                          borderRadius: '1.25rem', 
-                          border: 'none', 
-                          boxShadow: '0 20px 50px rgba(0,0,0,0.15)', 
-                          background: 'rgba(255,255,255,0.95)', 
-                          backdropFilter: 'blur(15px)', 
-                          padding: '12px' 
+                        contentStyle={{
+                          borderRadius: '1.25rem',
+                          border: 'none',
+                          boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+                          background: 'rgba(255,255,255,0.95)',
+                          backdropFilter: 'blur(15px)',
+                          padding: '12px'
                         }}
                         labelStyle={{ fontSize: '11px', fontWeight: '900', color: '#1d1d1f', marginBottom: '8px', textTransform: 'uppercase' }}
                         itemStyle={{ fontSize: '13px', fontWeight: 'bold', padding: '2px 0' }}
                         formatter={(value) => formatCurrency(value)}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="income" 
-                        stroke="#10b981" 
+                      <Area
+                        type="monotone"
+                        dataKey="income"
+                        stroke="#10b981"
                         strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#colorIncome)" 
+                        fillOpacity={1}
+                        fill="url(#colorIncome)"
                         animationDuration={2000}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="expense" 
-                        stroke="#f59e0b" 
+                      <Area
+                        type="monotone"
+                        dataKey="expense"
+                        stroke="#f59e0b"
                         strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#colorExpense)" 
+                        fillOpacity={1}
+                        fill="url(#colorExpense)"
                         animationDuration={2000}
                       />
                     </AreaChart>
@@ -441,8 +441,8 @@ const Dashboard = () => {
                     <div className="text-right">
                       <div className="flex flex-col items-end gap-1">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${s.status === 'present'
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 shadow-sm'
-                            : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 shadow-sm'
+                          : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
                           }`}>
                           {s.status_display}
                         </span>

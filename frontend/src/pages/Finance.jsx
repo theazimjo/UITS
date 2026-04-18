@@ -4,23 +4,41 @@ import {
   BarChart3, ArrowUpRight, ArrowDownRight, CreditCard,
   Calendar, Plus, X, AlertCircle, Wallet,
   Repeat, Smartphone, Search, Filter, ArrowRightLeft,
-  ChevronLeft, ChevronRight, Activity, Download
+  ChevronLeft, ChevronRight, Activity, Download,
+  Edit, Trash2
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   ComposedChart, Line
 } from 'recharts';
-import { getFinanceStats, getFinanceTransactions, getFinanceChart, addExpense } from '../services/api';
+import { 
+  getFinanceStats, 
+  getFinanceTransactions, 
+  getFinanceChart, 
+  addExpense, 
+  addIncome,
+  updateExpense,
+  deleteExpense,
+  updateIncome,
+  deleteIncome,
+  updatePayment,
+  deletePayment,
+  updateStaffPayment,
+  deleteStaffPayment
+} from '../services/api';
 import Modal from '../components/common/Modal';
 
 const Finance = () => {
   const [stats, setStats] = useState({
     totalIncome: 0,
+    totalStudentIncome: 0,
+    totalOtherIncome: 0,
     totalExpense: 0,
     netProfit: 0,
     totalGeneralExpense: 0,
     incomeByMethod: {},
+    incomeByCategory: {},
     expenseByMethod: {},
     expenseByCategory: {},
     prevMonthStats: { totalInc: 0, totalExp: 0 }
@@ -35,13 +53,43 @@ const Finance = () => {
   const [filterMethod, setFilterMethod] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Expense Modal State
+  // Modals State
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
+  const [isStudentPaymentModalOpen, setIsStudentPaymentModalOpen] = useState(false);
+  const [isStaffPaymentModalOpen, setIsStaffPaymentModalOpen] = useState(false);
+  
+  const [editingId, setEditingId] = useState(null);
+
   const [expenseFormData, setExpenseFormData] = useState({
     title: '',
     amount: '',
     category: 'Ofis',
     customCategory: '',
+    paymentType: 'Naqd',
+    date: new Date().toISOString().split('T')[0],
+    comment: ''
+  });
+
+  const [incomeFormData, setIncomeFormData] = useState({
+    title: '',
+    amount: '',
+    category: 'Sotuv',
+    customCategory: '',
+    paymentType: 'Naqd',
+    date: new Date().toISOString().split('T')[0],
+    comment: ''
+  });
+
+  const [studentPaymentFormData, setStudentPaymentFormData] = useState({
+    amount: '',
+    paymentType: 'Naqd',
+    paymentDate: new Date().toISOString().split('T')[0],
+    comment: ''
+  });
+
+  const [staffPaymentFormData, setStaffPaymentFormData] = useState({
+    amount: '',
     paymentType: 'Naqd',
     date: new Date().toISOString().split('T')[0],
     comment: ''
@@ -60,6 +108,7 @@ const Finance = () => {
         setStats({
           ...statsRes.data,
           incomeByMethod: statsRes.data.incomeByMethod || {},
+          incomeByCategory: statsRes.data.incomeByCategory || {},
           expenseByMethod: statsRes.data.expenseByMethod || {},
           expenseByCategory: statsRes.data.expenseByCategory || {},
           prevMonthStats: statsRes.data.prevMonthStats || { totalInc: 0, totalExp: 0 }
@@ -82,17 +131,144 @@ const Finance = () => {
   const handleAddExpense = async (e) => {
     e.preventDefault();
     try {
-      await addExpense({
+      const data = {
         ...expenseFormData,
         category: expenseFormData.category === 'Boshqa' ? expenseFormData.customCategory : expenseFormData.category,
         amount: parseFloat(expenseFormData.amount)
-      });
+      };
+
+      if (editingId) {
+        await updateExpense(editingId, data);
+      } else {
+        await addExpense(data);
+      }
+      
       setIsExpenseModalOpen(false);
       resetExpenseForm();
       fetchData();
     } catch (err) {
-      console.error('Error adding expense:', err);
+      console.error('Error saving expense:', err);
       alert('Xatolik yuzaga keldi');
+    }
+  };
+
+  const handleAddIncome = async (e) => {
+    e.preventDefault();
+    try {
+      const data = {
+        ...incomeFormData,
+        category: incomeFormData.category === 'Boshqa' ? incomeFormData.customCategory : incomeFormData.category,
+        amount: parseFloat(incomeFormData.amount)
+      };
+
+      if (editingId) {
+        await updateIncome(editingId, data);
+      } else {
+        await addIncome(data);
+      }
+
+      setIsIncomeModalOpen(false);
+      resetIncomeForm();
+      fetchData();
+    } catch (err) {
+      console.error('Error saving income:', err);
+      alert('Xatolik yuzaga keldi');
+    }
+  };
+
+  const handleUpdateStudentPayment = async (e) => {
+    e.preventDefault();
+    try {
+      await updatePayment(editingId, {
+        ...studentPaymentFormData,
+        amount: parseFloat(studentPaymentFormData.amount)
+      });
+      setIsStudentPaymentModalOpen(false);
+      setEditingId(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error updating payment:', err);
+      alert('Xatolik yuzaga keldi');
+    }
+  };
+
+  const handleUpdateStaffPayment = async (e) => {
+    e.preventDefault();
+    try {
+      await updateStaffPayment(editingId, {
+        ...staffPaymentFormData,
+        amount: parseFloat(staffPaymentFormData.amount)
+      });
+      setIsStaffPaymentModalOpen(false);
+      setEditingId(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error updating staff payment:', err);
+      alert('Xatolik yuzaga keldi');
+    }
+  };
+
+  const handleDeleteTransaction = async (t) => {
+    if (!window.confirm('Haqiqatdan ham ushbu operatsiyani o\'chirmoqchimisiz?')) return;
+    
+    try {
+      const id = t.id.split('_')[1];
+      if (t.id.startsWith('inc_')) await deletePayment(id);
+      else if (t.id.startsWith('oinc_')) await deleteIncome(id);
+      else if (t.id.startsWith('staff_')) await deleteStaffPayment(id);
+      else if (t.id.startsWith('gen_')) await deleteExpense(id);
+      
+      fetchData();
+    } catch (err) {
+      console.error('Error deleting transaction:', err);
+      alert('Xatolik yuzaga keldi');
+    }
+  };
+
+  const handleEditTransaction = (t) => {
+    const id = t.id.split('_')[1];
+    setEditingId(id);
+
+    if (t.id.startsWith('inc_')) {
+      setStudentPaymentFormData({
+        amount: t.amount,
+        paymentType: t.paymentType,
+        paymentDate: t.date,
+        comment: t.comment || ''
+      });
+      setIsStudentPaymentModalOpen(true);
+    } else if (t.id.startsWith('oinc_')) {
+      const isCustomCategory = !['Sotuv', 'Grant', 'Investitsiya', 'Xizmat'].includes(t.category);
+      setIncomeFormData({
+        title: t.title,
+        amount: t.amount,
+        category: isCustomCategory ? 'Boshqa' : t.category,
+        customCategory: isCustomCategory ? t.category : '',
+        paymentType: t.paymentType,
+        date: t.date,
+        comment: t.comment || ''
+      });
+      setIsIncomeModalOpen(true);
+    } else if (t.id.startsWith('staff_')) {
+      setStaffPaymentFormData({
+        amount: t.amount,
+        paymentType: t.paymentType,
+        date: t.date,
+        comment: t.comment || ''
+      });
+      setIsStaffPaymentModalOpen(true);
+    } else if (t.id.startsWith('gen_')) {
+      const isCustomCategory = !['Ofis', 'Bino', 'Texnika', 'Marketing', 'Kommunal', 'Oylik'].includes(t.category);
+      setExpenseFormData({
+        title: t.title,
+        amount: t.amount,
+        category: isCustomCategory ? 'Boshqa' : t.category,
+        customCategory: isCustomCategory ? t.category : '',
+        paymentType: t.paymentType,
+        date: t.date,
+        comment: t.comment || ''
+      });
+      setIsExpenseModalOpen(true);
     }
   };
 
@@ -106,6 +282,20 @@ const Finance = () => {
       date: new Date().toISOString().split('T')[0],
       comment: ''
     });
+    setEditingId(null);
+  };
+
+  const resetIncomeForm = () => {
+    setIncomeFormData({
+      title: '',
+      amount: '',
+      category: 'Sotuv',
+      customCategory: '',
+      paymentType: 'Naqd',
+      date: new Date().toISOString().split('T')[0],
+      comment: ''
+    });
+    setEditingId(null);
   };
 
   const filteredTransactions = useMemo(() => {
@@ -213,14 +403,23 @@ const Finance = () => {
 
           <div className="h-4 w-px bg-gray-300 dark:bg-white/10 hidden sm:block" />
 
-          {/* Add Button */}
-          <button
-            onClick={() => setIsExpenseModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-[#007aff] hover:bg-[#0062cc] text-white border border-[#005bb5]"
-          >
-            <Plus size={14} />
-            <span>Xarajat qo'shish</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { resetIncomeForm(); setIsIncomeModalOpen(true); }}
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-600"
+            >
+              <ArrowUpRight size={14} />
+              <span>Kirim</span>
+            </button>
+            <button
+              onClick={() => { resetExpenseForm(); setIsExpenseModalOpen(true); }}
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-red-500 hover:bg-red-600 text-white border border-red-600"
+            >
+              <ArrowDownRight size={14} />
+              <span>Chiqim</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -236,6 +435,7 @@ const Finance = () => {
               icon={TrendingUp}
               color="green"
               trendValue={getGrowth(stats.totalIncome, stats.prevMonthStats.totalInc)}
+              subLabel={`Talaba: ${stats.totalStudentIncome?.toLocaleString()} | Boshqa: ${stats.totalOtherIncome?.toLocaleString()}`}
             />
             <StatCard
               title="Jami Xarajat"
@@ -261,7 +461,7 @@ const Finance = () => {
           </div>
 
           {/* Detailed Analytics Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
             {/* Financial Dynamics Chart */}
             <div className="lg:col-span-2 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col">
@@ -319,13 +519,53 @@ const Finance = () => {
               </div>
             </div>
 
+            {/* Income Distribution */}
+            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col">
+              <h3 className="text-[14px] font-bold mb-4 flex items-center gap-2 uppercase tracking-tight">
+                <ArrowUpRight size={18} className="text-[#34c759]" />
+                Daromadlar taqsimoti
+              </h3>
+              
+              <div className="h-[180px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RePieChart>
+                    <Pie
+                      data={Object.keys(stats?.incomeByCategory || {}).map(name => ({ name, value: stats.incomeByCategory[name] }))}
+                      innerRadius={50}
+                      outerRadius={75}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {Object.keys(stats?.incomeByCategory || {}).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={4} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </RePieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="space-y-2 mt-6 overflow-y-auto custom-scrollbar flex-1 max-h-[150px] pr-2">
+                {Object.keys(stats?.incomeByCategory || {}).map((name, index) => (
+                  <div key={name} className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2">
+                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                       <span className="text-[11px] text-gray-600 dark:text-gray-400 font-medium group-hover:text-[#1d1d1f] dark:group-hover:text-white transition-colors">{name}</span>
+                    </div>
+                    <span className="text-[10px] font-bold tabular-nums">
+                       {stats.totalIncome > 0 ? ((stats.incomeByCategory[name] / stats.totalIncome) * 100).toFixed(0) : 0}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Expense Distribution */}
             <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col">
-              <h3 className="text-[15px] font-bold mb-4 flex items-center gap-2 uppercase tracking-tight">
+              <h3 className="text-[14px] font-bold mb-4 flex items-center gap-2 uppercase tracking-tight">
                 <LucidePieChart size={18} className="text-[#af52de]" />
                 Xarajatlar taqsimoti
               </h3>
-              <p className="text-[11px] text-gray-500 mb-6">Kategoriyalar bo'yicha ulush</p>
               
               <div className="h-[180px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -351,10 +591,10 @@ const Finance = () => {
                   <div key={name} className="flex items-center justify-between group">
                     <div className="flex items-center gap-2">
                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                       <span className="text-[12px] text-gray-600 dark:text-gray-400 font-medium group-hover:text-[#1d1d1f] dark:group-hover:text-white transition-colors">{name}</span>
+                       <span className="text-[11px] text-gray-600 dark:text-gray-400 font-medium group-hover:text-[#1d1d1f] dark:group-hover:text-white transition-colors">{name}</span>
                     </div>
-                    <span className="text-[11px] font-bold tabular-nums">
-                      {((stats.expenseByCategory[name] / (stats.totalExpense || 1)) * 100).toFixed(0)}%
+                    <span className="text-[10px] font-bold tabular-nums">
+                       {stats.totalExpense > 0 ? ((stats.expenseByCategory[name] / stats.totalExpense) * 100).toFixed(0) : 0}%
                     </span>
                   </div>
                 ))}
@@ -479,12 +719,13 @@ const Finance = () => {
                       <th className="px-5 py-2.5 font-medium">Metod</th>
                       <th className="px-5 py-2.5 font-medium">Kategoriya</th>
                       <th className="px-5 py-2.5 font-medium text-right">Summa (UZS)</th>
+                      <th className="px-5 py-2.5 font-medium text-center">Amallar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
                     {loading ? (
                       <tr>
-                        <td colSpan="6" className="px-5 py-20 text-center">
+                        <td colSpan="7" className="px-5 py-20 text-center">
                            <div className="flex flex-col items-center justify-center text-gray-400">
                             <div className="w-6 h-6 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin mb-3"></div>
                             <span className="text-[12px] font-medium tracking-tight">Ma'lumotlar tahlil qilinmoqda...</span>
@@ -524,11 +765,27 @@ const Finance = () => {
                                {t.type === 'INCOME' ? '+' : '-'}{t.amount.toLocaleString()}
                              </span>
                           </td>
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center justify-center gap-2">
+                               <button 
+                                onClick={() => handleEditTransaction(t)}
+                                className="p-1.5 rounded-md text-blue-500 hover:bg-blue-500/10 transition-colors"
+                               >
+                                 <Edit size={14} />
+                               </button>
+                               <button 
+                                onClick={() => handleDeleteTransaction(t)}
+                                className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-colors"
+                               >
+                                 <Trash2 size={14} />
+                               </button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="px-5 py-24 text-center">
+                        <td colSpan="7" className="px-5 py-24 text-center">
                           <div className="flex flex-col items-center justify-center grayscale opacity-50">
                             <Download size={40} className="text-gray-400 mb-4" />
                             <p className="text-[14px] font-medium text-gray-600">Mos ma'lumotlar topilmadi</p>
@@ -546,11 +803,128 @@ const Finance = () => {
         </div>
       </div>
 
+      {/* ADD INCOME MODAL */}
+      <Modal
+        isOpen={isIncomeModalOpen}
+        onClose={() => setIsIncomeModalOpen(false)}
+        title={editingId ? "Daromadni tahrirlash" : "Yangi daromad"}
+      >
+        <form onSubmit={handleAddIncome} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">DAROMAD NOMI / MANBAI</label>
+              <input
+                type="text"
+                required
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#34c759]/50 outline-none transition-all shadow-inner"
+                value={incomeFormData.title}
+                onChange={(e) => setIncomeFormData({ ...incomeFormData, title: e.target.value })}
+                placeholder="Masalan: Grant mablag'i"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">KATEGORIYA</label>
+                <select
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#34c759]/50 outline-none transition-all shadow-inner"
+                  value={incomeFormData.category}
+                  onChange={(e) => setIncomeFormData({ ...incomeFormData, category: e.target.value })}
+                >
+                  <option value="Sotuv">Sotuv</option>
+                  <option value="Grant">Grant</option>
+                  <option value="Investitsiya">Investitsiya</option>
+                  <option value="Xizmat">Xizmat ko'rsatish</option>
+                  <option value="Boshqa">Boshqa...</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">TO'LOV TURI</label>
+                <select
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#34c759]/50 outline-none transition-all shadow-inner"
+                  value={incomeFormData.paymentType}
+                  onChange={(e) => setIncomeFormData({ ...incomeFormData, paymentType: e.target.value })}
+                >
+                  <option value="Naqd">Naqd</option>
+                  <option value="Karta">Karta</option>
+                  <option value="O'tkazma">O'tkazma</option>
+                  <option value="Click/Payme">Click/Payme</option>
+                </select>
+              </div>
+            </div>
+
+            {incomeFormData.category === 'Boshqa' && (
+              <div className="animate-in fade-in slide-in-from-top-1">
+                <label className="block text-[11px] font-medium text-[#34c759] mb-1 uppercase tracking-wider">YANGI KATEGORIYA NOMI</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-[#34c759]/5 dark:bg-[#34c759]/10 border border-[#34c759]/20 rounded-md px-3 py-2 text-[13px] text-[#34c759] font-medium outline-none focus:ring-2 focus:ring-[#34c759]/50 transition-all"
+                  value={incomeFormData.customCategory}
+                  onChange={(e) => setIncomeFormData({ ...incomeFormData, customCategory: e.target.value })}
+                  placeholder="Kategoriya nomini yozing..."
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SUMMA (UZS)</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[14px] font-bold text-[#34c759] outline-none focus:ring-2 focus:ring-[#34c759]/50 transition-all"
+                  value={incomeFormData.amount}
+                  onChange={(e) => setIncomeFormData({ ...incomeFormData, amount: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SANA</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  value={incomeFormData.date}
+                  onChange={(e) => setIncomeFormData({ ...incomeFormData, date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">IZOH / KOMMENTARIYA</label>
+              <textarea
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#34c759]/50 outline-none transition-all shadow-inner min-h-[80px] resize-none"
+                value={incomeFormData.comment}
+                onChange={(e) => setIncomeFormData({ ...incomeFormData, comment: e.target.value })}
+                placeholder="Qo'shimcha ma'lumot..."
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsIncomeModalOpen(false)}
+              className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2 text-[13px] font-medium bg-emerald-500 hover:bg-emerald-600 text-white rounded-md shadow-sm border border-emerald-600 transition-colors"
+            >
+              Saqlash
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* ADD EXPENSE MODAL */}
       <Modal
         isOpen={isExpenseModalOpen}
         onClose={() => setIsExpenseModalOpen(false)}
-        title="Yangi xarajat"
+        title={editingId ? "Xarajatni tahrirlash" : "Yangi xarajat"}
       >
         <form onSubmit={handleAddExpense} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
           <div className="space-y-4">
@@ -665,6 +1039,161 @@ const Finance = () => {
         </form>
       </Modal>
 
+      {/* STUDENT PAYMENT MODAL */}
+      <Modal
+        isOpen={isStudentPaymentModalOpen}
+        onClose={() => setIsStudentPaymentModalOpen(false)}
+        title="To'lovni tahrirlash"
+      >
+        <form onSubmit={handleUpdateStudentPayment} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+          <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">TO'LOV TURI</label>
+                <select
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  value={studentPaymentFormData.paymentType}
+                  onChange={(e) => setStudentPaymentFormData({ ...studentPaymentFormData, paymentType: e.target.value })}
+                >
+                  <option value="Naqd">Naqd</option>
+                  <option value="Karta">Karta</option>
+                  <option value="O'tkazma">O'tkazma</option>
+                  <option value="Click/Payme">Click/Payme</option>
+                </select>
+              </div>
+               <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SUMMA (UZS)</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[14px] font-bold text-[#34c759] outline-none focus:ring-2 focus:ring-[#34c759]/50 transition-all"
+                  value={studentPaymentFormData.amount}
+                  onChange={(e) => setStudentPaymentFormData({ ...studentPaymentFormData, amount: e.target.value })}
+                />
+              </div>
+          </div>
+          <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SANA</label>
+              <input
+                type="date"
+                required
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                value={studentPaymentFormData.paymentDate}
+                onChange={(e) => setStudentPaymentFormData({ ...studentPaymentFormData, paymentDate: e.target.value })}
+              />
+          </div>
+          <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">IZOH</label>
+              <textarea
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner min-h-[80px] resize-none"
+                value={studentPaymentFormData.comment}
+                onChange={(e) => setStudentPaymentFormData({ ...studentPaymentFormData, comment: e.target.value })}
+              />
+          </div>
+          <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsStudentPaymentModalOpen(false)}
+              className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 rounded-md transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] text-white rounded-md shadow-sm transition-colors"
+            >
+              Saqlash
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* STAFF PAYMENT MODAL */}
+      <Modal
+        isOpen={isStaffPaymentModalOpen}
+        onClose={() => setIsStaffPaymentModalOpen(false)}
+        title="Maosh to'lovini tahrirlash"
+      >
+        <form onSubmit={handleUpdateStaffPayment} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">TO'LOV TURI</label>
+                <select
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  value={staffPaymentFormData.paymentType}
+                  onChange={(e) => setStaffPaymentFormData({ ...staffPaymentFormData, paymentType: e.target.value })}
+                >
+                  <option value="Naqd">Naqd</option>
+                  <option value="Karta">Karta</option>
+                  <option value="O'tkazma">O'tkazma</option>
+                  <option value="Click/Payme">Click/Payme</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SUMMA (UZS)</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[14px] font-bold text-[#ff3b30] outline-none focus:ring-2 focus:ring-[#ff3b30]/50 transition-all"
+                  value={staffPaymentFormData.amount}
+                  onChange={(e) => setStaffPaymentFormData({ ...staffPaymentFormData, amount: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">SANA</label>
+              <input
+                type="date"
+                required
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                value={staffPaymentFormData.date}
+                onChange={(e) => setStaffPaymentFormData({ ...staffPaymentFormData, date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">IZOH</label>
+              <textarea
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner min-h-[80px] resize-none"
+                value={staffPaymentFormData.comment}
+                onChange={(e) => setStaffPaymentFormData({ ...staffPaymentFormData, comment: e.target.value })}
+              />
+            </div>
+            <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsStaffPaymentModalOpen(false)}
+                className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 rounded-md transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2 text-[13px] font-medium bg-[#ff3b30] text-white rounded-md shadow-sm transition-colors"
+              >
+                Saqlash
+              </button>
+            </div>
+        </form>
+      </Modal>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(120, 120, 120, 0.2);
+          border-radius: 20px;
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 };
