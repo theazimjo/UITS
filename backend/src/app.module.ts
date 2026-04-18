@@ -11,6 +11,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { IncomesModule } from './incomes/incomes.module';
 import { FinanceModule } from './finance/finance.module';
+import { ParentModule } from './parent/parent.module';
 import { User } from './users/entities/user.entity';
 import { UsersService } from './users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -41,6 +42,7 @@ import { ConfigModule } from '@nestjs/config';
     ExpensesModule,
     IncomesModule,
     FinanceModule,
+    ParentModule,
   ],
 })
 export class AppModule implements OnApplicationBootstrap {

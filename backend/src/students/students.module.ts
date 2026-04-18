@@ -15,5 +15,6 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
   ],
   providers: [StudentsService],
   controllers: [StudentsController],
+  exports: [StudentsService],
 })
 export class StudentsModule {}

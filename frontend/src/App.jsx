@@ -35,6 +35,9 @@ import TeacherFinance from './pages/teacher/TeacherFinance';
 import TeacherSettings from './pages/teacher/TeacherSettings';
 import TeacherReport from './pages/teacher/TeacherReport';
 
+// Parent Pages
+import ParentDashboard from './pages/parent/ParentDashboard';
+
 // Icons
 import { Wallet } from 'lucide-react';
 
@@ -62,10 +65,12 @@ function App() {
       const u = JSON.parse(userStr);
       setUser(u);
       
-      // Initial redirect if at root
+      // Initial redirect if at root or login pages
       if (location.pathname === '/' || location.pathname === '/login') {
         if (u.role === 'teacher') {
           navigate('/teacher/dashboard');
+        } else if (u.role === 'parent') {
+          navigate('/parent/dashboard');
         } else {
           navigate('/dashboard');
         }
@@ -96,11 +101,15 @@ function App() {
             refreshAllRows();
             if (u.role === 'teacher') {
               navigate('/teacher/dashboard');
+            } else if (u.role === 'parent') {
+              navigate('/parent/dashboard');
             } else {
               navigate('/dashboard'); 
             }
           }} />
         } />
+
+
         
         {/* Admin Routes */}
         <Route element={
@@ -143,9 +152,19 @@ function App() {
           <Route path="report" element={<TeacherReport />} />
           <Route path="settings" element={<TeacherSettings />} />
         </Route>
+
+        {/* Parent Routes */}
+        <Route path="/parent" element={
+          <ProtectedRoute>
+            <ParentDashboard />
+          </ProtectedRoute>
+        }>
+          <Route path="dashboard" element={<ParentDashboard />} />
+        </Route>
         
-        <Route path="/" element={<Navigate to={user?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
-        <Route path="*" element={<Navigate to={user?.role === 'teacher' ? "/teacher/dashboard" : "/dashboard"} replace />} />
+        
+        <Route path="/" element={<Navigate to={user?.role === 'teacher' ? "/teacher/dashboard" : user?.role === 'parent' ? "/parent/dashboard" : "/dashboard"} replace />} />
+        <Route path="*" element={<Navigate to={user?.role === 'teacher' ? "/teacher/dashboard" : user?.role === 'parent' ? "/parent/dashboard" : "/dashboard"} replace />} />
       </Routes>
     </>
   );

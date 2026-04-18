@@ -123,4 +123,10 @@ export const sendTeacherReport = (data) => api.post('/teacher/send-report', data
 export const getMyTeacherReports = (month) => api.get('/teacher/my-reports', { params: { month } });
 export const deleteTeacherReport = (id) => api.delete(`/teacher/reports/${id}`);
 
+// Parent Portal
+export const getParentChildren = () => api.get('/parent/children');
+export const getChildAttendance = (id) => api.get(`/parent/child/${id}/attendance`);
+export const getChildExams = (id) => api.get(`/parent/child/${id}/exams`);
+export const getChildPayments = (id) => api.get(`/parent/child/${id}/payments`);
+
 export default api;

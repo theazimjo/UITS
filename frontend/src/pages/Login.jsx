@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { login } from '../services/api';
-import { User, Lock, AlertCircle, Loader2, Hexagon } from 'lucide-react';
+import { User, Lock, AlertCircle, Loader2, Sparkles, ChevronRight } from 'lucide-react';
 
 const Login = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
@@ -15,11 +15,14 @@ const Login = ({ onLoginSuccess }) => {
 
     try {
       const response = await login({ username, password });
+      const { user } = response.data;
+      
       localStorage.setItem('access_token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      onLoginSuccess(response.data.user);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      onLoginSuccess(user);
     } catch (err) {
-      setError('Kirish muvaffaqiyatsiz. Ma\'lumotlar xato!');
+      setError('Ma\'lumotlar noto\'g\'ri kiritildi');
       console.error(err);
     } finally {
       setLoading(false);
@@ -27,73 +30,72 @@ const Login = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1628156108168-cf890eb9385b?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-fixed font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#000] relative overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+      
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse delay-700"></div>
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 grayscale brightness-50"></div>
+      </div>
 
-      {/* Oyna (Window) Container */}
-      <div className="w-full max-w-[360px] animate-fade-in relative z-10">
+      {/* Login Card */}
+      <div className="w-full max-w-[400px] relative z-10 animate-in fade-in zoom-in duration-700">
+        
+        <div className="text-center mb-10">
+          <div className="inline-flex p-4 rounded-[1.5rem] bg-white/5 backdrop-blur-xl border border-white/10 mb-6 shadow-2xl relative group overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+             <Sparkles className="text-blue-400 w-8 h-8 relative z-10" />
+          </div>
+          <h1 className="text-3xl font-black text-white tracking-tighter mb-2">UITS Tizimi</h1>
+          <p className="text-[14px] text-gray-500 font-medium">Boshqaruv paneliga hush kelibsiz</p>
+        </div>
+
         <form
           onSubmit={handleSubmit}
-          className="bg-white/70 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl p-8 rounded-2xl border border-white/40 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+          className="bg-white/5 backdrop-blur-[40px] p-10 rounded-[3rem] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] space-y-8"
         >
-          {/* Header */}
-          <div className="flex flex-col items-center mb-8 text-center">
-            {/* App Icon (macOS squircle style) */}
-            <div className="w-14 h-14 bg-gradient-to-b from-gray-50 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 rounded-[14px] flex items-center justify-center mb-4 shadow-sm">
-              <Hexagon className="text-[#007aff] dark:text-[#0a84ff] w-8 h-8" fill="currentColor" fillOpacity={0.2} strokeWidth={1.5} />
-            </div>
-            <h2 className="text-[19px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-snug">
-              UITS CRM
-            </h2>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
-              Tizimga kirish uchun ma'lumotlarni kiriting
-            </p>
-          </div>
-
           {/* Error Message */}
           {error && (
-            <div className="bg-[#ff3b30]/10 border border-[#ff3b30]/20 text-[#ff3b30] px-3 py-2 rounded-md mb-5 text-[12px] font-medium flex items-center gap-2 animate-fade-in">
-              <AlertCircle size={14} className="shrink-0" />
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded-2xl text-[13px] font-bold flex items-center gap-3 animate-shake">
+              <AlertCircle size={18} />
               <span>{error}</span>
             </div>
           )}
 
-          <div className="space-y-4">
-            {/* Username Input */}
-            <div className="group">
-              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 ml-1 uppercase tracking-wider">
+          <div className="space-y-6">
+            {/* Username Field */}
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-gray-500 uppercase tracking-[0.15em] ml-1">
                 Foydalanuvchi
               </label>
-              <div className="relative">
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#007aff] transition-colors pointer-events-none">
-                  <User size={14} />
-                </div>
+              <div className="relative group">
+                <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" />
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={loading}
-                  className="w-full pl-8 pr-3 py-1.5 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all placeholder-gray-400 backdrop-blur-md shadow-inner disabled:opacity-50"
-                  placeholder="admin"
+                  className="w-full bg-white/5 border border-white/5 group-focus-within:border-blue-500/50 rounded-2xl py-4 pl-14 pr-6 text-[15px] text-white outline-none transition-all placeholder-gray-600 hover:bg-white/10"
+                  placeholder="Ismingiz yoki ID"
                   required
                 />
               </div>
             </div>
 
-            {/* Password Input */}
-            <div className="group">
-              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 ml-1 uppercase tracking-wider">
+            {/* Password Field */}
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-gray-500 uppercase tracking-[0.15em] ml-1">
                 Parol
               </label>
-              <div className="relative">
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#007aff] transition-colors pointer-events-none">
-                  <Lock size={14} />
-                </div>
+              <div className="relative group">
+                <Lock size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
-                  className="w-full pl-8 pr-3 py-1.5 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all placeholder-gray-400 backdrop-blur-md shadow-inner disabled:opacity-50"
+                  className="w-full bg-white/5 border border-white/5 group-focus-within:border-blue-500/50 rounded-2xl py-4 pl-14 pr-6 text-[15px] text-white outline-none transition-all placeholder-gray-600 hover:bg-white/10"
                   placeholder="••••••••"
                   required
                 />
@@ -101,27 +103,33 @@ const Login = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#007aff] hover:bg-[#0062cc] text-white font-medium text-[13px] py-2 px-4 rounded-md mt-6 transition-colors shadow-sm flex items-center justify-center gap-1.5 border border-[#005bb5] disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] py-4 rounded-2xl text-white font-black text-[15px] shadow-2xl shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
           >
             {loading ? (
-              <>
-                <Loader2 className="animate-spin" size={14} />
-                <span>Tekshirilmoqda...</span>
-              </>
+              <Loader2 className="animate-spin" size={20} />
             ) : (
-              'Kirish'
+              <>
+                <span>Kirish</span>
+                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </>
             )}
           </button>
         </form>
 
-        {/* Footer */}
-        <p className="text-center text-[11px] text-gray-500 dark:text-gray-400 mt-6 font-medium">
-          &copy; 2026 UITS Management Systems.
-        </p>
+        {/* Support Links */}
+        <div className="mt-8 flex items-center justify-center gap-6">
+          <button className="text-[12px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest">Parolni unutdingizmi?</button>
+          <div className="w-1 h-1 bg-gray-700 rounded-full"></div>
+          <button className="text-[12px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest">Yordam</button>
+        </div>
+      </div>
+      
+      {/* Footer Branding */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-center opacity-30">
+         <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">&copy; 2026 UITS Management Systems</p>
       </div>
     </div>
   );
