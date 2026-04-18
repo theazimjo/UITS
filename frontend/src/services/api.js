@@ -125,7 +125,7 @@ export const deleteTeacherReport = (id) => api.delete(`/teacher/reports/${id}`);
 
 // Parent Portal
 export const getParentChildren = () => api.get('/parent/children');
-export const getChildAttendance = (id) => api.get(`/parent/child/${id}/attendance`);
+export const getChildAttendance = (id, date = '') => api.get(`/parent/child/${id}/attendance?date=${date}`);
 export const getChildExams = (id) => api.get(`/parent/child/${id}/exams`);
 export const getChildPayments = (id) => api.get(`/parent/child/${id}/payments`);
 

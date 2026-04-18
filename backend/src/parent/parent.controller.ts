@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request, Param, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Param, ForbiddenException, Query } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -29,9 +29,9 @@ export class ParentController {
   }
 
   @Get('child/:id/attendance')
-  async getAttendance(@Param('id') id: string, @Request() req) {
+  async getAttendance(@Param('id') id: string, @Query('date') date: string, @Request() req) {
     await this.verifyAccess(Number(id), req.user.username);
-    return this.studentsService.getExternalAttendance(Number(id));
+    return this.studentsService.getExternalAttendance(Number(id), date);
   }
 
   @Get('child/:id/exams')

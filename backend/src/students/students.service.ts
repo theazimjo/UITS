@@ -127,6 +127,8 @@ export class StudentsService {
     try {
       // Fetch local grades
       const grades = await this.gradeRepo.createQueryBuilder('g')
+        .leftJoinAndSelect('g.teacher', 'teacher')
+        .leftJoinAndSelect('g.group', 'group')
         .where('g.studentId = :studentId', { studentId: id })
         .andWhere('g.date >= :start AND g.date < :end', { start: monthStart, end: monthEndBoundary })
         .getMany();
