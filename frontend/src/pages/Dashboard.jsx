@@ -3,6 +3,7 @@ import {
   getDashboardAttendanceStats,
   getDashboardGeneralStats,
   getFinanceChart,
+  getActivities
 } from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -11,7 +12,7 @@ import {
   Activity, UserPlus, BookOpen, Clock, ChevronRight,
   RefreshCw, LayoutDashboard, Database, UserRound, UsersRound,
   ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
-  Calendar, ChevronLeft, ChevronDown
+  Calendar, ChevronLeft, ChevronDown, Trash2, Edit3, Repeat
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -60,6 +61,10 @@ const Dashboard = () => {
   const [financeChartData, setFinanceChartData] = useState([]);
   const [loadingFinance, setLoadingFinance] = useState(true);
 
+  // Activity Log
+  const [activities, setActivities] = useState([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
+
   useEffect(() => {
     fetchDashboardData(selectedDate);
   }, [selectedDate]);
@@ -70,15 +75,17 @@ const Dashboard = () => {
       setLoadingGen(true);
       setLoadingFinance(true);
 
-      const [attRes, genRes, finRes] = await Promise.all([
+      const [attRes, genRes, finRes, actRes] = await Promise.all([
         getDashboardAttendanceStats(date),
         getDashboardGeneralStats(date),
-        getFinanceChart()
+        getFinanceChart(),
+        getActivities()
       ]);
 
       if (attRes.data) setAttStats(attRes.data);
       if (genRes.data) setGenStats(genRes.data);
       if (finRes.data) setFinanceChartData(finRes.data);
+      if (actRes.data) setActivities(actRes.data);
     } catch (e) {
       console.error('Error fetching dashboard stats:', e);
       const errorMsg = e.response?.data?.message || 'Statistikalarni yuklashda xatolik yuz berdi';
@@ -87,6 +94,7 @@ const Dashboard = () => {
       setLoadingAtt(false);
       setLoadingGen(false);
       setLoadingFinance(false);
+      setLoadingActivities(false);
     }
   };
 
@@ -100,11 +108,34 @@ const Dashboard = () => {
     if (!monthStr) return '';
     try {
       const [year, month] = monthStr.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1);
-      return date.toLocaleDateString('uz-UZ', { month: 'short' });
+      const months = [
+        'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+        'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
+      ];
+      return months[parseInt(month) - 1] + ' ' + year;
     } catch (e) {
       return monthStr;
     }
+  };
+
+  const getActivityIcon = (action) => {
+    if (action.includes('CREATE')) return <UserPlus size={20} />;
+    if (action.includes('UPDATE') || action.includes('EDIT')) return <Edit3 size={20} />;
+    if (action.includes('DELETE') || action.includes('REMOVE')) return <Trash2 size={20} />;
+    if (action.includes('PAYMENT')) return <Banknote size={20} />;
+    if (action.includes('SYNC')) return <RefreshCw size={20} />;
+    if (action.includes('ENROLL')) return <UserPlus size={20} />;
+    if (action.includes('TRANSFER')) return <Repeat size={20} />;
+    return <Activity size={20} />;
+  };
+
+  const getActivityColor = (action) => {
+    if (action.includes('CREATE')) return 'bg-emerald-500';
+    if (action.includes('UPDATE') || action.includes('EDIT')) return 'bg-blue-500';
+    if (action.includes('DELETE') || action.includes('REMOVE')) return 'bg-rose-500';
+    if (action.includes('PAYMENT')) return 'bg-amber-500';
+    if (action.includes('SYNC')) return 'bg-indigo-500';
+    return 'bg-gray-500';
   };
 
   const formatDateLabel = (dateStr) => {
@@ -357,12 +388,12 @@ const Dashboard = () => {
                 <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">Tizimdagi umumiy oxirgi 10 ta harakat</p>
               </div>
               <div className="flex items-center gap-2 text-[12px] font-bold text-[#007aff] px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
-                <span>Jami: {(genStats?.activity || []).length} ta amal</span>
+                <span>Jami: {activities.length} ta amal</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
-              {(loading || loadingGen) ? (
+              {(loading || loadingActivities) ? (
                 Array(5).fill(0).map((_, i) => (
                   <div key={i} className="flex gap-5 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 transition-all">
                     <Skeleton variant="rect" width="48px" height="48px" className="rounded-xl" />
@@ -372,19 +403,19 @@ const Dashboard = () => {
                     </div>
                   </div>
                 ))
-              ) : (genStats?.activity || []).length > 0 ? (genStats?.activity || []).map((act, i) => (
+              ) : activities.length > 0 ? activities.slice(0, 10).map((act, i) => (
                 <div key={i} className="flex gap-5 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-[#007aff]/40 transition-all group cursor-default hover:bg-white dark:hover:bg-white/10 hover:shadow-md">
-                  <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 shadow-sm ${act.type === 'PAYMENT' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'}`}>
-                    {act.type === 'PAYMENT' ? <Banknote size={20} /> : <UserPlus size={20} />}
+                  <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 shadow-sm text-white ${getActivityColor(act.action)}`}>
+                    {getActivityIcon(act.action)}
                   </div>
                   <div className="flex-1 flex items-center justify-between overflow-hidden">
                     <div>
-                      <p className="text-[14px] font-bold text-black dark:text-white group-hover:text-[#007aff] transition-colors leading-tight">{act.title}</p>
-                      <p className="text-[12px] text-gray-500 font-medium opacity-80 mt-0.5">{act.subtitle}</p>
+                      <p className="text-[14px] font-bold text-black dark:text-white group-hover:text-[#007aff] transition-colors leading-tight">{act.description}</p>
+                      <p className="text-[12px] text-gray-500 font-medium opacity-80 mt-0.5">{act.entityName} harakati</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-[11px] text-gray-400 font-bold capitalize tabular-nums bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-md">
-                        {new Date(act.date).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(act.createdAt).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <ChevronRight size={18} className="text-gray-300 group-hover:text-[#007aff] transition-colors" />
                     </div>

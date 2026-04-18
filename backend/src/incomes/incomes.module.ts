@@ -4,10 +4,15 @@ import { IncomesService } from './incomes.service';
 import { IncomesController } from './incomes.controller';
 import { Income } from './entities/income.entity';
 
+import { ActivityLogModule } from '../activity-log/activity-log.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Income])],
+  imports: [
+    TypeOrmModule.forFeature([Income]),
+    ActivityLogModule
+  ],
   controllers: [IncomesController],
   providers: [IncomesService],
-  exports: [TypeOrmModule], // Export to allow other modules (like Finance) to use the repository
+  exports: [TypeOrmModule, IncomesService], // Exporting service too for good measure
 })
 export class IncomesModule {}

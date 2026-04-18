@@ -8,6 +8,7 @@ import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
 import * as bcrypt from 'bcrypt';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class StaffService {
@@ -20,6 +21,7 @@ export class StaffService {
     private readonly monthlyReportRepo: Repository<MonthlyReport>,
     @InjectRepository(ReportDate)
     private readonly reportDateRepo: Repository<ReportDate>,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   async findAll(): Promise<Staff[]> {
@@ -154,7 +156,14 @@ export class StaffService {
       ...data,
       staff
     });
-    return this.staffPaymentRepository.save(payment);
+    const saved = await this.staffPaymentRepository.save(payment);
+    await this.activityLogService.logAction({
+      action: 'STAFF_PAYMENT',
+      entityName: 'STAFF',
+      entityId: staffId,
+      description: `Xodimga to'lov amalga oshirildi: ${staff.name} - ${data.amount} so'm (${data.type})`,
+    });
+    return saved;
   }
   
   async updatePayment(paymentId: number, data: Partial<StaffPayment>): Promise<StaffPayment> {
@@ -166,16 +175,30 @@ export class StaffService {
   }
 
   async deletePayment(paymentId: number): Promise<void> {
-    const payment = await this.staffPaymentRepository.findOne({ where: { id: paymentId } });
+    const payment = await this.staffPaymentRepository.findOne({ where: { id: paymentId }, relations: ['staff'] });
     if (!payment) throw new NotFoundException('Payment not found');
+    const staffName = payment.staff?.name || 'Noma\'lum xodim';
     await this.staffPaymentRepository.remove(payment);
+    await this.activityLogService.logAction({
+      action: 'STAFF_PAYMENT_DELETE',
+      entityName: 'STAFF',
+      entityId: payment.staff?.id,
+      description: `Xodim to'lovi o'chirildi: ${staffName} - ${payment.amount} so'm`,
+    });
   }
 
   async create(staff: Partial<Staff>): Promise<Staff> {
     if (staff.password) {
       staff.password = await bcrypt.hash(staff.password, 10);
     }
-    return this.staffRepository.save(staff);
+    const saved = await this.staffRepository.save(staff);
+    await this.activityLogService.logAction({
+      action: 'STAFF_CREATE',
+      entityName: 'STAFF',
+      entityId: saved.id,
+      description: `Yangi xodim qo'shildi: ${saved.name}`,
+    });
+    return saved;
   }
 
   async update(id: number, data: Partial<Staff>): Promise<Staff> {
@@ -187,11 +210,27 @@ export class StaffService {
       data.password = await bcrypt.hash(data.password, 10);
     }
     Object.assign(staff, data);
-    return this.staffRepository.save(staff);
+    const updated = await this.staffRepository.save(staff);
+    await this.activityLogService.logAction({
+      action: 'STAFF_UPDATE',
+      entityName: 'STAFF',
+      entityId: id,
+      description: `Xodim ma'lumotlari yangilandi: ${staff.name}`,
+    });
+    return updated;
   }
 
   async remove(id: number): Promise<void> {
+    const staff = await this.staffRepository.findOne({ where: { id } });
     await this.staffRepository.delete(id);
+    if (staff) {
+      await this.activityLogService.logAction({
+        action: 'STAFF_DELETE',
+        entityName: 'STAFF',
+        entityId: id,
+        description: `Xodim tizimdan o'chirildi: ${staff.name}`,
+      });
+    }
   }
 
   async createMonthlyReport(teacherId: number, data: {
@@ -242,7 +281,15 @@ export class StaffService {
       }),
     });
 
-    return this.monthlyReportRepo.save(report);
+    const saved = await this.monthlyReportRepo.save(report);
+    const teacher = await this.staffRepository.findOne({ where: { id: teacherId } });
+    await this.activityLogService.logAction({
+      action: 'REPORT_CREATE',
+      entityName: 'STAFF',
+      entityId: teacherId,
+      description: `Oylik hisobot topshirildi: ${teacher?.name || 'O\'qituvchi'} - ${data.month}`,
+    });
+    return saved;
   }
 
   async getMonthlyReports(teacherId: number, month?: string): Promise<MonthlyReport[]> {

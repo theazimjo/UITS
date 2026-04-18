@@ -5,6 +5,7 @@ import { Payment } from './entities/payment.entity';
 import { Group } from '../groups/entities/group.entity';
 import { GroupPhase } from '../groups/entities/group-phase.entity';
 import { LessThanOrEqual } from 'typeorm';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class PaymentsService {
@@ -15,6 +16,7 @@ export class PaymentsService {
     private groupRepository: Repository<Group>,
     @InjectRepository(GroupPhase)
     private groupPhaseRepository: Repository<GroupPhase>,
+    private activityLogService: ActivityLogService,
   ) {}
 
   async create(data: any) {
@@ -56,7 +58,19 @@ export class PaymentsService {
       }
     }
 
-    return this.paymentRepository.save(payment);
+    const saved = await this.paymentRepository.save(payment);
+    const p = await this.paymentRepository.findOne({ 
+      where: { id: saved.id }, 
+      relations: ['student'] 
+    });
+    
+    await this.activityLogService.logAction({
+      action: 'PAYMENT_CREATE',
+      entityName: 'PAYMENT',
+      entityId: saved.id,
+      description: `O'quvchi to'lovi qabul qilindi: ${p?.student?.name || 'Noma\'lum'} - ${saved.amount} so'm`,
+    });
+    return saved;
   }
 
   async findAll() {
@@ -105,10 +119,31 @@ export class PaymentsService {
     if (data.group) payment.group = data.group;
     if (data.teacher) payment.teacher = data.teacher;
 
-    return this.paymentRepository.save(payment);
+    const updated = await this.paymentRepository.save(payment);
+    const p = await this.paymentRepository.findOne({ 
+      where: { id: id }, 
+      relations: ['student'] 
+    });
+
+    await this.activityLogService.logAction({
+      action: 'PAYMENT_UPDATE',
+      entityName: 'PAYMENT',
+      entityId: id,
+      description: `O'quvchi to'lovi yangilandi: ${p?.student?.name || 'Noma\'lum'} - ${updated.amount} so'm`,
+    });
+    return updated;
   }
 
   async remove(id: number) {
+    const payment = await this.paymentRepository.findOne({ where: { id }, relations: ['student'] });
     await this.paymentRepository.delete(id);
+    if (payment) {
+      await this.activityLogService.logAction({
+        action: 'PAYMENT_DELETE',
+        entityName: 'PAYMENT',
+        entityId: id,
+        description: `O'quvchi to'lovi o'chirildi: ${payment.student?.name || 'Noma\'lum'} - ${payment.amount} so'm`,
+      });
+    }
   }
 }

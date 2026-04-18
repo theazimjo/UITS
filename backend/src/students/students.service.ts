@@ -8,6 +8,7 @@ import { StudentStatus } from './enums/student-status.enum';
 import { AttendanceRecord } from './entities/attendance-record.entity';
 import { Grade } from './entities/grade.entity';
 import { Exam } from '../staff/entities/exam.entity';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 // Optimized agent for high-concurrency parallel requests (31 days)
 const httpsAgent = new https.Agent({
@@ -33,6 +34,7 @@ export class StudentsService {
     private readonly gradeRepo: Repository<Grade>,
     @InjectRepository(Exam)
     private readonly examRepo: Repository<Exam>,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   async findExams(studentId: number): Promise<Exam[]> {
@@ -63,7 +65,14 @@ export class StudentsService {
     if (!student) return null;
     
     Object.assign(student, data);
-    return this.studentsRepository.save(student);
+    const updated = await this.studentsRepository.save(student);
+    await this.activityLogService.logAction({
+      action: 'STUDENT_UPDATE',
+      entityName: 'STUDENT',
+      entityId: id,
+      description: `Talaba ma'lumotlari yangilandi: ${student.name}`,
+    });
+    return updated;
   }
 
   private async findCorrectEmployeeID(externalId: string, dateStr?: string): Promise<string | null> {
@@ -200,11 +209,27 @@ export class StudentsService {
   }
 
   async create(student: Partial<Student>): Promise<Student> {
-    return this.studentsRepository.save(student);
+    const saved = await this.studentsRepository.save(student);
+    await this.activityLogService.logAction({
+      action: 'STUDENT_CREATE',
+      entityName: 'STUDENT',
+      entityId: saved.id,
+      description: `Yangi talaba qo'shildi: ${saved.name}`,
+    });
+    return saved;
   }
 
   async remove(id: number): Promise<void> {
+    const student = await this.studentsRepository.findOne({ where: { id } });
     await this.studentsRepository.delete(id);
+    if (student) {
+      await this.activityLogService.logAction({
+        action: 'STUDENT_DELETE',
+        entityName: 'STUDENT',
+        entityId: id,
+        description: `Talaba tizimdan o'chirildi: ${student.name}`,
+      });
+    }
   }
 
   async deleteAll(): Promise<void> {
@@ -253,6 +278,12 @@ export class StudentsService {
 
       await this.studentsRepository.save(student);
     }
+
+    await this.activityLogService.logAction({
+      action: 'STUDENT_SYNC',
+      entityName: 'STUDENT',
+      description: `${students.length} ta o'quvchi schoolmanage.uz dan sinxronizatsiya qilindi.`,
+    });
 
     return { message: `${students.length} ta o'quvchi muvaffaqiyatli sinxronizatsiya qilindi.` };
   }

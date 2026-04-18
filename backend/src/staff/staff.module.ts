@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Staff } from './entities/staff.entity';
 import { Role } from './entities/role.entity';
@@ -35,6 +36,7 @@ import { Exam } from './entities/exam.entity';
       ReportDate,
       Exam,
     ]),
+    ActivityLogModule,
   ],
   providers: [StaffService],
   controllers: [StaffController, RolesController, TeacherController],
