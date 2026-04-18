@@ -3,14 +3,17 @@ import {
   getParentChildren,
   getChildAttendance,
   getChildExams,
-  getChildPayments
+  getChildPayments,
+  getParentNotifications,
+  markNotificationRead
 } from '../../services/api';
 import {
   Award, TrendingUp, CheckCircle2, Clock, LogOut, User as UserIcon,
-  CreditCard, BarChart3, MessageSquare, BookOpen, Calendar
+  CreditCard, BarChart3, MessageSquare, BookOpen, Calendar, Bell, History, CheckCheck
 } from 'lucide-react';
 import Skeleton from '../../components/common/Skeleton';
 import toast from 'react-hot-toast';
+import useStore from '../../store/useStore';
 
 // Modular Components
 import { StatCard, SectionHeader, ChildSelector } from './components/CommonItems';
@@ -31,12 +34,14 @@ const ParentDashboard = () => {
   const [attendanceData, setAttendanceData] = useState(null);
   const [exams, setExams] = useState([]);
   const [payments, setPayments] = useState([]);
+  const { notifications, fetchNotifications, markAsRead } = useStore();
 
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
     fetchChildren();
+    fetchNotifications();
   }, []);
 
   useEffect(() => {
@@ -58,6 +63,10 @@ const ParentDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMarkRead = async (id) => {
+    await markAsRead(id);
   };
 
   const fetchChildDetails = async (id, viewDate) => {
@@ -152,6 +161,21 @@ const ParentDashboard = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <div className="relative group">
+              <div className={`p-2 rounded-xl transition-all ${notifications.filter(n => !n.isRead).length > 0
+                  ? 'bg-red-50 text-red-500 animate-pulse'
+                  : 'bg-gray-100 dark:bg-white/5 text-gray-400'
+                }`}>
+                <Bell size={20} />
+              </div>
+              {notifications.filter(n => !n.isRead).length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-black shadow-lg">
+                  {notifications.filter(n => !n.isRead).length}
+                </span>
+              )}
+            </div>
+
             <button
               onClick={handleLogout}
               className="px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full text-[13px] font-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-all shadow-lg active:scale-95 flex items-center gap-2"
@@ -274,6 +298,58 @@ const ParentDashboard = () => {
           <div className="lg:col-span-2 space-y-20 md:space-y-24 animate-in fade-in slide-in-from-right-8 duration-700 delay-300">
 
             <PaymentOverview payments={payments} formatCurrency={formatCurrency} />
+
+            {/* Notifications Section */}
+            <section>
+              <SectionHeader icon={Bell} title="Bildirishnomalar" count={notifications.filter(n => !n.isRead).length} colorClass="bg-red-500" />
+              <div className="space-y-4">
+                {notifications.length > 0 ? (
+                  notifications.slice(0, 5).map((n) => (
+                    <div
+                      key={n.id}
+                      className={`p-6 rounded-3xl border transition-all flex items-start gap-5 group relative overflow-hidden ${n.isRead
+                          ? 'bg-white/40 dark:bg-white/5 border-gray-100 dark:border-white/5 opacity-70'
+                          : 'bg-white dark:bg-white/10 border-blue-100 dark:border-blue-500/30 shadow-xl shadow-blue-500/5'
+                        }`}
+                    >
+                      {!n.isRead && <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>}
+
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${n.isRead ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-blue-500 text-white'
+                        }`}>
+                        <Bell size={20} />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="font-black text-[16px] truncate pr-4">{n.title}</h4>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-black/20 px-2 py-0.5 rounded-full">
+                            {new Date(n.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">
+                          {n.message}
+                        </p>
+                      </div>
+
+                      {!n.isRead && (
+                        <button
+                          onClick={() => handleMarkRead(n.id)}
+                          className="w-10 h-10 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/20 flex items-center justify-center text-blue-500 transition-colors"
+                          title="O'qilgan deb belgilash"
+                        >
+                          <CheckCheck size={18} />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-16 bg-white/40 dark:bg-white/5 rounded-[3rem] border-4 border-dashed border-gray-100 dark:border-white/5 flex flex-col items-center justify-center text-center px-12">
+                    <Bell size={48} className="text-gray-200 mb-4" />
+                    <p className="text-[15px] text-gray-400 font-black tracking-tight">Hozircha xabarlar yo'q</p>
+                  </div>
+                )}
+              </div>
+            </section>
 
             {/* Exams Overhaul */}
             <section>

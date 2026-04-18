@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { 
   getStudents, getStaff, getRoles, getGroups, getFields, getCourses, getRooms,
-  getTeacherGroups, getTeacherStudents, getTeacherAttendance, saveGrade
+  getTeacherGroups, getTeacherStudents, getTeacherAttendance, saveGrade,
+  getParentNotifications, markNotificationRead
 } from '../services/api';
 
 const useStore = create((set, get) => ({
@@ -13,6 +14,7 @@ const useStore = create((set, get) => ({
   fields: [],
   courses: [],
   rooms: [],
+  notifications: [],
   user: null,
   loading: false,
   
@@ -37,6 +39,7 @@ const useStore = create((set, get) => ({
   setFields: (data) => set({ fields: Array.isArray(data) ? data : [] }),
   setCourses: (data) => set({ courses: Array.isArray(data) ? data : [] }),
   setRooms: (data) => set({ rooms: Array.isArray(data) ? data : [] }),
+  setNotifications: (data) => set({ notifications: Array.isArray(data) ? data : [] }),
 
   // Helpers to refresh data efficiently
   hydrate: (data) => set((state) => ({
@@ -95,6 +98,30 @@ const useStore = create((set, get) => ({
       console.error('Error refreshing rows:', e);
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchNotifications: async () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      if (user?.role === 'parent') {
+        const res = await getParentNotifications();
+        set({ notifications: res.data || [] });
+      }
+    } catch (e) {
+      console.error('Error fetching notifications:', e);
+    }
+  },
+
+  markAsRead: async (id) => {
+    try {
+      await markNotificationRead(id);
+      set((state) => ({
+        notifications: state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n)
+      }));
+    } catch (e) {
+      console.error('Error marking as read:', e);
     }
   }
 }));

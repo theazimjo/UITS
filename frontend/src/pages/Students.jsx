@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Trash2, Phone, Users, ChevronRight, Fingerprint, Search, ChevronLeft } from 'lucide-react';
+import { RefreshCw, Trash2, Phone, Users, ChevronRight, Fingerprint, Search, ChevronLeft, CheckSquare, Square, MessageSquare, Filter, Send, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getStudents, deleteAllStudents } from '../services/api';
 
@@ -8,7 +8,7 @@ import Skeleton from '../components/common/Skeleton';
 
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
-import { updateStudent, syncStudents } from '../services/api';
+import { updateStudent, syncStudents, sendNotifications } from '../services/api';
 
 const Students = () => {
   const { students: globalStudents, setStudents: setGlobalStudents, loading } = useStore();
@@ -19,8 +19,15 @@ const Students = () => {
   // Qidiruv va Sahifalash state'lari
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [payFilter, setPayFilter] = useState('ALL'); // 'ALL', 'PAID', 'UNPAID'
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // Bitta sahifada nechta o'quvchi chiqishi
+  const itemsPerPage = 12;
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [messageData, setMessageData] = useState({ title: '', message: '' });
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const handleSync = async () => {
     try {
@@ -45,7 +52,16 @@ const Students = () => {
         return false;
       }
 
-      // 2. Qidiruv bo'yicha filter
+      // 2. To'lov bo'yicha filter
+      const currentMonth = '2026-04'; // Per user local time
+      const monthlyPayments = student.payments?.filter(p => p.month === currentMonth) || [];
+      const paidAmt = monthlyPayments.reduce((sum, p) => sum + (Number(p.amount || 0) - Number(p.discount || 0) + Number(p.penalty || 0)), 0);
+      const isPaid = paidAmt > 0;
+
+      if (payFilter === 'PAID' && !isPaid) return false;
+      if (payFilter === 'UNPAID' && (isPaid || student.status !== 'OQIYAPTI')) return false;
+
+      // 3. Qidiruv bo'yicha filter
       const searchLower = searchTerm.toLowerCase();
       return (
         student.name?.toLowerCase().includes(searchLower) ||
@@ -54,7 +70,7 @@ const Students = () => {
         student.externalId?.toLowerCase().includes(searchLower)
       );
     });
-  }, [students, searchTerm, selectedStatus]);
+  }, [students, searchTerm, selectedStatus, payFilter]);
 
   // Qidiruv yoki Status o'zgarganda birinchi sahifaga qaytish
   useEffect(() => {
@@ -117,6 +133,38 @@ const Students = () => {
             />
           </div>
 
+          <div className="flex items-center p-1 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-lg backdrop-blur-md">
+            {[
+              { id: 'ALL', label: 'Barchasi', icon: Users },
+              { id: 'PAID', label: 'To\'langan', icon: Filter },
+              { id: 'UNPAID', label: 'Qarzdorlar', icon: Filter }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setPayFilter(f.id)}
+                className={`px-3 py-1 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5
+                  ${payFilter === f.id 
+                    ? 'bg-white dark:bg-white/10 text-[#007aff] shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              >
+                <f.icon size={12} />
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setIsMessageModalOpen(true)}
+            disabled={selectedIds.size === 0}
+            className={`flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-[13px] font-medium transition-all shadow-sm
+              ${selectedIds.size > 0
+                ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20'
+                : 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-not-allowed opacity-50'}`}
+          >
+            <MessageSquare size={14} />
+            Xabar yuborish {selectedIds.size > 0 && `(${selectedIds.size})`}
+          </button>
+
           <button
             onClick={handleSync}
             disabled={syncing}
@@ -165,6 +213,26 @@ const Students = () => {
               <table className="w-full text-left text-[13px]">
                 <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
                   <tr>
+                    <th className="px-5 py-3 font-medium w-10">
+                      <button
+                        onClick={() => {
+                          const visibleIds = paginatedStudents.map(s => s.id);
+                          const allSelected = visibleIds.every(id => selectedIds.has(id));
+                          setSelectedIds(prev => {
+                            const next = new Set(prev);
+                            if (allSelected) {
+                              visibleIds.forEach(id => next.delete(id));
+                            } else {
+                              visibleIds.forEach(id => next.add(id));
+                            }
+                            return next;
+                          });
+                        }}
+                        className="text-gray-400 hover:text-[#007aff] transition-colors"
+                      >
+                        {paginatedStudents.length > 0 && paginatedStudents.every(s => selectedIds.has(s.id)) ? <CheckSquare size={16} /> : <Square size={16} />}
+                      </button>
+                    </th>
                     <th className="px-5 py-3 font-medium min-w-[200px]">Talaba</th>
                     <th className="px-5 py-3 font-medium">Status</th>
                     <th className="px-5 py-3 font-medium">Guruh</th>
@@ -204,8 +272,21 @@ const Students = () => {
                       const isPaid = paidAmt > 0;
 
                       return (
-                      <tr key={student.id} onClick={() => navigate(`/students/${student.id}`)} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-pointer">
-                        <td className="px-5 py-3">
+                      <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-pointer">
+                        <td className="px-5 py-3" onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(student.id)) next.delete(student.id);
+                            else next.add(student.id);
+                            return next;
+                          });
+                        }}>
+                          <button className={`text-gray-400 hover:text-[#007aff] transition-colors ${selectedIds.has(student.id) ? 'text-[#007aff]' : ''}`}>
+                            {selectedIds.has(student.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                          </button>
+                        </td>
+                        <td className="px-5 py-3" onClick={() => navigate(`/students/${student.id}`)}>
                           <div className="flex items-center gap-3">
                             {student.photo ? (
                               <img
@@ -360,6 +441,94 @@ const Students = () => {
 
         </div>
       </div>
+
+      {/* Messaging Modal */}
+      {isMessageModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !sendingMessage && setIsMessageModalOpen(false)}></div>
+          
+          <div className="bg-white dark:bg-[#1d1d1f] w-full max-w-lg rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between bg-gray-50/50 dark:bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600">
+                  <MessageSquare size={20} />
+                </div>
+                <div>
+                  <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">Xabar yuborish</h3>
+                  <p className="text-[11px] text-gray-500">{selectedIds.size} ta o'quvchi tanlangan</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsMessageModalOpen(false)}
+                className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full transition-colors text-gray-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Mavzu</label>
+                <input
+                  type="text"
+                  value={messageData.title}
+                  onChange={e => setMessageData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Xabar sarlavhasi..."
+                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Xabar matni</label>
+                <textarea
+                  value={messageData.message}
+                  onChange={e => setMessageData(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="Xabar matnini kiriting..."
+                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500/50 outline-none transition-all min-h-[150px] resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-5 bg-gray-50/50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex gap-3">
+              <button
+                disabled={sendingMessage}
+                onClick={() => setIsMessageModalOpen(false)}
+                className="flex-1 py-3 text-[14px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                disabled={sendingMessage || !messageData.title || !messageData.message}
+                onClick={async () => {
+                  try {
+                    setSendingMessage(true);
+                    await sendNotifications({
+                      studentIds: Array.from(selectedIds),
+                      title: messageData.title,
+                      message: messageData.message
+                    });
+                    toast.success("Xabarlar yuborildi! ✅");
+                    setIsMessageModalOpen(false);
+                    setMessageData({ title: '', message: '' });
+                    setSelectedIds(new Set());
+                  } catch (e) {
+                    toast.error("Xabar yuborishda xatolik!");
+                  } finally {
+                    setSendingMessage(false);
+                  }
+                }}
+                className="flex-[2] py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 disabled:opacity-50 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-purple-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                {sendingMessage ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                {sendingMessage ? "Yuborilmoqda..." : "Yuborish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

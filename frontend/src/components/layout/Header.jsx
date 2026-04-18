@@ -1,7 +1,10 @@
 import React from 'react';
 import { Search, Bell, User as UserIcon } from 'lucide-react';
+import useStore from '../../store/useStore';
 
 const Header = ({ currentUser }) => {
+  const { notifications } = useStore();
+  const unreadCount = notifications.filter(n => !n.isRead).length;
   return (
     <header className="h-14 px-6 flex items-center justify-between sticky top-0 z-30 bg-white/40 dark:bg-[#2d2d2d]/60 backdrop-blur-md border-b border-gray-200/50 dark:border-black/50 transition-all shrink-0">
 
@@ -22,11 +25,11 @@ const Header = ({ currentUser }) => {
       {/* O'ng qism: Amallar va Profil */}
       <div className="flex items-center gap-4">
 
-        {/* Bildirishnomalar */}
         <button className="relative p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 transition-colors">
           <Bell size={18} />
-          {/* Yangi xabar uchun qizil nuqta */}
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ff3b30] rounded-full border-2 border-white dark:border-[#2d2d2d]"></span>
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ff3b30] rounded-full border-2 border-white dark:border-[#2d2d2d]"></span>
+          )}
         </button>
 
         {/* Profil ma'lumotlari */}
