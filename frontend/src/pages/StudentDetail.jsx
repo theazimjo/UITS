@@ -486,7 +486,7 @@ const StudentDetail = () => {
                       const aDate = typeof a.date === 'string' ? a.date.split('T')[0] : new Date(a.date).toISOString().split('T')[0];
                       return aDate === currentDayStr;
                     });
-                    
+
                     const grade = grades.find(g => {
                       if (!g.date) return false;
                       const gDate = typeof g.date === 'string' ? g.date.split('T')[0] : new Date(g.date).toISOString().split('T')[0];
@@ -596,11 +596,10 @@ const StudentDetail = () => {
                           </span>
                         </td>
                         <td className="px-5 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-lg font-bold text-[11px] ${
-                            ex.status === "O'tdi" || !ex.status
+                          <span className={`px-2 py-0.5 rounded-lg font-bold text-[11px] ${ex.status === "O'tdi" || !ex.status
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                               : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          }`}>
+                            }`}>
                             {ex.status || "O'tdi"}
                           </span>
                         </td>

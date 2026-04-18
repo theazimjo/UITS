@@ -132,4 +132,8 @@ export const getParentNotifications = () => api.get('/notifications/parent');
 export const sendNotifications = (data) => api.post('/notifications/send', data);
 export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`);
 
+// Data Management
+export const exportData = () => api.get('/data/export');
+export const importData = (data) => api.post('/data/import', data);
+
 export default api;

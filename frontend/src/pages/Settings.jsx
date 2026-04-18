@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Settings as SettingsIcon, Layout, Trash2,
   AlertCircle, ShieldAlert, Monitor, Database,
-  Sun, Moon, Check, User as UserIcon, Lock, Save
+  Sun, Moon, Check, User as UserIcon, Lock, Save, Download, Upload
 } from 'lucide-react';
-import { clearAllData, getMe, updateProfile, updatePassword } from '../services/api';
+import { clearAllData, getMe, updateProfile, updatePassword, exportData } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/common/Modal';
 
@@ -19,6 +19,7 @@ const Settings = () => {
   const [passwords, setPasswords] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -36,6 +37,7 @@ const Settings = () => {
   const categories = [
     { id: 'profile', label: 'Profil', icon: <UserIcon size={18} /> },
     { id: 'appearance', label: 'Ko\'rinish', icon: <Monitor size={18} /> },
+    { id: 'data', label: 'Ma\'lumotlar', icon: <Database size={18} /> },
   ];
 
   const handleThemeChange = (newTheme) => {
@@ -92,6 +94,28 @@ const Settings = () => {
     } catch (err) {
       toast.error('Xatolik yuz berdi!');
       setIsClearing(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      const response = await exportData();
+      const dataStr = JSON.stringify(response.data, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+      const exportFileDefaultName = `uits_backup_${new Date().toISOString().split('T')[0]}.json`;
+
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+
+      toast.success('Ma\'lumotlar yuklab olindi!');
+    } catch (err) {
+      toast.error('Eksport qilishda xatolik!');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -327,6 +351,64 @@ const Settings = () => {
                       </div>
                     </button>
                   </div>
+                </div>
+              )}
+
+              {activeCategory === 'data' && (
+                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                  {/* Export Section */}
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm p-8">
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="p-2 bg-green-500/10 text-green-500 rounded-xl">
+                        <Download size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">Eksport qilish</h3>
+                        <p className="text-[11px] text-gray-400 italic">Barcha ma'lumotlarni JSON formatida yuklab oling</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5">
+                      <div className="flex-1">
+                        <h4 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white mb-1">Tizim zaxira nusxasi</h4>
+                        <p className="text-[12px] text-gray-500 leading-relaxed">
+                          Ushbu amal orqali siz barcha o'quvchilar, guruhlar, to'lovlar va boshqa ma'lumotlarni o'z ichiga olgan faylni yuklab olishingiz mumkin.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleExportData}
+                        disabled={isExporting}
+                        className="w-full md:w-auto px-8 py-3 bg-green-500 text-white rounded-2xl text-[14px] font-black hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 active:scale-95 flex items-center justify-center gap-2 shrink-0"
+                      >
+                        {isExporting ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Download size={18} />}
+                        Yuklab olish
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Import Section (Disabled) */}
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm p-8 opacity-60">
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="p-2 bg-purple-500/10 text-purple-500 rounded-xl">
+                        <Upload size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">Import qilish</h3>
+                        <p className="text-[11px] text-gray-400 italic">Zaxira faylidan ma'lumotlarni tiklash</p>
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-300 dark:border-white/10 flex flex-col items-center justify-center text-center">
+                      <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center text-gray-400 mb-4">
+                        <Upload size={24} />
+                      </div>
+                      <h4 className="text-[14px] font-bold text-gray-500 dark:text-gray-400 mb-1">Tez orada</h4>
+                      <p className="text-[12px] text-gray-400 max-w-sm">
+                        Import funksiyasi hozircha ishlab chiqilmoqda. Tez orada ma'lumotlarni yuklash imkoniyati qo'shiladi.
+                      </p>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
