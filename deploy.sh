@@ -21,6 +21,12 @@ fi
 echo "[1/5] Git-dan so'nggi versiyani yuklab olish..."
 git pull origin main
 
+# Android papkasini o'chirish (Serverda kerak emas)
+if [ -d "android" ]; then
+    echo "🗑️  Android papkasi o'chirilmoqda..."
+    rm -rf android
+fi
+
 # 2. Tozalash (Eski konteynerlarni to'xtatish juda muhim!)
 echo "[2/5] Eski konteynerlarni to'xtatish va joy ochish..."
 docker compose -f docker-compose.prod.yml down || true
