@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Sun, Moon, Check, User as UserIcon, Lock, Save, Download, Upload,
   Cloud, RefreshCcw, Folder, Terminal, Monitor, Database, Trash2, AlertCircle,
-  Settings as SettingsIcon, Layout
+  Settings as SettingsIcon, Layout, Plus
 } from 'lucide-react';
 import { 
   clearAllData, getMe, updateProfile, updatePassword, 
@@ -29,7 +29,7 @@ const Settings = () => {
   // System Settings (Backup)
   const [systemSettings, setSystemSettings] = useState({
     autoBackupEnabled: false,
-    googleDriveFolderId: '',
+    googleDriveFolderIds: [],
     backupHour: 3,
     lastBackupAt: null,
     lastBackupStatus: ''
@@ -49,7 +49,10 @@ const Settings = () => {
       // Fetch system settings too
       const setRes = await getSystemSettings();
       if (setRes.data) {
-        setSystemSettings(setRes.data);
+        setSystemSettings({
+          ...setRes.data,
+          googleDriveFolderIds: setRes.data.googleDriveFolderIds || []
+        });
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -139,6 +142,30 @@ const Settings = () => {
       toast.error('Xatolik yuz berdi!');
       setIsClearing(false);
     }
+  };
+
+  const addFolderId = () => {
+    setSystemSettings({
+      ...systemSettings,
+      googleDriveFolderIds: [...systemSettings.googleDriveFolderIds, '']
+    });
+  };
+
+  const updateFolderId = (index, value) => {
+    const newIds = [...systemSettings.googleDriveFolderIds];
+    newIds[index] = value;
+    setSystemSettings({
+      ...systemSettings,
+      googleDriveFolderIds: newIds
+    });
+  };
+
+  const removeFolderId = (index) => {
+    const newIds = systemSettings.googleDriveFolderIds.filter((_, i) => i !== index);
+    setSystemSettings({
+      ...systemSettings,
+      googleDriveFolderIds: newIds
+    });
   };
 
   const handleExportData = async () => {
@@ -549,22 +576,47 @@ const Settings = () => {
 
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                            Google Drive Folder ID
-                            <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded border border-blue-500/20">Kerakli</span>
+                          <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                              Google Drive Folder ID-lar
+                              <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded border border-blue-500/20">Kamida bitta</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={addFolderId}
+                              className="text-[11px] text-blue-500 hover:text-blue-600 font-bold flex items-center gap-1"
+                            >
+                              <Plus size={12} /> Jild qo'shish
+                            </button>
                           </label>
-                          <div className="relative group">
-                            <Folder size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                            <input
-                              type="text"
-                              value={systemSettings.googleDriveFolderId}
-                              onChange={(e) => setSystemSettings({ ...systemSettings, googleDriveFolderId: e.target.value })}
-                              placeholder="Masalan: 1abc...xyz"
-                              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-12 pr-6 py-4 text-[14px] outline-none focus:border-blue-500 transition-all font-mono"
-                            />
-                          </div>
+
+                          {systemSettings.googleDriveFolderIds.map((folderId, index) => (
+                            <div key={index} className="relative group flex items-center gap-2">
+                              <div className="relative flex-1">
+                                <Folder size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                                <input
+                                  type="text"
+                                  value={folderId}
+                                  onChange={(e) => updateFolderId(index, e.target.value)}
+                                  placeholder="Masalan: 1abc...xyz"
+                                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-12 pr-6 py-4 text-[14px] outline-none focus:border-blue-500 transition-all font-mono"
+                                />
+                              </div>
+                              {systemSettings.googleDriveFolderIds.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeFolderId(index)}
+                                  className="p-4 text-red-400 hover:text-red-500 hover:bg-red-500/5 rounded-2xl transition-all"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          
                           <p className="text-[11px] text-gray-400 leading-relaxed ml-1 italic">
-                            * Eslatma: Service Account email manzili ushbu jildga (folder) yozish huquqiga ega bo'lishi kerak.
+                            * Eslatma: Service Account email manzili barcha ko'rsatilgan jildlarga yozish huquqiga ega bo'lishi kerak.
                           </p>
                         </div>
 

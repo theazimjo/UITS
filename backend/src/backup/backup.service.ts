@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as cron from 'node-cron';
 import { google } from 'googleapis';
 import * as fs from 'fs';
@@ -16,7 +16,10 @@ export class BackupService implements OnModuleInit {
 
   private backupTask: cron.ScheduledTask;
 
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    @Inject(forwardRef(() => SettingsService))
+    private readonly settingsService: SettingsService,
+  ) { }
 
   async onModuleInit() {
     await this.setupSchedule();
@@ -29,11 +32,11 @@ export class BackupService implements OnModuleInit {
 
     const settings = await this.settingsService.getSettings();
     const hour = settings?.backupHour ?? 3;
-    
+
     this.backupTask = cron.schedule(`0 ${hour} * * *`, () => {
       this.handleScheduledBackup();
     });
-    
+
     this.logger.log(`Backup scheduler initialized (Daily at ${hour}:00)`);
   }
 
@@ -49,33 +52,49 @@ export class BackupService implements OnModuleInit {
     let filePath = '';
     try {
       const settings = await this.settingsService.getSettings();
-      if (!settings?.googleDriveFolderId) {
-        throw new Error('Google Drive Folder ID not configured');
+      const folderIds = settings?.googleDriveFolderIds || [];
+
+      if (folderIds.length === 0) {
+        throw new Error('Google Drive Folder ID(lar)i sozlanmagan');
       }
 
       if (!fs.existsSync(this.SERVICE_ACCOUNT_PATH)) {
-        throw new Error('Google Service Account JSON file not found at /config/google-service-account.json');
+        throw new Error('Google Service Account JSON fayli topilmadi (/config/google-service-account.json)');
       }
 
       // 1. Create SQL Dump
       const fileName = `uits_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.sql`;
       filePath = path.join('/tmp', fileName);
-      
+
       const dbUrl = `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
-      
+
       this.logger.log(`Creating database dump: ${fileName}`);
       await execPromise(`pg_dump "${dbUrl}" > ${filePath}`);
 
-      // 2. Upload to Google Drive
-      this.logger.log('Uploading to Google Drive...');
-      await this.uploadFileToDrive(filePath, fileName, settings.googleDriveFolderId);
+      // 2. Upload to all Google Drive folders
+      this.logger.log(`Uploading to ${folderIds.length} Google Drive folders...`);
+      const errors: string[] = [];
+
+      for (const folderId of folderIds) {
+        try {
+          this.logger.log(`Uploading to folder: ${folderId}`);
+          await this.uploadFileToDrive(filePath, fileName, folderId);
+        } catch (uploadError) {
+          this.logger.error(`Failed to upload to folder ${folderId}: ${uploadError.message}`);
+          errors.push(`${folderId}: ${uploadError.message}`);
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Ba'zi jildlarga yuklashda xatolik: ${errors.join(', ')}`);
+      }
 
       // 3. Update Status
       await this.settingsService.updateSettings({
         lastBackupAt: new Date(),
         lastBackupStatus: 'SUCCESS',
       });
-      this.logger.log('Backup process completed successfully');
+      this.logger.log('Backup process completed successfully for all destinations');
 
     } catch (error) {
       this.logger.error(`Backup failed: ${error.message}`);
@@ -111,9 +130,9 @@ export class BackupService implements OnModuleInit {
     };
 
     await drive.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id',
+      requestBody: fileMetadata,
+      media: media,
+      fields: 'id',
     } as any);
   }
 }

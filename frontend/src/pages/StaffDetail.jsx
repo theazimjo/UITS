@@ -384,6 +384,11 @@ const StaffDetail = () => {
 
   const activeStudentsCount = allStudents.filter(s => s.enrollmentStatus === 'ACTIVE').length;
 
+  const totalExpectedRevenue = activeGroups.reduce((acc, group) => {
+    const activeCount = (group.enrollments || []).filter(en => en.status === 'ACTIVE').length;
+    return acc + (activeCount * parseFloat(group.monthlyPrice || 0));
+  }, 0);
+
   // ===============================================
   // TUSHUM VA MAOSH HISOBLAGICH MANTIG'I
   // ===============================================
@@ -575,7 +580,7 @@ const StaffDetail = () => {
             {/* TAB 2: STUDENTS */}
             {activeTab === 'students' && (
               <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col min-h-[400px] animate-fade-in">
-                <div className="p-4 border-b border-gray-200/50 dark:border-white/10 bg-gray-50/50 dark:bg-white/5">
+                <div className="p-4 border-b border-gray-200/50 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                     <input
@@ -585,6 +590,15 @@ const StaffDetail = () => {
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-8 pr-3 py-1.5 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all placeholder-gray-400 shadow-inner text-[#1d1d1f] dark:text-[#f5f5f7]"
                     />
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="px-4 py-2 bg-[#007aff]/10 border border-[#007aff]/20 rounded-lg">
+                      <p className="text-[10px] font-bold text-[#007aff] uppercase tracking-wider">Kutilgan tushum</p>
+                      <p className="text-[15px] font-bold text-[#1d1d1f] dark:text-white">
+                        {totalExpectedRevenue.toLocaleString()} <span className="text-[10px] font-normal opacity-60 ml-0.5">UZS</span>
+                      </p>
+                    </div>
                   </div>
                 </div>
 

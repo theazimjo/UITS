@@ -1,9 +1,9 @@
 import { Controller, Get, Patch, Post, Body, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SettingsService } from './settings.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller('settings')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,7 +31,7 @@ export class SettingsController {
       cb(null, true);
     }
   }))
-  async uploadGoogleAuth(@UploadedFile() file: Express.Multer.File) {
+  async uploadGoogleAuth(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('Fayl topilmadi');
     }

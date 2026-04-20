@@ -18,7 +18,12 @@ export class SettingsService implements OnModuleInit {
   async onModuleInit() {
     const exists = await this.settingsRepo.findOne({ where: { id: 1 } });
     if (!exists) {
-      await this.settingsRepo.save(this.settingsRepo.create({ id: 1 }));
+      await this.settingsRepo.save(this.settingsRepo.create({ id: 1, googleDriveFolderIds: [] }));
+    } else {
+      // Migration: Ensure googleDriveFolderIds is initialized
+      if (!exists.googleDriveFolderIds) {
+        await this.settingsRepo.update(1, { googleDriveFolderIds: [] });
+      }
     }
   }
 
@@ -38,7 +43,7 @@ export class SettingsService implements OnModuleInit {
     return updated;
   }
 
-  async uploadGoogleAuthFile(file: Express.Multer.File) {
+  async uploadGoogleAuthFile(file: any) {
     const configDir = path.join(process.cwd(), 'config');
     const filePath = path.join(configDir, 'google-service-account.json');
 

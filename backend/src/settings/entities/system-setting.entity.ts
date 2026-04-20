@@ -8,8 +8,8 @@ export class SystemSetting {
   @Column({ default: false })
   autoBackupEnabled: boolean;
 
-  @Column({ nullable: true })
-  googleDriveFolderId: string;
+  @Column({ type: 'simple-array', nullable: true })
+  googleDriveFolderIds: string[];
 
   @Column({ nullable: true })
   lastBackupAt: Date;
