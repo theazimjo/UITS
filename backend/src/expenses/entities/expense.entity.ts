@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne } from 'typeorm';
+import { FinanceCategory } from '../../finance/entities/finance-category.entity';
 
 @Entity()
 export class Expense {
@@ -22,6 +23,12 @@ export class Expense {
 
   @Column({ nullable: true })
   comment: string;
+
+  @ManyToOne(() => FinanceCategory, (category) => category.expenses, { nullable: true, onDelete: 'SET NULL' })
+  financeCategory: FinanceCategory;
+
+  @Column({ nullable: true })
+  categoryId: number;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
-import { Notification } from './entities/notification.entity';
 import { Student } from '../students/entities/student.entity';
+import { Enrollment } from '../groups/entities/enrollment.entity';
+import { Notification } from './entities/notification.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -11,18 +12,38 @@ export class NotificationsService {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
-  ) {}
+    @InjectRepository(Enrollment)
+    private readonly enrollmentRepo: Repository<Enrollment>,
+  ) { }
 
-  async sendBulk(data: { studentIds: number[]; title: string; message: string }) {
+  async sendBulk(data: { studentIds: number[]; title: string; message: string }, senderId?: number, senderRole?: string) {
     const { studentIds, title, message } = data;
-    
+
+    if (senderRole === 'teacher' && senderId) {
+      // Validate that all students are in groups taught by this teacher
+      const teacherEnrollments = await this.enrollmentRepo.find({
+        where: {
+          student: { id: In(studentIds) },
+          group: { teacherId: senderId }
+        },
+        relations: ['group', 'student']
+      });
+
+      const authorizedStudentIds = new Set(teacherEnrollments.map(e => e.student.id));
+      const unauthorizedIds = studentIds.filter(id => !authorizedStudentIds.has(id));
+
+      if (unauthorizedIds.length > 0) {
+        throw new UnauthorizedException(`Siz ID ${unauthorizedIds.join(', ')} bo'lgan o'quvchilarga xabar yubora olmaysiz.`);
+      }
+    }
+
     // Create notification entries for each student
     const notifications = studentIds.map(sid => {
-      const notification = new Notification();
-      notification.studentId = sid;
-      notification.title = title;
-      notification.message = message;
-      return notification;
+      return this.notificationRepo.create({
+        studentId: sid,
+        title,
+        message
+      });
     });
 
     return this.notificationRepo.save(notifications);

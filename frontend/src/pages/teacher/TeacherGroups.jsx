@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../store/useStore';
-import { getGroupPayments } from '../../services/api';
+import { getGroupPayments, sendNotifications } from '../../services/api';
 import { 
   BookOpen, 
   Users, 
@@ -16,7 +16,9 @@ import {
   History,
   Info,
   ExternalLink,
-  ChevronLeft
+  ChevronLeft,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -25,6 +27,103 @@ const statusMap = {
   WAITING: { label: "Kutilmoqda", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   COMPLETED: { label: "Tugallangan", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
   CANCELLED: { label: "Bekor qilingan", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+};
+
+const MessageModal = ({ isOpen, onClose, targetName, studentIds }) => {
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSend = async () => {
+    if (!title || !message) return alert("Sarlavha va xabar mazmunini to'ldiring");
+    setSending(true);
+    try {
+      await sendNotifications({
+        studentIds,
+        title,
+        message
+      });
+      alert("Xabar muvaffaqiyatli yuborildi");
+      onClose();
+      setTitle('');
+      setMessage('');
+    } catch (err) {
+      console.error('Send message error:', err);
+      alert("Xabar yuborishda xatolik yuz berdi");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div 
+        className="bg-white dark:bg-[#1c1c1e] w-full max-w-[500px] rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col border border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+              <MessageSquare size={20} />
+            </div>
+            <div>
+              <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">Xabar yo'llash</h3>
+              <p className="text-[12px] text-gray-500 font-medium">Kimga: {targetName}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 flex items-center justify-center text-gray-400 transition-all">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-8 space-y-5">
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Mavzu / Sarlavha</label>
+              <input 
+                type="text" 
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Xabar sarlavhasini kiriting..."
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl text-[14px] focus:ring-2 focus:ring-blue-500/50 outline-none transition-all dark:text-white"
+              />
+           </div>
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Xabar Mazmuni</label>
+              <textarea 
+                rows={5}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Ota-onaga yetkaziladigan xabarni yozing..."
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl text-[14px] focus:ring-2 focus:ring-blue-500/50 outline-none transition-all dark:text-white resize-none"
+              />
+           </div>
+        </div>
+
+        <div className="p-6 pt-0 flex gap-3">
+          <button 
+            onClick={onClose}
+            className="flex-1 py-4 bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 rounded-2xl text-[14px] font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
+          >
+            Bekor qilish
+          </button>
+          <button 
+            onClick={handleSend}
+            disabled={sending}
+            className="flex-[2] py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl text-[14px] font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+          >
+            {sending ? <Loader2 size={18} className="animate-spin" /> : (
+              <>
+                Yuborish
+                <Send size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const TeacherGroups = () => {
@@ -37,6 +136,9 @@ const TeacherGroups = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [groupPayments, setGroupPayments] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+  
+  // Message Modal State
+  const [msgModal, setMsgModal] = useState({ open: false, targetName: '', studentIds: [] });
 
   useEffect(() => {
     refreshAllRows();
@@ -103,8 +205,35 @@ const TeacherGroups = () => {
     if (selectedGroup) fetchPayments(selectedGroup.id, newMonth);
   };
 
+  const openGroupMessage = (e, group) => {
+    e.stopPropagation();
+    const studentIds = activeEnrollments(group).map(en => en.studentId);
+    if (studentIds.length === 0) return alert("Guruhda o'quvchilar yo'q");
+    setMsgModal({
+      open: true,
+      targetName: `${group.name} guruhi ota-onalari`,
+      studentIds
+    });
+  };
+
+  const openStudentMessage = (student) => {
+    setMsgModal({
+      open: true,
+      targetName: `${student.name} ota-onasi`,
+      studentIds: [student.id]
+    });
+  };
+
   return (
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f] relative overflow-hidden">
+      
+      <MessageModal 
+        isOpen={msgModal.open}
+        onClose={() => setMsgModal({ ...msgModal, open: false })}
+        targetName={msgModal.targetName}
+        studentIds={msgModal.studentIds}
+      />
+
       {/* Header & Sub-header */}
       <div className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border-b border-gray-200/50 dark:border-white/10 z-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between px-6 py-4 gap-4">
@@ -230,9 +359,13 @@ const TeacherGroups = () => {
                     </div>
 
                     <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-center gap-2 text-[12px] text-gray-400 font-medium italic">
-                        Batafsil ko'rish uchun bosing
-                      </div>
+                       <button 
+                        onClick={(e) => openGroupMessage(e, group)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[12px] font-bold hover:bg-blue-500 hover:text-white transition-all shadow-sm"
+                      >
+                        <MessageSquare size={14} />
+                        Xabar yuborish
+                      </button>
                       <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
                         <ChevronRight size={16} />
                       </div>
@@ -360,7 +493,16 @@ const TeacherGroups = () => {
                             <p className="text-[14px] font-bold text-[#1d1d1f] dark:text-white truncate">{e.student?.name}</p>
                             <p className="text-[11px] text-gray-500 font-medium">To'lov: {totalPaid.toLocaleString()} / {monthlyPrice.toLocaleString()}</p>
                           </div>
-                          {paymentBadge}
+                          <div className="flex flex-col items-end gap-2">
+                             {paymentBadge}
+                             <button 
+                                onClick={() => openStudentMessage(e.student)}
+                                className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-sm"
+                                title="Ota-onaga xabar"
+                              >
+                                <MessageSquare size={14} />
+                             </button>
+                          </div>
                         </div>
                       );
                     }) : (

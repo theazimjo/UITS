@@ -10,9 +10,11 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post('send')
-  @Roles('admin', 'manager')
-  async sendBulk(@Body() data: { studentIds: number[]; title: string; message: string }) {
-    return this.notificationsService.sendBulk(data);
+  @Roles('admin', 'manager', 'teacher')
+  async sendBulk(@Body() data: { studentIds: number[]; title: string; message: string }, @Request() req) {
+    const senderId = req.user.id;
+    const senderRole = req.user.role;
+    return this.notificationsService.sendBulk(data, senderId, senderRole);
   }
 
   @Get('parent')

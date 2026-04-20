@@ -28,6 +28,8 @@ import {
   deleteStaffPayment
 } from '../services/api';
 import Modal from '../components/common/Modal';
+import CategorySelect from '../components/finance/CategorySelect';
+import CategoryManagerModal from '../components/finance/CategoryManagerModal';
 
 const Finance = () => {
   const [stats, setStats] = useState({
@@ -59,13 +61,16 @@ const Finance = () => {
   const [isStudentPaymentModalOpen, setIsStudentPaymentModalOpen] = useState(false);
   const [isStaffPaymentModalOpen, setIsStaffPaymentModalOpen] = useState(false);
   
+  // Category management
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [categoryManagerType, setCategoryManagerType] = useState('INCOME');
+  
   const [editingId, setEditingId] = useState(null);
 
   const [expenseFormData, setExpenseFormData] = useState({
     title: '',
     amount: '',
-    category: 'Ofis',
-    customCategory: '',
+    category: '',
     paymentType: 'Naqd',
     date: new Date().toISOString().split('T')[0],
     comment: ''
@@ -74,8 +79,7 @@ const Finance = () => {
   const [incomeFormData, setIncomeFormData] = useState({
     title: '',
     amount: '',
-    category: 'Sotuv',
-    customCategory: '',
+    category: '',
     paymentType: 'Naqd',
     date: new Date().toISOString().split('T')[0],
     comment: ''
@@ -133,7 +137,6 @@ const Finance = () => {
     try {
       const data = {
         ...expenseFormData,
-        category: expenseFormData.category === 'Boshqa' ? expenseFormData.customCategory : expenseFormData.category,
         amount: parseFloat(expenseFormData.amount)
       };
 
@@ -157,7 +160,6 @@ const Finance = () => {
     try {
       const data = {
         ...incomeFormData,
-        category: incomeFormData.category === 'Boshqa' ? incomeFormData.customCategory : incomeFormData.category,
         amount: parseFloat(incomeFormData.amount)
       };
 
@@ -238,12 +240,10 @@ const Finance = () => {
       });
       setIsStudentPaymentModalOpen(true);
     } else if (t.id.startsWith('oinc_')) {
-      const isCustomCategory = !['Sotuv', 'Grant', 'Investitsiya', 'Xizmat'].includes(t.category);
       setIncomeFormData({
         title: t.title,
         amount: t.amount,
-        category: isCustomCategory ? 'Boshqa' : t.category,
-        customCategory: isCustomCategory ? t.category : '',
+        category: t.category,
         paymentType: t.paymentType,
         date: t.date,
         comment: t.comment || ''
@@ -258,12 +258,10 @@ const Finance = () => {
       });
       setIsStaffPaymentModalOpen(true);
     } else if (t.id.startsWith('gen_')) {
-      const isCustomCategory = !['Ofis', 'Bino', 'Texnika', 'Marketing', 'Kommunal', 'Oylik'].includes(t.category);
       setExpenseFormData({
         title: t.title,
         amount: t.amount,
-        category: isCustomCategory ? 'Boshqa' : t.category,
-        customCategory: isCustomCategory ? t.category : '',
+        category: t.category,
         paymentType: t.paymentType,
         date: t.date,
         comment: t.comment || ''
@@ -276,8 +274,7 @@ const Finance = () => {
     setExpenseFormData({
       title: '',
       amount: '',
-      category: 'Ofis',
-      customCategory: '',
+      category: '',
       paymentType: 'Naqd',
       date: new Date().toISOString().split('T')[0],
       comment: ''
@@ -289,8 +286,7 @@ const Finance = () => {
     setIncomeFormData({
       title: '',
       amount: '',
-      category: 'Sotuv',
-      customCategory: '',
+      category: '',
       paymentType: 'Naqd',
       date: new Date().toISOString().split('T')[0],
       comment: ''
@@ -826,17 +822,15 @@ const Finance = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">KATEGORIYA</label>
-                <select
-                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#34c759]/50 outline-none transition-all shadow-inner"
+                <CategorySelect
+                  type="INCOME"
                   value={incomeFormData.category}
-                  onChange={(e) => setIncomeFormData({ ...incomeFormData, category: e.target.value })}
-                >
-                  <option value="Sotuv">Sotuv</option>
-                  <option value="Grant">Grant</option>
-                  <option value="Investitsiya">Investitsiya</option>
-                  <option value="Xizmat">Xizmat ko'rsatish</option>
-                  <option value="Boshqa">Boshqa...</option>
-                </select>
+                  onChange={(name, id) => setIncomeFormData({ ...incomeFormData, category: name, categoryId: id })}
+                  onManage={() => {
+                    setCategoryManagerType('INCOME');
+                    setIsCategoryManagerOpen(true);
+                  }}
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">TO'LOV TURI</label>
@@ -853,19 +847,6 @@ const Finance = () => {
               </div>
             </div>
 
-            {incomeFormData.category === 'Boshqa' && (
-              <div className="animate-in fade-in slide-in-from-top-1">
-                <label className="block text-[11px] font-medium text-[#34c759] mb-1 uppercase tracking-wider">YANGI KATEGORIYA NOMI</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full bg-[#34c759]/5 dark:bg-[#34c759]/10 border border-[#34c759]/20 rounded-md px-3 py-2 text-[13px] text-[#34c759] font-medium outline-none focus:ring-2 focus:ring-[#34c759]/50 transition-all"
-                  value={incomeFormData.customCategory}
-                  onChange={(e) => setIncomeFormData({ ...incomeFormData, customCategory: e.target.value })}
-                  placeholder="Kategoriya nomini yozing..."
-                />
-              </div>
-            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -943,19 +924,15 @@ const Finance = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">KATEGORIYA</label>
-                <select
-                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                <CategorySelect
+                  type="EXPENSE"
                   value={expenseFormData.category}
-                  onChange={(e) => setExpenseFormData({ ...expenseFormData, category: e.target.value })}
-                >
-                  <option value="Ofis">Ofis</option>
-                  <option value="Bino">Bino / Ijara</option>
-                  <option value="Texnika">Texnika</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Kommunal">Kommunal</option>
-                  <option value="Oylik">Oylik (Maosh)</option>
-                  <option value="Boshqa">Boshqa...</option>
-                </select>
+                  onChange={(name, id) => setExpenseFormData({ ...expenseFormData, category: name, categoryId: id })}
+                  onManage={() => {
+                    setCategoryManagerType('EXPENSE');
+                    setIsCategoryManagerOpen(true);
+                  }}
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">TO'LOV TURI</label>
@@ -972,19 +949,6 @@ const Finance = () => {
               </div>
             </div>
 
-            {expenseFormData.category === 'Boshqa' && (
-              <div className="animate-in fade-in slide-in-from-top-1">
-                <label className="block text-[11px] font-medium text-[#007aff] mb-1 uppercase tracking-wider">YANGI KATEGORIYA NOMI</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full bg-[#007aff]/5 dark:bg-[#007aff]/10 border border-[#007aff]/20 rounded-md px-3 py-2 text-[13px] text-[#007aff] font-medium outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all"
-                  value={expenseFormData.customCategory}
-                  onChange={(e) => setExpenseFormData({ ...expenseFormData, customCategory: e.target.value })}
-                  placeholder="Kategoriya nomini yozing..."
-                />
-              </div>
-            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1174,6 +1138,12 @@ const Finance = () => {
             </div>
         </form>
       </Modal>
+
+      <CategoryManagerModal
+        isOpen={isCategoryManagerOpen}
+        onClose={() => setIsCategoryManagerOpen(false)}
+        type={categoryManagerType}
+      />
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {

@@ -8,9 +8,11 @@ import { Expense } from '../expenses/entities/expense.entity';
 import { Income } from '../incomes/entities/income.entity';
 import { IncomesModule } from '../incomes/incomes.module';
 
+import { FinanceCategory } from './entities/finance-category.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Payment, StaffPayment, Expense, Income]),
+    TypeOrmModule.forFeature([Payment, StaffPayment, Expense, Income, FinanceCategory]),
     IncomesModule,
   ],
   controllers: [FinanceController],

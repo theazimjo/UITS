@@ -39,6 +39,10 @@ export const deleteStaffPayment = (paymentId) => api.delete(`/staff/payments/${p
 export const getFinanceStats = (month) => api.get('/finance/stats', { params: { month } });
 export const getFinanceTransactions = (month) => api.get('/finance/transactions', { params: { month } });
 export const getFinanceChart = () => api.get('/finance/chart');
+export const getFinanceCategories = (type) => api.get('/finance/categories', { params: { type } });
+export const createFinanceCategory = (data) => api.post('/finance/categories', data);
+export const updateFinanceCategory = (id, data) => api.patch(`/finance/categories/${id}`, data);
+export const deleteFinanceCategory = (id) => api.delete(`/finance/categories/${id}`);
 
 // Expenses
 export const getExpenses = () => api.get('/expenses');
