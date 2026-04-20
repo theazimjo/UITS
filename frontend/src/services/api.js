@@ -44,6 +44,18 @@ export const createFinanceCategory = (data) => api.post('/finance/categories', d
 export const updateFinanceCategory = (id, data) => api.patch(`/finance/categories/${id}`, data);
 export const deleteFinanceCategory = (id) => api.delete(`/finance/categories/${id}`);
 
+// Settings & Backup
+export const getSystemSettings = () => api.get('/settings');
+export const updateSystemSettings = (data) => api.patch('/settings', data);
+export const uploadGoogleAuth = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/settings/google-auth', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+export const triggerBackup = () => api.post('/backup/trigger');
+
 // Expenses
 export const getExpenses = () => api.get('/expenses');
 export const addExpense = (data) => api.post('/expenses', data);

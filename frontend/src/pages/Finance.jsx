@@ -828,6 +828,7 @@ const Finance = () => {
                   onChange={(name, id) => setIncomeFormData({ ...incomeFormData, category: name, categoryId: id })}
                   onManage={() => {
                     setCategoryManagerType('INCOME');
+                    setIsIncomeModalOpen(false);
                     setIsCategoryManagerOpen(true);
                   }}
                 />
@@ -930,6 +931,7 @@ const Finance = () => {
                   onChange={(name, id) => setExpenseFormData({ ...expenseFormData, category: name, categoryId: id })}
                   onManage={() => {
                     setCategoryManagerType('EXPENSE');
+                    setIsExpenseModalOpen(false);
                     setIsCategoryManagerOpen(true);
                   }}
                 />

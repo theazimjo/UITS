@@ -4,7 +4,7 @@ WORKDIR /app
 
 # package.json copy qilib, devDependencies ham o'rnatiladi (nest CLI uchun kerak)
 COPY package*.json ./
-RUN npm install
+RUN apk add --no-cache postgresql-client && npm install
 
 COPY . .
 
