@@ -13,7 +13,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 object NetworkModule {
     // Automatically detected laptop IP for real device testing
-    private const val BASE_URL = "http://192.168.1.15:3001/" 
+    private const val BASE_URL = "http://104.248.43.194:3000/" 
 
     private var _tokenManager: TokenManager? = null
 
