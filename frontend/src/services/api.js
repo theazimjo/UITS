@@ -55,6 +55,7 @@ export const uploadGoogleAuth = (file) => {
   });
 };
 export const triggerBackup = () => api.post('/backup/trigger');
+export const syncGoogleSheets = () => api.post('/google-sheets/sync');
 
 // Expenses
 export const getExpenses = () => api.get('/expenses');

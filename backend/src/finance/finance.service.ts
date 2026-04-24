@@ -252,6 +252,7 @@ export class FinanceService {
         amount: Number(item.amount),
         date: item.paymentDate,
         category: 'O\'quv to\'lovi',
+        comment: item.comment,
         paymentType: this.mapPaymentType(item.paymentType)
       })),
       ...otherIncomes.map(item => ({

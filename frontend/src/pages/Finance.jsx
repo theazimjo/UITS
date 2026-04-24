@@ -5,7 +5,7 @@ import {
   Calendar, Plus, X, AlertCircle, Wallet,
   Repeat, Smartphone, Search, Filter, ArrowRightLeft,
   ChevronLeft, ChevronRight, Activity, Download,
-  Edit, Trash2
+  Edit, Trash2, RefreshCcw, Layout
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
@@ -25,8 +25,10 @@ import {
   updatePayment,
   deletePayment,
   updateStaffPayment,
-  deleteStaffPayment
+  deleteStaffPayment,
+  syncGoogleSheets
 } from '../services/api';
+import toast from 'react-hot-toast';
 import Modal from '../components/common/Modal';
 import CategorySelect from '../components/finance/CategorySelect';
 import CategoryManagerModal from '../components/finance/CategoryManagerModal';
@@ -98,6 +100,8 @@ const Finance = () => {
     date: new Date().toISOString().split('T')[0],
     comment: ''
   });
+
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -224,6 +228,18 @@ const Finance = () => {
     } catch (err) {
       console.error('Error deleting transaction:', err);
       alert('Xatolik yuzaga keldi');
+    }
+  };
+
+  const handleSyncSheets = async () => {
+    setIsSyncing(true);
+    try {
+      await syncGoogleSheets();
+      toast.success('Moliya ma\'lumotlari Google Sheets-ga sinxronlashtirildi!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Sinxronizatsiyada xatolik yuz berdi!');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -401,6 +417,15 @@ const Finance = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleSyncSheets}
+              disabled={isSyncing}
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-white dark:bg-white/10 text-gray-700 dark:text-white border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/20"
+              title="Google Sheets-ga sinxronlash"
+            >
+              {isSyncing ? <RefreshCcw size={14} className="animate-spin" /> : <Layout size={14} className="text-green-600" />}
+              <span>Sheets</span>
+            </button>
             <button
               onClick={() => { resetIncomeForm(); setIsIncomeModalOpen(true); }}
               className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-600"

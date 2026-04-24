@@ -7,7 +7,7 @@ import {
 import { 
   clearAllData, getMe, updateProfile, updatePassword, 
   exportData, getSystemSettings, updateSystemSettings, triggerBackup,
-  uploadGoogleAuth
+  uploadGoogleAuth, syncGoogleSheets
 } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/common/Modal';
@@ -32,8 +32,10 @@ const Settings = () => {
     googleDriveFolderIds: [],
     backupHour: 3,
     lastBackupAt: null,
-    lastBackupStatus: ''
+    lastBackupStatus: '',
+    googleSheetsId: ''
   });
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isBackingUpNow, setIsBackingUpNow] = useState(false);
 
@@ -62,7 +64,7 @@ const Settings = () => {
   const categories = [
     { id: 'profile', label: 'Profil', icon: <UserIcon size={18} /> },
     { id: 'appearance', label: 'Ko\'rinish', icon: <Monitor size={18} /> },
-    { id: 'backup', label: 'Zaxiralash', icon: <Cloud size={18} /> },
+    { id: 'backup', label: 'Google Sync', icon: <Cloud size={18} /> },
     { id: 'data', label: 'Ma\'lumotlar', icon: <Database size={18} /> },
   ];
 
@@ -209,11 +211,26 @@ const Settings = () => {
       await triggerBackup();
       toast.success('Zaxiralash muvaffaqiyatli yakunlandi!');
       const res = await getSystemSettings();
-      setSystemSettings(res.data);
+      setSystemSettings({
+        ...res.data,
+        googleDriveFolderIds: res.data.googleDriveFolderIds || []
+      });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Zaxiralashda xatolik yuz berdi!');
     } finally {
       setIsBackingUpNow(false);
+    }
+  };
+
+  const handleSyncSheets = async () => {
+    setIsSyncingSheets(true);
+    try {
+      await syncGoogleSheets();
+      toast.success('Moliya ma\'lumotlari Google Sheets-ga muvaffaqiyatli sinxronizatsiya qilindi!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Sinxronizatsiya qilishda xatolik yuz berdi!');
+    } finally {
+      setIsSyncingSheets(false);
     }
   };
 
@@ -484,9 +501,7 @@ const Settings = () => {
                     </div>
                   </div>
                 </div>
-              )}
-
-              {activeCategory === 'backup' && (
+              )}              {activeCategory === 'backup' && (
                 <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                   {/* Google Drive Status Card */}
                   <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm p-8 flex items-center justify-between gap-6">
@@ -515,6 +530,31 @@ const Settings = () => {
                     >
                       {isBackingUpNow ? <RefreshCcw size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
                       Hozir zaxiralash
+                    </button>
+                  </div>
+
+                  {/* Google Sheets Status Card */}
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm p-8 flex items-center justify-between gap-6">
+                    <div className="flex items-center gap-6">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#0F9D58] to-[#0B8043] rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-green-500/20">
+                        <Layout size={28} />
+                      </div>
+                      <div>
+                        <h3 className="text-[18px] font-black text-[#1d1d1f] dark:text-white leading-tight">
+                          Google Sheets Sync
+                        </h3>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
+                          Moliya ma'lumotlarini jadvalga o'tkazish
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleSyncSheets}
+                      disabled={isSyncingSheets}
+                      className="px-6 py-2.5 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-[13px] font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/20 transition-all flex items-center gap-2"
+                    >
+                      {isSyncingSheets ? <RefreshCcw size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
+                      Sheets-ga sinxronlash
                     </button>
                   </div>
 
@@ -614,9 +654,27 @@ const Settings = () => {
                               )}
                             </div>
                           ))}
-                          
                           <p className="text-[11px] text-gray-400 leading-relaxed ml-1 italic">
                             * Eslatma: Service Account email manzili barcha ko'rsatilgan jildlarga yozish huquqiga ega bo'lishi kerak.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                            Google Spreadsheet ID
+                          </label>
+                          <div className="relative group">
+                            <Layout size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors" />
+                            <input
+                              type="text"
+                              value={systemSettings.googleSheetsId || ''}
+                              onChange={(e) => setSystemSettings({ ...systemSettings, googleSheetsId: e.target.value })}
+                              placeholder="Masalan: 1BRX...qV8w"
+                              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-12 pr-6 py-4 text-[14px] outline-none focus:border-green-500 transition-all font-mono"
+                            />
+                          </div>
+                          <p className="text-[11px] text-gray-400 leading-relaxed ml-1 italic">
+                            * Moliya ma'lumotlari (To'lovlar, Tushumlar, Xarajatlar) ushbu jadvalga sinxronizatsiya qilinadi.
                           </p>
                         </div>
 

@@ -19,4 +19,7 @@ export class SystemSetting {
 
   @Column({ default: 3 })
   backupHour: number;
+
+  @Column({ nullable: true })
+  googleSheetsId: string;
 }
