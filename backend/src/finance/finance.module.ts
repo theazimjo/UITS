@@ -17,5 +17,6 @@ import { FinanceCategory } from './entities/finance-category.entity';
   ],
   controllers: [FinanceController],
   providers: [FinanceService],
+  exports: [FinanceService],
 })
 export class FinanceModule {}

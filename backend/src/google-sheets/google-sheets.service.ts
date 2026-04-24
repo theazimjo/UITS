@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { google } from 'googleapis';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -11,7 +11,9 @@ export class GoogleSheetsService {
   private readonly SERVICE_ACCOUNT_PATH = path.join(process.cwd(), 'config', 'google-service-account.json');
 
   constructor(
+    @Inject(forwardRef(() => SettingsService))
     private readonly settingsService: SettingsService,
+    @Inject(forwardRef(() => FinanceService))
     private readonly financeService: FinanceService,
   ) { }
 
