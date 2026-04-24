@@ -66,10 +66,13 @@ export class BackupService implements OnModuleInit {
       const fileName = `uits_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.sql`;
       filePath = path.join('/tmp', fileName);
 
-      const dbUrl = `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
-
+      const { DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME } = process.env;
+      
       this.logger.log(`Creating database dump: ${fileName}`);
-      await execPromise(`pg_dump "${dbUrl}" > ${filePath}`);
+      
+      // Use PGPASSWORD env var for security and to handle special characters
+      const command = `PGPASSWORD="${DB_PASSWORD}" pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_NAME} > ${filePath}`;
+      await execPromise(command);
 
       // 2. Upload to all Google Drive folders
       this.logger.log(`Uploading to ${folderIds.length} Google Drive folders...`);

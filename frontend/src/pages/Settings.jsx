@@ -513,13 +513,20 @@ const Settings = () => {
                         <h3 className="text-[18px] font-black text-[#1d1d1f] dark:text-white leading-tight">
                           Google Drive Sync
                         </h3>
-                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
-                          {systemSettings.lastBackupAt ? (
-                            <>
-                              <span className={`w-2 h-2 rounded-full ${systemSettings.lastBackupStatus === 'SUCCESS' ? 'bg-green-500' : 'bg-red-500'}`} />
-                              Oxirgi zaxira: {new Date(systemSettings.lastBackupAt).toLocaleString()}
-                            </>
-                          ) : 'Zaxira nusxasi hali olinmagan'}
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 flex flex-col gap-1">
+                          <span className="flex items-center gap-2">
+                            {systemSettings.lastBackupAt ? (
+                              <>
+                                <span className={`w-2 h-2 rounded-full ${systemSettings.lastBackupStatus === 'SUCCESS' ? 'bg-green-500' : 'bg-red-500'}`} />
+                                Oxirgi zaxira: {new Date(systemSettings.lastBackupAt).toLocaleString()}
+                              </>
+                            ) : 'Zaxira nusxasi hali olinmagan'}
+                          </span>
+                          {systemSettings.lastBackupStatus && systemSettings.lastBackupStatus !== 'SUCCESS' && (
+                            <span className="text-[10px] text-red-500 font-medium bg-red-500/5 dark:bg-red-500/10 p-2 rounded-lg border border-red-500/20 mt-1">
+                              Xatolik: {systemSettings.lastBackupStatus.replace('FAILED: ', '')}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

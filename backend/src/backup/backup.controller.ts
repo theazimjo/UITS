@@ -1,4 +1,4 @@
-import { Controller, Post, UseGuards } from '@nestjs/common';
+import { Controller, Post, UseGuards, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { BackupService } from './backup.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -12,7 +12,15 @@ export class BackupController {
 
   @Post('trigger')
   async triggerManualBackup() {
-    await this.backupService.runBackupProcess();
-    return { success: true, message: 'Backup started successfully' };
+    try {
+      await this.backupService.runBackupProcess();
+      return { success: true, message: 'Backup started successfully' };
+    } catch (error) {
+      // Agar xatolik xizmat hisobi yoki sozlamalar bilan bog'liq bo'lsa
+      if (error.message.includes('topilmadi') || error.message.includes('sozlanmagan')) {
+        throw new BadRequestException(error.message);
+      }
+      throw new InternalServerErrorException(error.message);
+    }
   }
 }
