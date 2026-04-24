@@ -28,7 +28,7 @@ services:
       - DB_NAME=crm_db
       - CHOKIDAR_USEPOLLING=true
       - NODE_OPTIONS=--max-old-space-size=2048
-    command: npm run start:dev
+    command: sh -c "npm run build && npm run start:prod"
     volumes:
       - ./backend:/app
       - /app/node_modules
