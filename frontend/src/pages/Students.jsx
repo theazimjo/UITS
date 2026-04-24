@@ -9,6 +9,8 @@ import Skeleton from '../components/common/Skeleton';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
 import { updateStudent, syncStudents, sendNotifications } from '../services/api';
+import Modal from '../components/common/Modal';
+import { Edit } from 'lucide-react';
 
 const Students = () => {
   const { students: globalStudents, setStudents: setGlobalStudents, loading } = useStore();
@@ -28,6 +30,45 @@ const Students = () => {
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageData, setMessageData] = useState({ title: '', message: '' });
   const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Edit state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    phone: '',
+    parentPhone: '',
+    schoolName: '',
+    externalId: '',
+    status: 'YANGI'
+  });
+
+  const handleEditClick = (student) => {
+    setEditingStudent(student);
+    setEditFormData({
+      name: student.name || '',
+      phone: student.phone || '',
+      parentPhone: student.parentPhone || '',
+      schoolName: student.schoolName || '',
+      externalId: student.externalId || '',
+      status: student.status || 'YANGI'
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateStudent = async (e) => {
+    e.preventDefault();
+    try {
+      await updateStudent(editingStudent.id, editFormData);
+      toast.success("O'quvchi ma'lumotlari yangilandi");
+      setIsEditModalOpen(false);
+      const res = await getStudents();
+      if (res.data) setGlobalStudents(res.data);
+    } catch (err) {
+      console.error('Update error:', err);
+      toast.error("Xatolik yuzaga keldi");
+    }
+  };
 
   const handleSync = async () => {
     try {
@@ -366,9 +407,21 @@ const Students = () => {
                           </div>
                         </td>
                         <td className="px-5 py-3 text-right">
-                          <button className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-black/5 dark:hover:bg-white/10 text-gray-400 hover:text-[#1d1d1f] dark:hover:text-white rounded-md transition-colors opacity-0 group-hover:opacity-100">
-                            <ChevronRight size={16} />
-                          </button>
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleEditClick(student); }}
+                              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded-md transition-all"
+                              title="Tahrirlash"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button 
+                              onClick={() => navigate(`/students/${student.id}`)}
+                              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1d1d1f] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -441,6 +494,92 @@ const Students = () => {
 
         </div>
       </div>
+
+      {/* Edit Student Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="O'quvchi ma'lumotlarini tahrirlash"
+      >
+        <form onSubmit={handleUpdateStudent} className="space-y-4">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">F.I.SH</label>
+              <input
+                type="text"
+                required
+                value={editFormData.name}
+                onChange={e => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Telefon</label>
+                <input
+                  type="text"
+                  value={editFormData.phone}
+                  onChange={e => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Ota-ona teli</label>
+                <input
+                  type="text"
+                  value={editFormData.parentPhone}
+                  onChange={e => setEditFormData(prev => ({ ...prev, parentPhone: e.target.value }))}
+                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Maktab / O'quv maskani</label>
+              <input
+                type="text"
+                value={editFormData.schoolName}
+                onChange={e => setEditFormData(prev => ({ ...prev, schoolName: e.target.value }))}
+                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Status</label>
+                <select
+                  value={editFormData.status}
+                  onChange={e => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
+                  className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                >
+                  <option value="YANGI">Yangi</option>
+                  <option value="OQIYAPTI">O'qiyapti</option>
+                  <option value="PAUZADA">Pauzada</option>
+                  <option value="BITIRGAN">Bitirgan</option>
+                  <option value="CHETLATILGAN">Chetlatilgan</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="flex-1 py-3 text-[14px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              className="flex-[2] py-3 bg-[#007aff] hover:bg-[#0062cc] text-white rounded-xl text-[14px] font-bold shadow-lg shadow-[#007aff]/20 transition-all"
+            >
+              Saqlash
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Messaging Modal */}
       {isMessageModalOpen && (

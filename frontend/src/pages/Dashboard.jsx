@@ -53,7 +53,10 @@ const Dashboard = () => {
     groupStatus: [],
     activity: [],
     totalStudents: 0,
-    activeGroups: 0
+    totalGroups: 0,
+    activeGroupsCount: 0,
+    debtorCount: 0,
+    paymentPercentage: 0
   });
   const [loadingGen, setLoadingGen] = useState(true);
 
@@ -155,6 +158,51 @@ const Dashboard = () => {
     }));
   }, [financeChartData]);
 
+  const colorStyles = {
+    blue: { bg: 'bg-[#007aff]/10', text: 'text-[#007aff]', border: 'group-hover:border-[#007aff]/30' },
+    indigo: { bg: 'bg-[#5856d6]/10', text: 'text-[#5856d6]', border: 'group-hover:border-[#5856d6]/30' },
+    emerald: { bg: 'bg-[#34c759]/10', text: 'text-[#34c759]', border: 'group-hover:border-[#34c759]/30' },
+    purple: { bg: 'bg-[#af52de]/10', text: 'text-[#af52de]', border: 'group-hover:border-[#af52de]/30' },
+    rose: { bg: 'bg-[#ff3b30]/10', text: 'text-[#ff3b30]', border: 'group-hover:border-[#ff3b30]/30' },
+    orange: { bg: 'bg-[#ff9500]/10', text: 'text-[#ff9500]', border: 'group-hover:border-[#ff9500]/30' },
+    cyan: { bg: 'bg-[#32ade6]/10', text: 'text-[#32ade6]', border: 'group-hover:border-[#32ade6]/30' },
+  };
+
+  const generalStatsList = [
+    {
+      label: "Jami o'quvchilar",
+      value: (loading || loadingGen) ? <Skeleton width="60px" height="32px" /> : genStats.totalStudents,
+      icon: <UsersRound size={24} />,
+      color: 'blue',
+      sub: "Ro'yxatdan o'tgan barcha o'quvchilar",
+      trend: 'up'
+    },
+    {
+      label: 'Guruhlar soni',
+      value: (loading || loadingGen) ? <Skeleton width="60px" height="32px" /> : genStats.totalGroups,
+      icon: <Users size={24} />,
+      color: 'cyan',
+      sub: `${genStats.activeGroupsCount} ta faol guruh`,
+      trend: 'neutral'
+    },
+    {
+      label: 'Qarzdorlar',
+      value: (loading || loadingGen) ? <Skeleton width="60px" height="32px" /> : genStats.debtorCount,
+      icon: <AlertCircle size={24} />,
+      color: 'rose',
+      sub: "To'lovni to'liq qilmaganlar",
+      trend: genStats.debtorCount > 0 ? 'down' : 'up'
+    },
+    {
+      label: "To'lov foizi",
+      value: (loading || loadingGen) ? <Skeleton width="80px" height="32px" /> : `${genStats.paymentPercentage}%`,
+      icon: <TrendingUp size={24} />,
+      color: 'orange',
+      sub: "Shu oy uchun tushum foizi",
+      trend: genStats.paymentPercentage >= 70 ? 'up' : 'neutral'
+    }
+  ];
+
   const statsList = [
     {
       label: attStats.isHistory ? `Davomat (${formatDateLabel(selectedDate)})` : 'Bugun kutilgan',
@@ -190,13 +238,6 @@ const Dashboard = () => {
       trend: 'up'
     },
   ];
-
-  const colorStyles = {
-    blue: { bg: 'bg-[#007aff]/10', text: 'text-[#007aff]', border: 'group-hover:border-[#007aff]/30' },
-    indigo: { bg: 'bg-[#5856d6]/10', text: 'text-[#5856d6]', border: 'group-hover:border-[#5856d6]/30' },
-    emerald: { bg: 'bg-[#34c759]/10', text: 'text-[#34c759]', border: 'group-hover:border-[#34c759]/30' },
-    purple: { bg: 'bg-[#af52de]/10', text: 'text-[#af52de]', border: 'group-hover:border-[#af52de]/30' },
-  };
 
   return (
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f]">
@@ -249,47 +290,52 @@ const Dashboard = () => {
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 p-6 lg:p-10">
-        <div className="max-w-[1700px] mx-auto space-y-10 animate-fade-in pb-10">
+        <div className="max-w-[1700px] mx-auto space-y-12 animate-fade-in pb-10">
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-            {statsList.map((stat, i) => (
-              <div
-                key={i}
-                onClick={stat.onClick}
-                className={`bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group hover:-translate-y-1 shadow-sm ${colorStyles[stat.color].border} ${stat.onClick ? 'cursor-pointer hover:shadow-lg' : ''}`}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="space-y-1">
-                    <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
-                    <h3 className="text-3xl font-bold text-black dark:text-white tracking-tight tabular-nums">{stat.value}</h3>
-                  </div>
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
-                    {stat.icon}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200/50 dark:border-white/5">
-                  <div className="flex items-center gap-2">
-                    <div className={`flex items-center justify-center w-5 h-5 rounded-full ${stat.trend === 'up' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-gray-500/10 text-gray-400'}`}>
-                      <TrendingUp size={12} strokeWidth={3} />
+          {/* Section: Bugungi Ko'rsatkichlar */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 px-2">
+              <div className="w-1 h-6 bg-[#34c759] rounded-full" />
+              <h3 className="text-xl font-bold text-[#1d1d1f] dark:text-white">Bugungi ko'rsatkichlar</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+              {statsList.map((stat, i) => (
+                <div
+                  key={i}
+                  onClick={stat.onClick}
+                  className={`bg-white/60 dark:bg-black/20 backdrop-blur-md p-6 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group hover:-translate-y-1 shadow-sm ${colorStyles[stat.color].border} ${stat.onClick ? 'cursor-pointer hover:shadow-lg' : ''}`}
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="space-y-1">
+                      <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
+                      <h3 className="text-3xl font-bold text-black dark:text-white tracking-tight tabular-nums">{stat.value}</h3>
                     </div>
-                    <span className="text-[11px] font-medium text-gray-500">
-                      {stat.sub}
-                    </span>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
+                      {stat.icon}
+                    </div>
                   </div>
-                  {stat.onClick && <ExternalLink size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />}
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200/50 dark:border-white/5">
+                    <div className="flex items-center gap-2">
+                      <div className={`flex items-center justify-center w-5 h-5 rounded-full ${stat.trend === 'up' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-gray-500/10 text-gray-400'}`}>
+                        <TrendingUp size={12} strokeWidth={3} />
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-500">
+                        {stat.sub}
+                      </span>
+                    </div>
+                    {stat.onClick && <ExternalLink size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Middle Row: Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             {/* Financial Dynamics Chart */}
-            {/* Financial Dynamics Chart - Expanded to Full Width */}
-            <div className="lg:col-span-3 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
+            <div className="lg:col-span-2 bg-white/60 dark:bg-black/20 backdrop-blur-md p-8 rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col h-[400px]">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2 text-[#1d1d1f] dark:text-white">
@@ -374,6 +420,30 @@ const Dashboard = () => {
                   </ResponsiveContainer>
                 )}
               </div>
+            </div>
+
+            {/* General Stats - Now positioned to the right of the chart */}
+            <div className="lg:col-span-1 grid grid-cols-2 gap-4">
+              {generalStatsList.map((stat, i) => (
+                <div
+                  key={i}
+                  className={`bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group hover:-translate-y-1 shadow-sm flex flex-col justify-between ${colorStyles[stat.color].border}`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
+                      {React.cloneElement(stat.icon, { size: 16 })}
+                    </div>
+                    <div className={`flex items-center justify-center w-5 h-5 rounded-full ${stat.trend === 'up' ? 'bg-[#34c759]/10 text-[#34c759]' : stat.trend === 'down' ? 'bg-rose-500/10 text-rose-500' : 'bg-gray-500/10 text-gray-400'}`}>
+                      {stat.trend === 'up' ? <TrendingUp size={10} strokeWidth={3} /> : stat.trend === 'down' ? <ArrowDownRight size={10} strokeWidth={3} /> : <Activity size={10} strokeWidth={3} />}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight truncate">{stat.label}</p>
+                    <h3 className="text-xl font-bold text-black dark:text-white tracking-tight tabular-nums mt-0.5">{stat.value}</h3>
+                    <p className="text-[9px] text-gray-400 mt-1 line-clamp-1">{stat.sub}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

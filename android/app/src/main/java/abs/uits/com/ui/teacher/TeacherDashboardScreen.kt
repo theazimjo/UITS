@@ -18,20 +18,19 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import abs.uits.com.ui.teacher.components.*
 import abs.uits.com.ui.teacher.segments.*
+import androidx.compose.animation.*
+import androidx.navigation.NavController
+import abs.uits.com.ui.navigation.Screen
 
-sealed class TeacherTab(val route: String, val label: String, val icon: ImageVector) {
-    object Home : TeacherTab("home", "Asosiy", Icons.Default.Home)
-    object Students : TeacherTab("students", "O'quvchilar", Icons.Default.Groups)
-    object Finance : TeacherTab("finance", "Finance", Icons.Default.Payments)
-    object Settings : TeacherTab("settings", "Sozlamalar", Icons.Default.Settings)
-}
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun TeacherDashboardScreen(
-    onLogout: () -> Unit
-) {
-    var selectedTab by remember { mutableStateOf<TeacherTab>(TeacherTab.Home) }
-    val teacherViewModel: TeacherViewModel = viewModel(
+    onLogout: () -> Unit,
+    navController: NavController,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    teacherViewModel: TeacherViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 @Suppress("UNCHECKED_CAST")
@@ -39,6 +38,12 @@ fun TeacherDashboardScreen(
             }
         }
     )
+) {
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        teacherViewModel.fetchAllData()
+    }
+
+    val selectedTab by teacherViewModel.selectedTab.collectAsState()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -63,7 +68,7 @@ fun TeacherDashboardScreen(
                                 val isSelected = selectedTab == tab
                                 NavigationBarItem(
                                     selected = isSelected,
-                                    onClick = { selectedTab = tab },
+                                    onClick = { teacherViewModel.selectTab(tab) },
                                     icon = { 
                                         Icon(
                                             tab.icon, 
@@ -96,7 +101,12 @@ fun TeacherDashboardScreen(
         ) {
             when (selectedTab) {
                 is TeacherTab.Home -> TeacherHomeSegment(teacherViewModel)
-                is TeacherTab.Students -> TeacherStudentsSegment(teacherViewModel)
+                is TeacherTab.Students -> TeacherStudentsSegment(
+                    teacherViewModel,
+                    navController,
+                    sharedTransitionScope,
+                    animatedVisibilityScope
+                )
                 is TeacherTab.Finance -> TeacherFinanceSegment(teacherViewModel)
                 is TeacherTab.Settings -> TeacherSettingsSegment(teacherViewModel, onLogout)
             }

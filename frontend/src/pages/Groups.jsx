@@ -272,9 +272,15 @@ const Groups = () => {
                   {/* Header */}
                   <div className="mb-4 pr-12">
                     <h4 className="text-[16px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] mb-1 leading-tight group-hover:text-[#007aff] transition-colors">{g.name}</h4>
-                    <div className="flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-gray-400">
-                      <BookOpen size={12} />
-                      <span>{g.course?.name || 'Yo\'nalish yo\'q'}</span>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+                        <BookOpen size={12} />
+                        <span>{g.course?.name || 'Yo\'nalish yo\'q'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[12px] text-[#007aff] font-medium">
+                        <Users size={12} />
+                        <span>{g.enrollments?.filter(en => en.status === 'ACTIVE').length || 0} ta o'quvchi</span>
+                      </div>
                     </div>
                   </div>
 

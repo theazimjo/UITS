@@ -25,7 +25,7 @@ export class DashboardService {
     @InjectRepository(Enrollment) private readonly enrollmentRepo: Repository<Enrollment>,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(Student) private readonly studentRepo: Repository<Student>,
-  ) {}
+  ) { }
 
   private parseDateUz(dateStr?: string) {
     let date: Date;
@@ -37,7 +37,7 @@ export class DashboardService {
       // Use local date converted to UTC midnight for consistency if no string provided
       date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
     }
-    
+
     const yyyymmdd = date.toISOString().slice(0, 10);
     const yyyymm = yyyymmdd.slice(0, 7);
     const dayNames = ['Yaksh', 'Dush', 'Sesh', 'Chor', 'Paysh', 'Jum', 'Shan'];
@@ -59,27 +59,29 @@ export class DashboardService {
       const d = new Date(targetDate);
       d.setMonth(d.getMonth() - i);
       const mStr = d.toISOString().slice(0, 7);
-      
+
       const count = students.filter(s => s.createdAt && s.createdAt.toISOString().slice(0, 7) === mStr).length;
       studentGrowth.push({ month: mStr, count });
     }
 
     // 2. Group Status Distribution
-    const allGroups = await this.groupRepo.find();
+    const allGroups = await this.groupRepo.find({
+      relations: ['enrollments', 'enrollments.student']
+    });
     const groupStatus = [
       { name: 'Faol', value: allGroups.filter(g => g.status === GroupStatus.ACTIVE).length },
       { name: 'Kutilmoqda', value: allGroups.filter(g => g.status === GroupStatus.WAITING).length },
       { name: 'Yakunlangan', value: allGroups.filter(g => g.status === GroupStatus.COMPLETED).length },
     ];
 
-    
+
     // For payments, always take the most recent 20 globally (as requested)
     const recentPayments = await this.paymentRepo.createQueryBuilder('p')
       .leftJoinAndSelect('p.student', 'student')
       .orderBy('p.paymentDate', 'DESC')
       .take(20)
       .getMany();
-    
+
     // For students, always find most recent 20 globally (as requested for activities)
     const filteredStudents = await this.studentRepo.find({
       order: { createdAt: 'DESC' },
@@ -108,12 +110,71 @@ export class DashboardService {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
 
+    // 3. New Advanced Stats for User Request
+    const activeGroups = allGroups.filter(g => g.status === GroupStatus.ACTIVE);
+
+    // Calculate Monthly Expected Revenue
+    let totalExpectedMonth = 0;
+    activeGroups.forEach(g => {
+      const activeEnrollments = (g.enrollments || []).filter(e => e.status === EnrollmentStatus.ACTIVE);
+      totalExpectedMonth += (Number(g.monthlyPrice) || 0) * activeEnrollments.length;
+    });
+
+    // Calculate Actual Revenue for this month
+    const monthPayments = await this.paymentRepo.find({
+      where: { month: targetMonthStr },
+      relations: ['student', 'group']
+    });
+
+    const totalActualMonth = monthPayments.reduce((acc, p) => {
+      const amt = Number(p.amount) || 0;
+      const disc = Number(p.discount) || 0;
+      const pen = Number(p.penalty) || 0;
+      // Only count positive payments as revenue for this metric
+      return amt > 0 ? acc + (amt - disc + pen) : acc;
+    }, 0);
+
+    const paymentPercentage = totalExpectedMonth > 0
+      ? Math.min(100, Math.round((totalActualMonth / totalExpectedMonth) * 100))
+      : 0;
+
+    // Calculate Debtor Count
+    // A debtor is an active student in an active group who hasn't paid the full monthlyPrice for the targetMonthStr
+    // keyed by studentId-groupId to support multiple groups per student
+    const studentGroupPaymentMap = new Map<string, number>();
+    monthPayments.forEach(p => {
+      if (p.student && p.group && p.amount > 0) {
+        const key = `${p.student.id}-${p.group.id}`;
+        const current = studentGroupPaymentMap.get(key) || 0;
+        studentGroupPaymentMap.set(key, current + (Number(p.amount) - Number(p.discount) + Number(p.penalty)));
+      }
+    });
+
+    let debtorCount = 0;
+    activeGroups.forEach(g => {
+      const price = Number(g.monthlyPrice) || 0;
+      (g.enrollments || []).forEach(e => {
+        if (e.status === EnrollmentStatus.ACTIVE && e.student) {
+          const key = `${e.student.id}-${g.id}`;
+          const paid = studentGroupPaymentMap.get(key) || 0;
+          if (paid < price) {
+            debtorCount++;
+          }
+        }
+      });
+    });
+
     return {
       studentGrowth,
       groupStatus,
       activity: finalActivity,
       totalStudents: students.length,
-      activeGroups: allGroups.filter(g => g.status === GroupStatus.ACTIVE).length
+      totalGroups: allGroups.length,
+      activeGroupsCount: activeGroups.length,
+      debtorCount,
+      paymentPercentage,
+      totalExpectedMonth,
+      totalActualMonth
     };
   }
 
@@ -131,11 +192,11 @@ export class DashboardService {
       relations: ['enrollments', 'enrollments.student']
     });
 
-    const validGroups = relevantGroups.filter(g => 
+    const validGroups = relevantGroups.filter(g =>
       g.status === GroupStatus.ACTIVE || g.status === GroupStatus.WAITING
     );
     const groupsOnTargetDay = validGroups.filter(g => g.days && g.days.includes(targetDayUz));
-    
+
     let totalExpected = 0;
     let arrivedCount = 0;
     let finalStudents: any[] = [];
@@ -156,7 +217,7 @@ export class DashboardService {
     const ids = ['1', '2', '3', '4', '5'];
     try {
       const attendanceResults = await Promise.all(
-        ids.map(id => 
+        ids.map(id =>
           axios.get(`https://schoolmanage.uz/api/teacher/classroom/?date=${targetDateStr}`, {
             headers: { 'X-Employee-ID': id },
             httpsAgent,
@@ -178,7 +239,7 @@ export class DashboardService {
             });
 
             const isPresent = arrivalData?.today_status?.toLowerCase() === 'present';
-            
+
             if (!uniqueStudentMap.has(e.student.id)) {
               const arrTime = arrivalData?.arrived_at;
               const depTime = arrivalData?.left_at;
@@ -220,16 +281,16 @@ export class DashboardService {
     const dayPayments = await this.paymentRepo.createQueryBuilder('p')
       .where('p.paymentDate = :targetDate', { targetDate: targetDateStr })
       .getMany();
-    
+
     // Sum only non-expense payments for revenue or combined? 
     // Usually revenue = sum(amount - discount + penalty)
-    const dayRevenue = dayPayments.reduce((acc, p) => 
+    const dayRevenue = dayPayments.reduce((acc, p) =>
       acc + (parseSafe(p.amount) - parseSafe(p.discount) + parseSafe(p.penalty)), 0);
 
     const monthPayments = await this.paymentRepo.createQueryBuilder('p')
       .where('p.month = :targetMonth', { targetMonth })
       .getMany();
-    const totalMonthRevenue = monthPayments.reduce((acc, p) => 
+    const totalMonthRevenue = monthPayments.reduce((acc, p) =>
       acc + (parseSafe(p.amount) - parseSafe(p.discount) + parseSafe(p.penalty)), 0);
 
     return {

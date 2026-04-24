@@ -7,6 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -51,10 +53,14 @@ fun DashboardStatCard(label: String, value: String, modifier: Modifier = Modifie
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun StudentListItem(
     student: TeacherStudentResponse,
-    staggerIndex: Int = 0
+    staggerIndex: Int = 0,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    onClick: () -> Unit
 ) {
     val animatedAlpha = remember { Animatable(0f) }
     val animatedScale = remember { Animatable(0.95f) }
@@ -67,72 +73,92 @@ fun StudentListItem(
         launch { animatedOffset.animateTo(0f, tween(400, easing = EaseOutQuart)) }
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                alpha = animatedAlpha.value
-                scaleX = animatedScale.value
-                scaleY = animatedScale.value
-                translationY = animatedOffset.value
-            }
-            .padding(vertical = 12.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            shape = CircleShape,
-            modifier = Modifier.size(44.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
+    with(sharedTransitionScope) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .graphicsLayer {
+                    // Only apply stagger if we are not in a transition or use a different trigger
+                    alpha = animatedAlpha.value
+                    translationY = animatedOffset.value
+                }
+                .padding(vertical = 12.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (student.photo != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(student.photo)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape)
-                )
-            } else {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        student.name.take(1).uppercase(),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+            Surface(
+                shape = CircleShape,
+                modifier = Modifier
+                    .size(44.dp)
+                    .sharedElement(
+                        rememberSharedContentState(key = "photo-${student.id}"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = { _, _ -> 
+                            spring(
+                                dampingRatio = 0.8f, // Subtle bounce
+                                stiffness = 380f     // Smooth flow
+                            )
+                        }
+                    ),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 0.dp
+            ) {
+                if (student.photo != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(student.photo)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
                     )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            student.name.take(1).uppercase(),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                    }
                 }
             }
-        }
-        
-        Spacer(modifier = Modifier.width(14.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                student.name, 
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.5).sp
-                ),
-                fontSize = 17.sp,
-                color = Color(0xFF1D1D1F) // iOS Dynamic Black
+            
+            Spacer(modifier = Modifier.width(14.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    student.name, 
+                    modifier = Modifier.sharedBounds(
+                        rememberSharedContentState(key = "name-${student.id}"),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    ),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.5).sp
+                    ),
+                    fontSize = 17.sp,
+                    color = Color(0xFF1D1D1F) // iOS Dynamic Black
+                )
+                Text(
+                    student.groups.joinToString { it.name }, 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = Color(0xFF8E8E93), // iOS Secondary Label Color
+                    letterSpacing = 0.sp
+                )
+            }
+            
+            Icon(
+                Icons.Default.ChevronRight, 
+                contentDescription = null, 
+                tint = Color(0xFFC4C4C6), // iOS Separator/Chevron Color
+                modifier = Modifier.size(16.dp)
             )
-            Text(
-                student.groups.joinToString { it.name }, 
-                style = MaterialTheme.typography.labelSmall, 
-                color = Color(0xFF8E8E93), // iOS Secondary Label Color
-                letterSpacing = 0.sp
-            )
         }
-        
-        Icon(
-            Icons.Default.ChevronRight, 
-            contentDescription = null, 
-            tint = Color(0xFFC4C4C6), // iOS Separator/Chevron Color
-            modifier = Modifier.size(16.dp)
-        )
     }
 }
 

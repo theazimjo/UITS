@@ -562,6 +562,10 @@ const StaffDetail = () => {
                               <div className="flex items-center gap-2"><Calendar size={12} className="opacity-50" /> <span>{g.days.join(', ')}</span></div>
                               <div className="flex items-center gap-2"><Clock size={12} className="opacity-50" /> <span>{g.startTime} — {g.endTime}</span></div>
                               <div className="flex items-center gap-2"><MapPin size={12} className="opacity-50" /> <span>{g.room?.name || 'Belgilanmagan'}</span></div>
+                              <div className="flex items-center gap-2 text-[#007aff] font-medium">
+                                <Users size={12} /> 
+                                <span>{allStudents.filter(s => s.groupName === g.name && s.enrollmentStatus === 'ACTIVE').length} ta o'quvchi</span>
+                              </div>
                             </div>
                           </div>
                         ))}

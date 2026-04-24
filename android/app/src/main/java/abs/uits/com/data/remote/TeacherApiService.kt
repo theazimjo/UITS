@@ -2,6 +2,7 @@ package abs.uits.com.data.remote
 
 import abs.uits.com.data.model.*
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface TeacherApiService {
@@ -14,6 +15,21 @@ interface TeacherApiService {
     @GET("teacher/my-students")
     suspend fun getMyStudents(): List<TeacherStudentResponse>
 
+    @GET("students/{id}")
+    suspend fun getStudentById(@Path("id") id: Int): TeacherStudentResponse
+
+    @GET("payments/student/{id}")
+    suspend fun getPaymentsByStudent(@Path("id") id: Int): List<TeacherPaymentItem>
+
+    @GET("students/{id}/exams")
+    suspend fun getStudentExams(@Path("id") id: Int): List<StudentExamResult>
+
     @GET("teacher/my-finance")
     suspend fun getMyFinance(@Query("month") month: String? = null): TeacherFinanceResponse
+
+    @GET("students/{id}/attendance")
+    suspend fun getStudentAttendance(
+        @Path("id") id: Int,
+        @Query("date") date: String
+    ): StudentAttendanceResponse
 }

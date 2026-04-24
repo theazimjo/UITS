@@ -21,11 +21,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.animation.SharedTransitionLayout
 import abs.uits.com.data.local.TokenManager
 import abs.uits.com.data.remote.NetworkModule
 import abs.uits.com.data.repository.AuthRepository
@@ -68,15 +69,11 @@ class MainActivity : ComponentActivity() {
                     val role = tokenManager.role.first()
 
                     if (token != null && role != null) {
-                        val destination = when (role.lowercase()) {
-                            "admin" -> Screen.AdminDashboard.route
-                            "teacher" -> Screen.TeacherDashboard.route
-                            else -> Screen.ParentDashboard.route
-                        }
-                        startRoute = destination
+                        // 1. Set start route to Splash to hide eventual flicker
+                        startRoute = Screen.Splash.route
                         showRevealOverlay = true
                         
-                        // Premium Coordinated Entry for the logo
+                        // 2. Premium Coordinated Entry for the logo
                         launch {
                             revealTextAlpha.animateTo(1f, tween(1000, easing = EaseOutQuart))
                         }
@@ -84,14 +81,26 @@ class MainActivity : ComponentActivity() {
                             revealTextScale.animateTo(1f, tween(1200, easing = EaseOutBack))
                         }
                         
-                        // Wait long enough for Dashboard to settle and user to see the logo
                         delay(2000)
                         
-                        // Execute high-end Curtin Reveal with premium easing
+                        // 3. Navigate to actual dashboard to trigger its internal enterTransition
+                        val destination = when (role.lowercase()) {
+                            "admin" -> Screen.AdminDashboard.route
+                            "teacher" -> Screen.TeacherDashboard.route
+                            else -> Screen.ParentDashboard.route
+                        }
+                        navController.navigate(destination) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                        
+                        // 4. Give the dashboard a tiny bit of time to start its transition before lifting the curtain
+                        delay(100)
+                        
+                        // 5. Execute high-end Curtin Reveal
                         revealOffsetY.animateTo(
                             targetValue = -3000f, 
                             animationSpec = tween(
-                                durationMillis = 2000, 
+                                durationMillis = 1800, 
                                 easing = CubicBezierEasing(0.6f, 0.0f, 0.1f, 1.0f)
                             )
                         )
@@ -110,81 +119,118 @@ class MainActivity : ComponentActivity() {
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Layer 0: Main Navigation
                     startRoute?.let { initialRoute ->
-                        NavHost(
-                            navController = navController,
-                            startDestination = initialRoute
-                        ) {
-                            composable(
-                                route = Screen.Login.route,
-                                exitTransition = {
-                                    fadeOut(animationSpec = tween(600)) + scaleOut(targetScale = 0.9f, animationSpec = tween(600))
+                        val teacherViewModel: abs.uits.com.ui.teacher.TeacherViewModel = viewModel(
+                            factory = object : ViewModelProvider.Factory {
+                                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                    @Suppress("UNCHECKED_CAST")
+                                    return abs.uits.com.ui.teacher.TeacherViewModel() as T
                                 }
+                            }
+                        )
+                        
+                        @OptIn(ExperimentalSharedTransitionApi::class)
+                        SharedTransitionLayout {
+                            NavHost(
+                                navController = navController,
+                                startDestination = initialRoute
                             ) {
-                                val loginViewModel: LoginViewModel = viewModel(
-                                    factory = object : ViewModelProvider.Factory {
-                                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                                            @Suppress("UNCHECKED_CAST")
-                                            return LoginViewModel(authRepository) as T
-                                        }
+                                composable(Screen.Splash.route) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.White))
+                                }
+
+                                composable(
+                                    route = Screen.Login.route,
+                                    exitTransition = {
+                                        fadeOut(animationSpec = tween(600)) + scaleOut(targetScale = 0.9f, animationSpec = tween(600))
                                     }
-                                )
+                                ) {
+                                    val loginViewModel: LoginViewModel = viewModel(
+                                        factory = object : ViewModelProvider.Factory {
+                                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                                @Suppress("UNCHECKED_CAST")
+                                                return LoginViewModel(authRepository) as T
+                                            }
+                                        }
+                                    )
+                                    
+                                    LoginScreen(
+                                        viewModel = loginViewModel,
+                                        onLoginSuccess = { role ->
+                                            val destination = when (role.lowercase()) {
+                                                "admin" -> Screen.AdminDashboard.route
+                                                "teacher" -> Screen.TeacherDashboard.route
+                                                else -> Screen.ParentDashboard.route
+                                            }
+                                            navController.navigate(destination) {
+                                                popUpTo(Screen.Login.route) { inclusive = true }
+                                            }
+                                        }
+                                    )
+                                }
                                 
-                                LoginScreen(
-                                    viewModel = loginViewModel,
-                                    onLoginSuccess = { role ->
-                                        val destination = when (role.lowercase()) {
-                                            "admin" -> Screen.AdminDashboard.route
-                                            "teacher" -> Screen.TeacherDashboard.route
-                                            else -> Screen.ParentDashboard.route
-                                        }
-                                        navController.navigate(destination) {
-                                            popUpTo(Screen.Login.route) { inclusive = true }
-                                        }
+                                composable(
+                                    route = Screen.AdminDashboard.route,
+                                    enterTransition = {
+                                        slideInVertically(initialOffsetY = { it }, animationSpec = tween(800, easing = EaseOutQuart)) + fadeIn(tween(800))
                                     }
-                                )
-                            }
-                            
-                            composable(
-                                route = Screen.AdminDashboard.route,
-                                enterTransition = {
-                                    slideInVertically(initialOffsetY = { it }, animationSpec = tween(800, easing = EaseOutQuart)) + fadeIn(tween(800))
+                                ) { DashboardPlaceholder("Admin") }
+                                
+                                composable(
+                                    route = Screen.TeacherDashboard.route,
+                                    enterTransition = {
+                                        slideInVertically(initialOffsetY = { it }, animationSpec = tween(800, easing = EaseOutQuart)) + fadeIn(tween(800))
+                                    }
+                                ) { 
+                                    TeacherDashboardScreen(
+                                        onLogout = {
+                                            lifecycleScope.launch {
+                                                teacherViewModel.clearData()
+                                                tokenManager.clear()
+                                                navController.navigate(Screen.Login.route) {
+                                                    popUpTo(0) { inclusive = true }
+                                                }
+                                            }
+                                        },
+                                        navController = navController,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@composable,
+                                        teacherViewModel = teacherViewModel
+                                    )
                                 }
-                            ) { DashboardPlaceholder("Admin") }
-                            
-                            composable(
-                                route = Screen.TeacherDashboard.route,
-                                enterTransition = {
-                                    slideInVertically(initialOffsetY = { it }, animationSpec = tween(800, easing = EaseOutQuart)) + fadeIn(tween(800))
+
+                                composable(
+                                    route = Screen.StudentDetail.route,
+                                    arguments = listOf(navArgument("studentId") { type = NavType.IntType }),
+                                    enterTransition = { fadeIn(tween(400)) },
+                                    exitTransition = { fadeOut(tween(400)) }
+                                ) { backStackEntry ->
+                                    val studentId = backStackEntry.arguments?.getInt("studentId") ?: 0
+                                    abs.uits.com.ui.teacher.StudentDetailScreen(
+                                        studentId = studentId,
+                                        onBack = { navController.popBackStack() },
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@composable,
+                                        teacherViewModel = teacherViewModel
+                                    )
                                 }
-                            ) { 
-                                TeacherDashboardScreen(
-                                    onLogout = {
-                                        lifecycleScope.launch {
-                                            tokenManager.clear()
-                                            navController.navigate(Screen.Login.route) {
-                                                popUpTo(0) { inclusive = true }
+                                
+                                composable(
+                                    route = Screen.ParentDashboard.route,
+                                    enterTransition = {
+                                        slideInVertically(initialOffsetY = { it }, animationSpec = tween(800, easing = EaseOutQuart)) + fadeIn(tween(800))
+                                    }
+                                ) { 
+                                    ParentDashboardScreen(
+                                        onLogout = {
+                                            lifecycleScope.launch {
+                                                tokenManager.clear()
+                                                navController.navigate(Screen.Login.route) {
+                                                    popUpTo(0) { inclusive = true }
+                                                }
                                             }
                                         }
-                                    }
-                                )
-                            }
-                            
-                            composable(
-                                route = Screen.ParentDashboard.route,
-                                enterTransition = {
-                                    slideInVertically(initialOffsetY = { it }, animationSpec = tween(800, easing = EaseOutQuart)) + fadeIn(tween(800))
+                                    )
                                 }
-                            ) { 
-                                ParentDashboardScreen(
-                                    onLogout = {
-                                        lifecycleScope.launch {
-                                            tokenManager.clear()
-                                            navController.navigate(Screen.Login.route) {
-                                                popUpTo(0) { inclusive = true }
-                                            }
-                                        }
-                                    }
-                                )
                             }
                         }
                     }

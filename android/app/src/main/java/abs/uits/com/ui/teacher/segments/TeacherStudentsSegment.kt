@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.navigation.NavController
+import abs.uits.com.ui.navigation.Screen
 import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -21,8 +23,14 @@ import abs.uits.com.ui.teacher.TeacherViewModel
 import abs.uits.com.ui.teacher.components.StudentListItem
 import abs.uits.com.ui.teacher.components.BoxShadowBorder
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun TeacherStudentsSegment(viewModel: TeacherViewModel) {
+fun TeacherStudentsSegment(
+    viewModel: TeacherViewModel,
+    navController: NavController,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
+) {
     val students by viewModel.filteredStudents.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
@@ -110,7 +118,12 @@ fun TeacherStudentsSegment(viewModel: TeacherViewModel) {
                             val index = studentList.indexOf(student)
                             StudentListItem(
                                 student = student,
-                                staggerIndex = index.coerceAtMost(10) // Only stagger first 10 for performance
+                                staggerIndex = index.coerceAtMost(10), // Only stagger first 10 for performance
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                onClick = {
+                                    navController.navigate(Screen.StudentDetail.createRoute(student.id))
+                                }
                             )
                             if (student != studentList.lastOrNull()) {
                                 HorizontalDivider(

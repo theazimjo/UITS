@@ -1,6 +1,10 @@
 package abs.uits.com.ui.parent
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,15 +14,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,327 +70,421 @@ fun ParentDashboardScreen(
 
     val selectedChild = children.find { it.id == selectedChildId }
 
-    Scaffold(
-        topBar = {
-            Column {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .drawBehind {
+                // Layered Mesh Gradient for iOS Luminous look
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF8E2DE2).copy(alpha = 0.15f), Color.Transparent),
+                        center = Offset(size.width * 0.8f, size.height * 0.1f),
+                        radius = size.width * 1.2f
+                    )
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF4A00E0).copy(alpha = 0.12f), Color.Transparent),
+                        center = Offset(size.width * 0.2f, size.height * 0.9f),
+                        radius = size.width * 1.5f
+                    )
+                )
+            }
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
                 CenterAlignedTopAppBar(
-                    title = { 
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.White.copy(alpha = 0.8f)
+                    ),
+                    title = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("UITS CRM", fontWeight = FontWeight.Black, fontSize = 18.sp)
-                            Text("Ota-ona portali", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                            Text("UITS ACADEMY", fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = (-0.5).sp)
+                            Text("STUDENT PORTAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF007AFF), letterSpacing = 2.sp)
                         }
                     },
                     actions = {
                         IconButton(onClick = { viewModel.refresh() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Rounded.Refresh, contentDescription = "Refresh", modifier = Modifier.size(24.dp))
                         }
                         IconButton(onClick = onLogout) {
-                            Icon(Icons.Default.Logout, contentDescription = "Logout")
+                            Icon(Icons.Rounded.PowerSettingsNew, contentDescription = "Logout", tint = Color.Red, modifier = Modifier.size(24.dp))
                         }
                     }
                 )
-                if (isLoading) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                    )
-                }
             }
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.surface),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Child Selector
-            if (children.size > 1) {
-                item {
-                    Text("Farzandni tanlang", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(children) { child ->
-                            val isSelected = child.id == selectedChildId
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { viewModel.selectChild(child.id) },
-                                label = { Text(child.name) },
-                                leadingIcon = if (isSelected) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Loading Indicator
+                if (isLoading) {
+                    item {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().height(2.dp),
+                            color = Color(0xFF007AFF),
+                            trackColor = Color.Transparent
+                        )
+                    }
+                }
+
+                // Child Selection Bar (Horizontal Glass Pills)
+                if (children.size > 1) {
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(children) { child ->
+                                val isSelected = child.id == selectedChildId
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(100.dp))
+                                        .background(if (isSelected) Color(0xFF007AFF) else Color.White.copy(alpha = 0.5f))
+                                        .border(1.dp, if (isSelected) Color.Transparent else Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(100.dp))
+                                        .clickable { viewModel.selectChild(child.id) }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        child.name,
+                                        color = if (isSelected) Color.White else Color.Black,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            // Hero Card
-            item {
-                selectedChild?.let { child ->
-                    ChildHeroCard(child, attendance)
-                }
-            }
+                // Calculations for "Today"
+                val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val todayRecord = attendance.recent_attendance.find { it.date == todayStr }
+                val todayGrade = attendance.grades.find { it.date == todayStr }
+                val avgGrade = if (attendance.grades.isNotEmpty()) {
+                    attendance.grades.map { it.score.toDoubleOrNull() ?: 0.0 }.average()
+                } else 0.0
 
-            // Active Courses
-            item {
-                SectionTitle("Faol o'quv dasturlari", Icons.Default.School)
-            }
-            items(selectedChild?.enrollments?.filter { it.status == "ACTIVE" } ?: emptyList()) { enrollment ->
-                CourseCard(enrollment)
-            }
-
-            // Attendance Section
-            item {
-                SectionTitle("Batafsil Davomat", Icons.Default.CalendarToday)
-                AttendanceSummary(attendance.recent_attendance)
-            }
-
-            // Teacher Reports
-            if (attendance.grades.any { !it.comment.isNullOrBlank() }) {
+                // Hero Profile Card
                 item {
-                    SectionTitle("O'qituvchi izohlari", Icons.Default.Message)
+                    selectedChild?.let { child ->
+                        AnimatedContent(targetState = child.id) {
+                            ChildLuminousCard(child, attendance, todayRecord, todayGrade, avgGrade)
+                        }
+                    }
                 }
-                items(attendance.grades.filter { !it.comment.isNullOrBlank() }) { grade ->
-                    TeacherReportCard(grade)
-                }
-            }
 
-            // Exam Results
-            item {
-                SectionTitle("Imtihon natijalari", Icons.Default.Assessment)
-            }
-            if (exams.isEmpty()) {
-                item { EmptyState("Imtihon natijalari yo'q", Icons.Default.HistoryEdu) }
-            } else {
-                items(exams) { exam ->
-                    ExamCard(exam)
+                // Bento Metrics Row
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        AttendanceBentoCard(
+                            modifier = Modifier.weight(1f),
+                            record = todayRecord ?: attendance.recent_attendance.firstOrNull(),
+                            isToday = todayRecord != null
+                        )
+                        BentoCard(
+                            modifier = Modifier.weight(1f),
+                            title = "O'rtacha baho",
+                            value = if (avgGrade > 0) String.format("%.1f", avgGrade) else "—",
+                            icon = Icons.Rounded.BarChart,
+                            color = Color(0xFFFFCC00)
+                        )
+                    }
                 }
-            }
 
-            // Payments
-            item {
-                SectionTitle("To'lovlar tarixi", Icons.Default.Payments)
-            }
-            if (payments.isEmpty()) {
-                item { EmptyState("To'lovlar tarixi yo'q", Icons.Default.ReceiptLong) }
-            } else {
-                items(payments) { payment ->
-                    PaymentCard(payment)
+                // Courses Section
+                item { SectionHeader("O'quv guruhlari", Icons.Rounded.School) }
+                items(selectedChild?.enrollments?.filter { it.status == "ACTIVE" } ?: emptyList()) { enrollment ->
+                    PremiumCourseItem(enrollment)
                 }
-            }
 
-            // Notifications
-            item {
-                SectionTitle("Bildirishnomalar", Icons.Default.Notifications)
-            }
-            if (notifications.isEmpty()) {
-                item { EmptyState("Xabarlar yo'q", Icons.Default.NotificationsNone) }
-            } else {
-                items(notifications) { notification ->
-                    NotificationCard(notification) { viewModel.markAsRead(notification.id) }
+                // Attendance detailed
+                item { SectionHeader("Davomat tarixlari", Icons.Rounded.CalendarToday) }
+                item { DetailedAttendanceGrid(attendance.recent_attendance) }
+
+                // Teacher Reports
+                if (attendance.grades.any { !it.comment.isNullOrBlank() }) {
+                    item { SectionHeader("Izohlar", Icons.Rounded.HistoryEdu) }
+                    items(attendance.grades.filter { !it.comment.isNullOrBlank() }) { grade ->
+                        GlassTeacherComment(grade)
+                    }
                 }
-            }
-            
-            item {
-                Spacer(modifier = Modifier.height(40.dp))
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "© 2026 UITS ACADEMY CRM SYSTEM", 
-                        fontSize = 10.sp, 
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Bold
-                    )
+
+                // Payments
+                item { SectionHeader("To'lovlar", Icons.Rounded.AccountBalanceWallet) }
+                if (payments.isEmpty()) {
+                    item { IOSPlaceholder("To'lovlar mavjud emas") }
+                } else {
+                    items(payments) { payment ->
+                        PremiumPaymentItem(payment)
+                    }
                 }
-                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
 }
 
 @Composable
-fun ChildHeroCard(child: StudentResponse, attendance: AttendanceResponse) {
-    val gradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF007AFF), Color(0xFF00BFFF))
-    )
+fun ChildLuminousCard(child: StudentResponse, attendance: AttendanceResponse, todayRecord: AttendanceRecord?, todayGrade: GradeResponse?, avgGrade: Double) {
+    val successRate = if (avgGrade > 0) (avgGrade / 5.0).toFloat().coerceIn(0f, 1f) else 0.7f
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(32.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF007AFF), Color(0xFF5856D6))))
+            .padding(24.dp)
     ) {
-        Box(modifier = Modifier.background(gradient).padding(24.dp)) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Profile Avatar with Glowing Border
+                Box(contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(90.dp)) {
+                        this.drawArc(
+                            color = Color.White.copy(alpha = 0.2f),
+                            startAngle = 0f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                        this.drawArc(
+                            color = Color.White,
+                            startAngle = -90f,
+                            sweepAngle = successRate * 360f,
+                            useCenter = false,
+                            style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color.White.copy(alpha = 0.2f)),
+                            .size(70.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
                         val photoUrl = child.photo?.let {
                             if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
                         }
-                        
                         if (photoUrl != null) {
                             AsyncImage(
                                 model = photoUrl,
-                                contentDescription = child.name,
+                                contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.White)
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color.White)
                         }
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(child.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                        Text("ID: ${child.externalId ?: "Noma'lum"}", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
-                    }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    StatItem("Status", child.status ?: "O'qiydi")
-                    val avg = if (attendance.grades.isNotEmpty()) {
-                        attendance.grades.map { it.score.toDoubleOrNull() ?: 0.0 }.average()
-                    } else null
-                    StatItem("O'rtacha baxo", avg?.let { String.format("%.1f", it) } ?: "—")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StatItem(label: String, value: String) {
-    Column {
-        Text(label.uppercase(), color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text(value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
-    }
-}
-
-@Composable
-fun SectionTitle(title: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(title.uppercase(), fontWeight = FontWeight.Black, fontSize = 13.sp, color = Color.Gray, letterSpacing = 1.sp)
-    }
-}
-
-@Composable
-fun CourseCard(enrollment: EnrollmentResponse) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
-        ListItem(
-            headlineContent = { Text(enrollment.group?.course?.name ?: "Kurs", fontWeight = FontWeight.Bold) },
-            supportingContent = { Text(enrollment.group?.name ?: "Guruh") },
-            trailingContent = { 
-                Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        enrollment.status, 
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun AttendanceSummary(records: List<AttendanceRecord>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            // Status Grid (Last 30 days)
-            Text(
-                "So'nggi 30 kunlik holat", 
-                fontSize = 12.sp, 
-                fontWeight = FontWeight.Bold, 
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            
-            // Simple grid of dots
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // We show 30 slots, filling with real data or empty
-                repeat(30) { index ->
-                    val record = records.getOrNull(index)
-                    val color = when {
-                        record == null -> Color.LightGray.copy(alpha = 0.3f)
-                        record.status_display == "Kelgan" -> Color(0xFF4CAF50)
-                        else -> Color(0xFFF44336)
+                Column {
+                    Text(child.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
+                    Surface(
+                        color = Color.White.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(100.dp)
+                    ) {
+                        Text(
+                            "O'quvchi ID: ${child.externalId ?: "N/A"}",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                        )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(color)
-                    )
                 }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Detailed List
-            if (records.isEmpty()) {
-                Text("Hali davomat qayd etilmagan", fontSize = 14.sp, color = Color.Gray)
-            } else {
-                records.take(10).forEach { record ->
-                    AttendanceSessionCard(record)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                CompactStat("HOLATI", child.status?.uppercase() ?: "FAOL")
+                CompactStat("GURUHLAR", "${child.enrollments.size} TA")
+                CompactStat("BUGUNGI BAXO", todayGrade?.score ?: "—")
             }
         }
     }
 }
 
 @Composable
-fun AttendanceSessionCard(record: AttendanceRecord) {
-    val isPresent = record.status_display == "Kelgan"
-    val color = if (isPresent) Color(0xFF4CAF50) else Color(0xFFF44336)
-    
-    Surface(
-        color = color.copy(alpha = 0.05f),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.1f))
+fun CompactStat(label: String, value: String) {
+    Column {
+        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun AttendanceBentoCard(modifier: Modifier, record: AttendanceRecord?, isToday: Boolean) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White.copy(alpha = 0.7f))
+            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+            .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (isToday) "BUGUN" else (record?.date?.takeLast(5) ?: "SANA"),
+                    color = if (isToday) Color(0xFF007AFF) else Color.Gray,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Keldi", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(
+                record?.arrived_at ?: "-- : --",
+                color = Color.Black,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("ketdi", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(
+                record?.left_at ?: "-- : --",
+                color = Color.Black,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+}
+
+@Composable
+fun BentoCard(modifier: Modifier, title: String, value: String, icon: ImageVector, color: Color) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White.copy(alpha = 0.7f))
+            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+            .padding(16.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(value, color = Color.Black, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(title, color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun SectionHeader(title: String, icon: ImageVector) {
+    Row(
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(title.uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.Gray, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+fun PremiumCourseItem(enrollment: EnrollmentResponse) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White.copy(alpha = 0.7f))
+            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF007AFF).copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.AutoStories, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.size(24.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(record.date, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(record.status_display ?: "Noma'lum", color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(enrollment.group?.course?.name ?: "Kurs", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Text(enrollment.group?.name ?: "Guruh", color = Color.Gray, fontSize = 12.sp)
+            }
+            Surface(
+                color = Color(0xFF34C759).copy(alpha = 0.15f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    enrollment.status,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF34C759)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DetailedAttendanceGrid(records: List<AttendanceRecord>) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.Black.copy(alpha = 0.03f))
+            .padding(16.dp)
+    ) {
+        Column {
+            Text("DAVOMAT HEATMAP (30 KUN)", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color.Gray)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Grid flow (Stable nested loop)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                (0 until 30).chunked(10).forEach { rowIndices ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        rowIndices.forEach { index ->
+                            val record = records.getOrNull(index)
+                            val status = record?.status_display
+                            val color = when (status) {
+                                "Kelgan" -> Color(0xFF34C759)
+                                null -> Color.White.copy(alpha = 0.3f)
+                                else -> Color(0xFFFF3B30)
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(color)
+                            )
+                        }
+                    }
+                }
             }
             
-            if (isPresent) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TimeInfo("IN", record.arrived_at ?: "--:--", Icons.Default.Login)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    TimeInfo("OUT", record.left_at ?: "--:--", Icons.Default.Logout)
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Recent labels
+            records.take(3).forEach { record ->
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val isPresent = record.status_display == "Kelgan"
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30)))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(record.date, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(record.status_display ?: "N/A", fontSize = 12.sp, color = if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30), fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -385,130 +492,69 @@ fun AttendanceSessionCard(record: AttendanceRecord) {
 }
 
 @Composable
-fun TimeInfo(label: String, time: String, icon: ImageVector) {
-    Column(horizontalAlignment = Alignment.End) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(10.dp), tint = Color.Gray)
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(label, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-        }
-        Text(time, fontSize = 14.sp, fontWeight = FontWeight.Black)
-    }
-}
-
-@Composable
-fun TeacherReportCard(grade: GradeResponse) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.03f))
+fun GlassTeacherComment(grade: GradeResponse) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White.copy(alpha = 0.7f))
+            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+            .padding(20.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.FormatQuote, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                }
+                Icon(Icons.Rounded.Message, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color(0xFF5856D6))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(grade.teacher?.name ?: "O'qituvchi", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text(grade.group?.course?.name ?: "Kurs", fontSize = 10.sp, color = Color.Gray)
+                    Text(grade.date, fontSize = 10.sp, color = Color.Gray)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                grade.comment ?: "", 
-                fontSize = 14.sp, 
-                lineHeight = 20.sp, 
+                grade.comment ?: "",
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
                 fontWeight = FontWeight.Medium,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                color = Color.DarkGray
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(grade.date, fontSize = 10.sp, color = Color.Gray, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.End)
         }
     }
 }
 
+
 @Composable
-fun ExamCard(exam: ExamResponse) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
+fun PremiumPaymentItem(payment: PaymentResponse) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.7f))
+            .padding(16.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF34C759).copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(exam.score, fontWeight = FontWeight.Black, fontSize = 20.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Icon(Icons.Rounded.ReceiptLong, contentDescription = null, tint = Color(0xFF34C759))
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(exam.group?.course?.name ?: "Imtihon", fontWeight = FontWeight.Bold)
-                Text("${exam.date} • ${exam.type ?: "Oylik"}", fontSize = 12.sp, color = Color.Gray)
+            Column(modifier = Modifier.weight(1f)) {
+                Text("${payment.amount} UZS", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Text("${payment.date} • ${payment.method ?: "Kassa"}", color = Color.Gray, fontSize = 12.sp)
             }
+            Text("Muvaffaqiyatli", color = Color(0xFF34C759), fontWeight = FontWeight.Black, fontSize = 12.sp)
         }
     }
 }
 
 @Composable
-fun PaymentCard(payment: PaymentResponse) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        ListItem(
-            headlineContent = { Text("${payment.amount} UZS", fontWeight = FontWeight.Bold) },
-            supportingContent = { Text("${payment.date} • ${payment.method ?: "Naxd"}") },
-            trailingContent = {
-                Text(payment.status ?: "Tasdiqlangan", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-            }
-        )
-    }
-}
-
-@Composable
-fun NotificationCard(notification: NotificationResponse, onRead: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = if (notification.isRead) CardDefaults.cardColors() else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Icon(
-                    if (notification.isRead) Icons.Default.Drafts else Icons.Default.MarkEmailUnread,
-                    contentDescription = null,
-                    tint = if (notification.isRead) Color.Gray else MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(notification.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(notification.createdAt, fontSize = 10.sp, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(notification.message, fontSize = 13.sp, lineHeight = 18.sp)
-                }
-                if (!notification.isRead) {
-                    IconButton(onClick = onRead) {
-                        Icon(Icons.Default.DoneAll, contentDescription = "Mark Read", tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyState(text: String, icon: ImageVector) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Gray.copy(alpha = 0.3f))
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text, color = Color.Gray, fontSize = 14.sp)
+fun IOSPlaceholder(text: String) {
+    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+        Text(text, color = Color.Gray.copy(alpha = 0.6f), fontWeight = FontWeight.Medium)
     }
 }
 
