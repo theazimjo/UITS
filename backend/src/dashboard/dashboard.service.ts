@@ -131,7 +131,7 @@ export class DashboardService {
       const disc = Number(p.discount) || 0;
       const pen = Number(p.penalty) || 0;
       // Only count positive payments as revenue for this metric
-      return amt > 0 ? acc + (amt - disc + pen) : acc;
+      return amt > 0 ? acc + amt : acc;
     }, 0);
 
     const paymentPercentage = totalExpectedMonth > 0
@@ -143,10 +143,11 @@ export class DashboardService {
     // keyed by studentId-groupId to support multiple groups per student
     const studentGroupPaymentMap = new Map<string, number>();
     monthPayments.forEach(p => {
-      if (p.student && p.group && p.amount > 0) {
+      if (p.student && p.group) {
         const key = `${p.student.id}-${p.group.id}`;
         const current = studentGroupPaymentMap.get(key) || 0;
-        studentGroupPaymentMap.set(key, current + (Number(p.amount) - Number(p.discount) + Number(p.penalty)));
+        // Student credit = amount + discount - penalty
+        studentGroupPaymentMap.set(key, current + (Number(p.amount) + Number(p.discount) - Number(p.penalty)));
       }
     });
 

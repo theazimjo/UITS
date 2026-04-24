@@ -86,7 +86,7 @@ export class StaffService {
         // Calculate Revenue from payments MADE BY THIS TEACHER THIS MONTH for THIS GROUP
         const groupRevenue = (group.payments || [])
           .filter(p => p.month === month && p.teacher?.id === id)
-          .reduce((sum, p) => sum + (Number(p.amount || 0) - Number(p.discount || 0) + Number(p.penalty || 0)), 0);
+          .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
         // Check if this staff was teaching in this month (Phases)
         const isStaffTeaching = group.phases?.some(p => {

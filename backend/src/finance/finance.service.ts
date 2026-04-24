@@ -131,7 +131,7 @@ export class FinanceService {
       const ges = await this.expenseRepository.find({ where: { date: Between(s, e) } });
       const ois = await this.incomeRepository.find({ where: { date: Between(s, e) } });
 
-      const totalInc = incs.reduce((sum, p) => sum + (Number(p.amount) - Number(p.discount || 0) + Number(p.penalty || 0)), 0) +
+      const totalInc = incs.reduce((sum, p) => sum + Number(p.amount), 0) +
         ois.reduce((sum, p) => sum + Number(p.amount), 0);
       const totalExp = sps.reduce((sum, p) => sum + Number(p.amount), 0) +
         ges.reduce((sum, p) => sum + Number(p.amount), 0);
@@ -155,7 +155,7 @@ export class FinanceService {
       relations: ['financeCategory']
     });
 
-    const totalStudentIncome = studentPayments.reduce((sum, p) => sum + (Number(p.amount) - Number(p.discount || 0) + Number(p.penalty || 0)), 0);
+    const totalStudentIncome = studentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
     const totalOtherIncome = otherIncomes.reduce((sum, p) => sum + Number(p.amount), 0);
     const totalIncome = totalStudentIncome + totalOtherIncome;
 
@@ -172,7 +172,7 @@ export class FinanceService {
 
     [...studentPayments, ...otherIncomes].forEach(p => {
       const m = this.mapPaymentType(p.paymentType);
-      incomeByMethod[m] = (incomeByMethod[m] || 0) + (Number(p.amount) - Number((p as any).discount || 0) + Number((p as any).penalty || 0));
+      incomeByMethod[m] = (incomeByMethod[m] || 0) + Number(p.amount);
 
       // Categorize Other Incomes
       const catName = p instanceof Income ? (p.financeCategory?.name || p.category) : "O'quv to'lovi";
@@ -249,7 +249,7 @@ export class FinanceService {
         id: `inc_${item.id}`,
         type: 'INCOME',
         title: `Talaba to'lovi: ${item.student?.name || 'Noma\'lum'}`,
-        amount: Number(item.amount) - Number(item.discount || 0) + Number(item.penalty || 0),
+        amount: Number(item.amount),
         date: item.paymentDate,
         category: 'O\'quv to\'lovi',
         paymentType: this.mapPaymentType(item.paymentType)

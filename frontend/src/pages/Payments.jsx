@@ -72,7 +72,7 @@ const Payments = () => {
           student: { id: parseInt(formData.studentId) },
           group: { id: parseInt(formData.groupId) },
           teacher: formData.teacherId ? { id: parseInt(formData.teacherId) } : undefined,
-          amount: parseFloat(formData.amount),
+          amount: parseFloat(formData.amount) - parseFloat(formData.discount || 0) + parseFloat(formData.penalty || 0),
           discount: parseFloat(formData.discount || 0),
           penalty: parseFloat(formData.penalty || 0)
         };
@@ -84,7 +84,7 @@ const Payments = () => {
             ...formData,
             student: { id: parseInt(s.id) },
             group: { id: parseInt(formData.groupId) },
-            amount: parseFloat(formData.amount),
+            amount: parseFloat(formData.amount) - parseFloat(formData.discount || 0) + parseFloat(formData.penalty || 0),
             discount: parseFloat(formData.discount || 0),
             penalty: parseFloat(formData.penalty || 0)
           };
@@ -98,7 +98,7 @@ const Payments = () => {
           student: { id: parseInt(formData.studentId) },
           group: { id: parseInt(formData.groupId) },
           teacher: formData.teacherId ? { id: parseInt(formData.teacherId) } : undefined,
-          amount: parseFloat(formData.amount),
+          amount: parseFloat(formData.amount) - parseFloat(formData.discount || 0) + parseFloat(formData.penalty || 0),
           discount: parseFloat(formData.discount || 0),
           penalty: parseFloat(formData.penalty || 0)
         };
@@ -121,7 +121,7 @@ const Payments = () => {
     setFormData({
       studentId: p.student?.id?.toString(),
       groupId: p.group?.id?.toString(),
-      amount: p.amount?.toString(),
+      amount: (parseFloat(p.amount) + parseFloat(p.discount || 0) - parseFloat(p.penalty || 0)).toString(),
       discount: p.discount?.toString() || '0',
       penalty: p.penalty?.toString() || '0',
       month: p.month,
@@ -401,14 +401,14 @@ const Payments = () => {
                         </td>
                         <td className="px-5 py-3">
                           <div className="flex flex-col items-center gap-1.5 text-[11px] text-gray-500">
-                            <span>{parseInt(p.amount).toLocaleString()}</span>
+                            <span className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">{(parseFloat(p.amount) + parseFloat(p.discount || 0) - parseFloat(p.penalty || 0)).toLocaleString()}</span>
                             {parseFloat(p.discount) > 0 && (
-                              <span className="text-[#007aff] flex items-center gap-0.5">
+                              <span className="text-[#007aff] flex items-center justify-center gap-0.5">
                                 <Percent size={10} /> -{parseInt(p.discount).toLocaleString()}
                               </span>
                             )}
                             {parseFloat(p.penalty) > 0 && (
-                              <span className="text-[#ff9500] flex items-center gap-0.5">
+                              <span className="text-[#ff9500] flex items-center justify-center gap-0.5">
                                 <AlertTriangle size={10} /> +{parseInt(p.penalty).toLocaleString()}
                               </span>
                             )}
@@ -416,7 +416,7 @@ const Payments = () => {
                         </td>
                         <td className="px-5 py-3">
                           <div className="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium bg-[#34c759]/10 text-[#34c759] border border-[#34c759]/20">
-                            {(parseInt(p.amount) - parseFloat(p.discount || 0) + parseFloat(p.penalty || 0)).toLocaleString()} <span className="text-[9px] ml-0.5 opacity-80 uppercase">UZS</span>
+                            {parseFloat(p.amount).toLocaleString()} <span className="text-[9px] ml-0.5 opacity-80 uppercase">UZS</span>
                           </div>
                         </td>
                         <td className="px-5 py-3">
