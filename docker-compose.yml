@@ -27,6 +27,7 @@ services:
       - DB_PASSWORD=2255
       - DB_NAME=crm_db
       - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=2048
     command: npm run start:dev
     volumes:
       - ./backend:/app

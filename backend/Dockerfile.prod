@@ -4,7 +4,7 @@ FROM node:20-alpine AS build-stage
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN apk add --no-cache postgresql-client && npm install
 
 COPY . .
 RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
@@ -18,7 +18,7 @@ COPY --from=build-stage /app/package*.json ./
 COPY --from=build-stage /app/dist ./dist
 
 # Faqat production dependencies o'rnatiladi
-RUN npm install --omit=dev
+RUN apk add --no-cache postgresql-client && npm install --omit=dev
 
 EXPOSE 3000
 
