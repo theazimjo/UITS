@@ -13,7 +13,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 object NetworkModule {
     // Automatically detected laptop IP for real device testing
-    private const val BASE_URL = "http://104.248.43.194:3000/" 
+    private const val BASE_URL = "http://go.schoolmanage.uz/api/"
 
     private var _tokenManager: TokenManager? = null
 
@@ -40,6 +40,9 @@ object NetworkModule {
     }
 
     private val client = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .addInterceptor(loggingInterceptor)
         .addInterceptor(authInterceptor)
         .build()

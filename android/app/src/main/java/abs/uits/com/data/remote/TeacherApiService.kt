@@ -12,6 +12,9 @@ interface TeacherApiService {
     @GET("teacher/dashboard")
     suspend fun getDashboard(@Query("month") month: String? = null): TeacherDashboardResponse
 
+    @GET("teacher/my-groups")
+    suspend fun getMyGroups(): List<TeacherGroupSummary>
+
     @GET("teacher/my-students")
     suspend fun getMyStudents(): List<TeacherStudentResponse>
 
@@ -32,4 +35,10 @@ interface TeacherApiService {
         @Path("id") id: Int,
         @Query("date") date: String
     ): StudentAttendanceResponse
+
+    @GET("teacher/my-attendance")
+    suspend fun getTeacherAttendance(
+        @Query("date") date: String,
+        @Query("sync") sync: Boolean = false
+    ): TeacherAttendanceResponse
 }

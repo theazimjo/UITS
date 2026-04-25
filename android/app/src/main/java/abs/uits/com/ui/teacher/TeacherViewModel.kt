@@ -58,6 +58,24 @@ class TeacherViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
+    private val _todayAttendance = MutableStateFlow<TeacherAttendanceResponse?>(null)
+    val todayAttendance = _todayAttendance.asStateFlow()
+
+    private val _teacherGroups = MutableStateFlow<List<TeacherGroupSummary>>(emptyList())
+    val teacherGroups = _teacherGroups.asStateFlow()
+
+    fun fetchTodayAttendance() {
+        viewModelScope.launch {
+            try {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                val today = sdf.format(java.util.Date())
+                _todayAttendance.value = NetworkModule.teacherApiService.getTeacherAttendance(today)
+            } catch (e: Exception) {
+                handleNetworkError(e)
+            }
+        }
+    }
+
     fun fetchStudentDetails(id: Int) {
         viewModelScope.launch {
             _isDetailLoading.value = true
@@ -130,6 +148,17 @@ class TeacherViewModel : ViewModel() {
                     }
                     launch(Dispatchers.IO) { 
                         try { _finance.value = NetworkModule.teacherApiService.getMyFinance() } 
+                        catch (e: Exception) { handleNetworkError(e) } 
+                    }
+                    launch(Dispatchers.IO) { 
+                        try { 
+                            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                            val today = sdf.format(java.util.Date())
+                            _todayAttendance.value = NetworkModule.teacherApiService.getTeacherAttendance(today) 
+                        } catch (e: Exception) { handleNetworkError(e) } 
+                    }
+                    launch(Dispatchers.IO) { 
+                        try { _teacherGroups.value = NetworkModule.teacherApiService.getMyGroups() } 
                         catch (e: Exception) { handleNetworkError(e) } 
                     }
                 }

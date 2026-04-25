@@ -141,3 +141,23 @@ data class AttendanceGradeItem(
     val score: Int? = null,
     val comment: String? = null
 )
+
+@Serializable
+data class TeacherAttendanceResponse(
+    val expected: Int = 0,
+    val arrived: Int = 0,
+    val percentage: Double = 0.0,
+    val students: List<AttendanceStudent> = emptyList()
+)
+
+@Serializable
+data class AttendanceStudent(
+    val id: Int,
+    val name: String,
+    val photo: String? = null,
+    val groupName: String? = null,
+    val status: String? = null,
+    val status_display: String? = null,
+    val arrivedAt: String? = null,
+    val leftAt: String? = null
+)
