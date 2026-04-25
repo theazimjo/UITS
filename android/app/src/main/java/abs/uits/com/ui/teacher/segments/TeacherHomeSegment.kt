@@ -25,8 +25,12 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun TeacherHomeSegment(viewModel: TeacherViewModel) {
     val dashboard by viewModel.dashboard.collectAsState()
@@ -36,6 +40,12 @@ fun TeacherHomeSegment(viewModel: TeacherViewModel) {
     val teacherGroups by viewModel.teacherGroups.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     val studentsToShow by viewModel.studentsToShow.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = { viewModel.refreshData() }
+    )
 
     val sdf = remember { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()) }
     
@@ -55,7 +65,7 @@ fun TeacherHomeSegment(viewModel: TeacherViewModel) {
     var showTodayAttendanceSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF2F2F7))) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF2F2F7)).pullRefresh(pullRefreshState)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
@@ -399,6 +409,14 @@ fun TeacherHomeSegment(viewModel: TeacherViewModel) {
                 }
             }
         }
+
+        PullRefreshIndicator(
+            refreshing = isRefreshing,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            backgroundColor = Color.White,
+            contentColor = Color(0xFF007AFF)
+        )
     }
 }
 

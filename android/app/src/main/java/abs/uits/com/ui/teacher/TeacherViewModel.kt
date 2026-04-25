@@ -101,17 +101,43 @@ class TeacherViewModel : ViewModel() {
         } ?: emptyList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing = _isRefreshing.asStateFlow()
+
     fun updateSelectedDate(date: String) {
         _selectedDate.value = date
         fetchAttendance(date)
     }
 
-    fun fetchAttendance(date: String) {
+    fun refreshData() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            fetchAllData(sync = true)
+            _isRefreshing.value = false
+        }
+    }
+
+    fun fetchAllData(sync: Boolean = false) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Fetch groups first to know today's expected students
+                _teacherGroups.value = NetworkModule.teacherApiService.getMyGroups()
+                fetchAttendance(_selectedDate.value, sync)
+            } catch (e: Exception) {
+                handleNetworkError(e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun fetchAttendance(date: String, sync: Boolean = false) {
         viewModelScope.launch {
             _isAttendanceListLoading.value = true
             _todayAttendance.value = null // Clear old data to prevent stale display
             try {
-                _todayAttendance.value = NetworkModule.teacherApiService.getTeacherAttendance(date)
+                _todayAttendance.value = NetworkModule.teacherApiService.getTeacherAttendance(date, sync)
             } catch (e: Exception) {
                 handleNetworkError(e)
             } finally {
