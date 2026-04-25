@@ -64,14 +64,58 @@ class TeacherViewModel : ViewModel() {
     private val _teacherGroups = MutableStateFlow<List<TeacherGroupSummary>>(emptyList())
     val teacherGroups = _teacherGroups.asStateFlow()
 
-    fun fetchTodayAttendance() {
+    private val _selectedDate = MutableStateFlow(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()))
+    val selectedDate = _selectedDate.asStateFlow()
+
+    private val _isAttendanceListLoading = MutableStateFlow(false)
+    val isAttendanceListLoading = _isAttendanceListLoading.asStateFlow()
+
+    val studentsToShow = combine(todayAttendance, teacherGroups, _selectedDate) { attendance, groups, date ->
+        if (attendance == null) return@combine emptyList<AttendanceStudentUI>()
+        
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val cal = java.util.Calendar.getInstance()
+        try { cal.time = sdf.parse(date) ?: java.util.Date() } catch (e: Exception) {}
+        val days = listOf("Yak", "Dush", "Sesh", "Chor", "Pay", "Jum", "Shan")
+        val currentDayUz = days[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+        val dayOfMonth = cal.get(java.util.Calendar.DAY_OF_MONTH).toString()
+        
+        val groupsTodayNames = groups.filter { group -> 
+            group.days?.any { it.startsWith(currentDayUz, ignoreCase = true) } == true 
+        }.map { it.name }.toSet()
+        
+        attendance.students?.filter { student ->
+            groupsTodayNames.contains(student.groupName)
+        }?.map { student ->
+            val dayAtt = student.attendance?.get(dayOfMonth)
+            AttendanceStudentUI(
+                id = student.id,
+                name = student.name,
+                photo = student.photo,
+                groupName = student.groupName,
+                status = dayAtt?.status,
+                status_display = dayAtt?.status_display,
+                arrived_at = dayAtt?.arrived_at,
+                left_at = dayAtt?.left_at
+            )
+        } ?: emptyList()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun updateSelectedDate(date: String) {
+        _selectedDate.value = date
+        fetchAttendance(date)
+    }
+
+    fun fetchAttendance(date: String) {
         viewModelScope.launch {
+            _isAttendanceListLoading.value = true
+            _todayAttendance.value = null // Clear old data to prevent stale display
             try {
-                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                val today = sdf.format(java.util.Date())
-                _todayAttendance.value = NetworkModule.teacherApiService.getTeacherAttendance(today)
+                _todayAttendance.value = NetworkModule.teacherApiService.getTeacherAttendance(date)
             } catch (e: Exception) {
                 handleNetworkError(e)
+            } finally {
+                _isAttendanceListLoading.value = false
             }
         }
     }

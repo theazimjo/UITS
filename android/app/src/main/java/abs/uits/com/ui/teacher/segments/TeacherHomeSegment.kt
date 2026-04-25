@@ -32,34 +32,24 @@ fun TeacherHomeSegment(viewModel: TeacherViewModel) {
     val dashboard by viewModel.dashboard.collectAsState()
     val profile by viewModel.profile.collectAsState()
     
-    // Get current day of week in Uzbek
-    val currentDayUz = remember {
+    val todayAttendance by viewModel.todayAttendance.collectAsState()
+    val teacherGroups by viewModel.teacherGroups.collectAsState()
+    val selectedDate by viewModel.selectedDate.collectAsState()
+    val studentsToShow by viewModel.studentsToShow.collectAsState()
+
+    val sdf = remember { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()) }
+    
+    // Get day of week in Uzbek for selectedDate (for display only)
+    val currentDayUz = remember(selectedDate) {
         val days = listOf("Yak", "Dush", "Sesh", "Chor", "Pay", "Jum", "Shan")
         val calendar = java.util.Calendar.getInstance()
+        try { calendar.time = sdf.parse(selectedDate) ?: java.util.Date() } catch(e:Exception) {}
         val dayIndex = calendar.get(java.util.Calendar.DAY_OF_WEEK) - 1
         days[dayIndex]
     }
-    
-    val teacherGroups by viewModel.teacherGroups.collectAsState()
-    
-    val groupsTodayNames = remember(teacherGroups) {
-        teacherGroups.filter { group -> 
-            group.days?.any { it.startsWith(currentDayUz, ignoreCase = true) } == true 
-        }.map { it.name }.toSet()
-    }
 
-    val studentsToday = remember(teacherGroups) {
-        teacherGroups.filter { group -> 
-            group.days?.any { it.startsWith(currentDayUz, ignoreCase = true) } == true 
-        }.sumOf { it.studentCount }
-    }
-
-    val todayAttendance by viewModel.todayAttendance.collectAsState()
-    
-    val studentsToShow = remember(todayAttendance?.students, groupsTodayNames) {
-        todayAttendance?.students?.filter { student ->
-            groupsTodayNames.contains(student.groupName)
-        } ?: emptyList()
+    val studentsToday = remember(studentsToShow) {
+        studentsToShow.size
     }
 
     var showTodayAttendanceSheet by remember { mutableStateOf(false) }
@@ -139,9 +129,17 @@ fun TeacherHomeSegment(viewModel: TeacherViewModel) {
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val arrivedCountHome = remember(studentsToShow) {
+                            studentsToShow.count { student ->
+                                student.status?.lowercase() == "present" || 
+                                student.status == "1" || 
+                                student.status_display?.lowercase()?.contains("kelgan") == true || 
+                                !student.arrived_at.isNullOrEmpty()
+                            }
+                        }
                         CompactStatCard(
                             label = "BUGUN KELADIGANLAR",
-                            value = "${todayAttendance?.arrived ?: 0} / ${if (studentsToShow.isNotEmpty()) studentsToShow.size else (todayAttendance?.expected ?: studentsToday)}",
+                            value = "$arrivedCountHome / ${if (studentsToShow.isNotEmpty()) studentsToShow.size else (todayAttendance?.expected ?: studentsToday)}",
                             icon = Icons.Default.Groups,
                             color = Color(0xFF5856D6),
                             modifier = Modifier.weight(1f).clickable { showTodayAttendanceSheet = true }
@@ -290,44 +288,110 @@ fun TeacherHomeSegment(viewModel: TeacherViewModel) {
                 dragHandle = { BottomSheetDefaults.DragHandle() }
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-                    Text(
-                        text = "BUGUN KELADIGANLAR",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "KELADIGANLAR",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black
+                        )
+                        
+                        // Date Navigator
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.background(Color(0xFFF2F2F7), RoundedCornerShape(8.dp)).padding(2.dp)
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val calendar = java.util.Calendar.getInstance()
+                                    try { calendar.time = sdf.parse(selectedDate) ?: java.util.Date() } catch(e:Exception){}
+                                    calendar.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                                    viewModel.updateSelectedDate(sdf.format(calendar.time))
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.ChevronLeft, null, modifier = Modifier.size(18.dp))
+                            }
+                            
+                            val displayDate = remember(selectedDate) {
+                                val cal = java.util.Calendar.getInstance()
+                                try { cal.time = sdf.parse(selectedDate) ?: java.util.Date() } catch(e:Exception){}
+                                val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
+                                val month = listOf("Yan", "Feb", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek")[cal.get(java.util.Calendar.MONTH)]
+                                "$day-$month, $currentDayUz"
+                            }
+                            
+                            Text(
+                                text = displayDate,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            
+                            IconButton(
+                                onClick = {
+                                    val calendar = java.util.Calendar.getInstance()
+                                    try { calendar.time = sdf.parse(selectedDate) ?: java.util.Date() } catch(e:Exception){}
+                                    calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+                                    viewModel.updateSelectedDate(sdf.format(calendar.time))
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                    
+                    val arrivedCount = remember(studentsToShow) {
+                        studentsToShow.count { student ->
+                            student.status?.lowercase() == "present" || 
+                            student.status == "1" || 
+                            student.status_display?.lowercase()?.contains("kelgan") == true || 
+                            !student.arrived_at.isNullOrEmpty()
+                        }
+                    }
                     
                     Surface(
                         modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF007AFF).copy(alpha = 0.05f),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFF007AFF).copy(alpha = 0.2f))
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFFF2F2F7).copy(alpha = 0.5f)
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
                                 Text("UMUMIY KO'RSATKICH", style = MaterialTheme.typography.labelSmall, color = Color(0xFF007AFF), fontWeight = FontWeight.Bold)
-                                Text("${todayAttendance?.arrived ?: 0} / ${if (studentsToShow.isNotEmpty()) studentsToShow.size else (todayAttendance?.expected ?: studentsToday)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                                Text("$arrivedCount / ${if (studentsToShow.isNotEmpty()) studentsToShow.size else (todayAttendance?.expected ?: studentsToday)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                             }
-                            Text("${if (studentsToShow.isNotEmpty()) (todayAttendance?.arrived?.toFloat() ?: 0f) / studentsToShow.size * 100 else (todayAttendance?.percentage ?: 0.0).toInt()}%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Color(0xFF007AFF))
+                            Text("${if (studentsToShow.isNotEmpty()) (arrivedCount.toFloat() / studentsToShow.size * 100).toInt() else (todayAttendance?.percentage ?: 0.0).toInt()}%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Color(0xFF007AFF))
                         }
                     }
 
-                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)) {
-                        if (studentsToShow.isEmpty()) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                                    Text("O'quvchilar ro'yxati bo'sh", color = Color.Gray, fontSize = 14.sp)
+                    val isAttendanceListLoading by viewModel.isAttendanceListLoading.collectAsState()
+
+                    if (isAttendanceListLoading) {
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Color(0xFF007AFF), strokeWidth = 3.dp)
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)) {
+                            if (studentsToShow.isEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                                        Text("O'quvchilar ro'yxati bo'sh", color = Color.Gray, fontSize = 14.sp)
+                                    }
                                 }
-                            }
-                        } else {
-                            items(studentsToShow.size) { index ->
-                                AttendanceStudentItem(studentsToShow[index])
-                                if (index < studentsToShow.size - 1) {
-                                    HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFC6C6C8).copy(alpha = 0.3f))
+                            } else {
+                                items(studentsToShow.size) { index ->
+                                    AttendanceStudentItem(studentsToShow[index])
+                                    if (index < studentsToShow.size - 1) {
+                                        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFC6C6C8).copy(alpha = 0.3f))
+                                    }
                                 }
                             }
                         }
@@ -339,7 +403,7 @@ fun TeacherHomeSegment(viewModel: TeacherViewModel) {
 }
 
 @Composable
-fun AttendanceStudentItem(student: AttendanceStudent) {
+fun AttendanceStudentItem(student: AttendanceStudentUI) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -368,24 +432,30 @@ fun AttendanceStudentItem(student: AttendanceStudent) {
             Text(student.groupName ?: "Guruhsiz", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8E8E93))
         }
         Column(horizontalAlignment = Alignment.End) {
+            val isPresent = remember(student) {
+                student.status?.lowercase() == "present" || 
+                student.status == "1" || 
+                student.status_display?.lowercase()?.contains("kelgan") == true || 
+                !student.arrived_at.isNullOrEmpty()
+            }
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = if (student.status == "present") Color(0xFF34C759).copy(alpha = 0.1f) else Color(0xFFFF3B30).copy(alpha = 0.1f)
+                color = if (isPresent) Color(0xFF34C759).copy(alpha = 0.1f) else Color(0xFFFF3B30).copy(alpha = 0.1f)
             ) {
                 Text(
                     text = (student.status_display ?: "Kelmagan").uppercase(),
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (student.status == "present") Color(0xFF34C759) else Color(0xFFFF3B30),
+                    color = if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30),
                     fontWeight = FontWeight.Black,
                     fontSize = 9.sp
                 )
             }
-            if (student.arrivedAt != null) {
-                Text("K: ${student.arrivedAt}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF007AFF), fontWeight = FontWeight.Bold, fontSize = 9.sp)
+            if (student.arrived_at != null) {
+                Text("K: ${student.arrived_at}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF007AFF), fontWeight = FontWeight.Bold, fontSize = 9.sp)
             }
-            if (student.leftAt != null) {
-                Text("Ch: ${student.leftAt}", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Medium, fontSize = 9.sp)
+            if (student.left_at != null) {
+                Text("Ch: ${student.left_at}", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Medium, fontSize = 9.sp)
             }
         }
     }

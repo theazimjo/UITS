@@ -156,8 +156,24 @@ data class AttendanceStudent(
     val name: String,
     val photo: String? = null,
     val groupName: String? = null,
+    val attendance: Map<String, DayAttendance>? = null
+)
+
+@Serializable
+data class DayAttendance(
+    val status: String? = null,
+    val arrived_at: String? = null,
+    val left_at: String? = null,
+    val status_display: String? = null
+)
+
+data class AttendanceStudentUI(
+    val id: Int,
+    val name: String,
+    val photo: String? = null,
+    val groupName: String? = null,
     val status: String? = null,
     val status_display: String? = null,
-    val arrivedAt: String? = null,
-    val leftAt: String? = null
+    val arrived_at: String? = null,
+    val left_at: String? = null
 )
