@@ -261,6 +261,8 @@ export class DashboardService {
                 id: e.student.id,
                 name: e.student.name,
                 groupName: g.name,
+                groupStartTime: g.startTime,
+                groupEndTime: g.endTime,
                 externalId: extId,
                 status: isPresent ? 'present' : 'absent',
                 status_display: isPresent ? 'Kelgan' : 'Kelmagan',

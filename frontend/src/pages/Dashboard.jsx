@@ -536,7 +536,15 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-[14px] font-bold text-gray-800 dark:text-gray-200 group-hover:text-[#007aff] transition-colors">{s.name}</p>
-                        <p className="text-[11px] text-gray-500">{s.groupName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[11px] font-medium text-gray-500 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-gray-200/50 dark:border-white/10 truncate max-w-[120px]">{s.groupName}</p>
+                          {(s.groupStartTime || s.groupEndTime) && (
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-800/30">
+                              <Clock size={12} strokeWidth={2.5} />
+                              <span>{s.groupStartTime || '--:--'} - {s.groupEndTime || '--:--'}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
