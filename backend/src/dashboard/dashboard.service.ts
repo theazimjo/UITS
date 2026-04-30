@@ -165,11 +165,23 @@ export class DashboardService {
       });
     });
 
+    // Calculate Active Students Count
+    const activeStudentIds = new Set<number>();
+    activeGroups.forEach(g => {
+      (g.enrollments || []).forEach(e => {
+        if (e.status === EnrollmentStatus.ACTIVE && e.student) {
+          activeStudentIds.add(e.student.id);
+        }
+      });
+    });
+    const activeStudentsCount = activeStudentIds.size;
+
     return {
       studentGrowth,
       groupStatus,
       activity: finalActivity,
       totalStudents: students.length,
+      activeStudentsCount,
       totalGroups: allGroups.length,
       activeGroupsCount: activeGroups.length,
       debtorCount,

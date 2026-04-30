@@ -171,10 +171,10 @@ const Dashboard = () => {
   const generalStatsList = [
     {
       label: "Jami o'quvchilar",
-      value: (loading || loadingGen) ? <Skeleton width="60px" height="32px" /> : genStats.totalStudents,
+      value: (loading || loadingGen) ? <Skeleton width="60px" height="32px" /> : (genStats.activeStudentsCount || 0),
       icon: <UsersRound size={24} />,
       color: 'blue',
-      sub: "Ro'yxatdan o'tgan barcha o'quvchilar",
+      sub: "Hozirda o'qiyotgan o'quvchilar",
       trend: 'up'
     },
     {
