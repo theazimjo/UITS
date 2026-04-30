@@ -522,10 +522,33 @@ const StudentDetail = () => {
                         )}
 
                         {att && (
-                          <div className="mt-2 flex flex-col gap-1">
-                            <div className={`w-1.5 h-1.5 rounded-full ${statusColor} shadow-[0_0_8px] ${att.status === 'present' ? 'shadow-[#34c759]/50' : 'shadow-[#ff3b30]/50'}`} />
-                            <p className="text-[9px] font-bold text-gray-700 dark:text-gray-300">{att.arrived_at || '---'}</p>
-                            <p className="text-[9px] text-gray-400">{att.left_at || '---'}</p>
+                          <div className={`mt-1.5 flex flex-col justify-center rounded-md px-2 py-1.5 border shadow-sm transition-all ${
+                            att.status === 'present' 
+                              ? 'bg-gradient-to-br from-[#34c759]/15 to-[#34c759]/5 border-[#34c759]/30 dark:from-[#34c759]/20 dark:to-[#34c759]/5' 
+                              : 'bg-gradient-to-br from-[#ff3b30]/15 to-[#ff3b30]/5 border-[#ff3b30]/30 dark:from-[#ff3b30]/20 dark:to-[#ff3b30]/5'
+                          }`}>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <div className={`w-2 h-2 rounded-full ${
+                                att.status === 'present' ? 'bg-[#34c759] shadow-[0_0_8px_#34c759]' : 'bg-[#ff3b30] shadow-[0_0_8px_#ff3b30]'
+                              }`} />
+                              <span className={`text-[9px] font-extrabold uppercase tracking-widest ${
+                                att.status === 'present' ? 'text-[#34c759] dark:text-[#4ade80]' : 'text-[#ff3b30] dark:text-[#f87171]'
+                              }`}>
+                                {att.status === 'present' ? 'KELGAN' : "KELMAGAN"}
+                              </span>
+                            </div>
+                            
+                            {att.status === 'present' && (
+                              <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                  <span className="text-[12px] font-extrabold text-[#1d1d1f] dark:text-white tracking-tight leading-none">{att.arrived_at || '—'}</span>
+                                </div>
+                                <div className="w-px h-3 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 tracking-tight leading-none">{att.left_at || '—'}</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
