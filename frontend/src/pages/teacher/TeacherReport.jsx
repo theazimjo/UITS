@@ -846,11 +846,11 @@ const TeacherReport = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div
-            className="bg-white dark:bg-[#1c1c1e] w-full max-w-[650px] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden"
+            className={`bg-white dark:bg-[#1c1c1e] w-full ${period === 'EXAM' ? 'max-w-[1000px]' : 'max-w-[650px]'} rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 flex flex-col max-h-[95vh]`}
             style={{ animation: 'scaleIn 0.2s ease-out' }}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                   <Send size={18} className="text-white" />
@@ -868,19 +868,21 @@ const TeacherReport = () => {
               </button>
             </div>
 
-            {/* Selected Students List */}
-            {(() => {
-              const isExam = period === 'EXAM';
-              return (
-                <div className="px-6 pt-5">
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">
-                    {isExam ? "Imtihon natijalari jadvali" : "Tanlangan o'quvchilar"}
-                  </p>
+            {/* Modal Body (Scrollable) */}
+            <div className="overflow-y-auto flex-1 custom-scrollbar pb-2">
+              {/* Selected Students List */}
+              {(() => {
+                const isExam = period === 'EXAM';
+                return (
+                  <div className="px-6 pt-5">
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">
+                      {isExam ? "Imtihon natijalari jadvali" : "Tanlangan o'quvchilar"}
+                    </p>
 
-                  {isExam ? (
-                    <div className="overflow-x-auto border border-gray-100 dark:border-white/5 rounded-2xl">
-                      <table className="w-full text-left text-[12px] whitespace-nowrap">
-                        <thead className="bg-gray-50/50 dark:bg-black/30 text-gray-400 font-bold uppercase tracking-tight text-[10px]">
+                    {isExam ? (
+                      <div className="overflow-x-auto border border-gray-100 dark:border-white/5 rounded-2xl">
+                        <table className="w-full text-left text-[12px] whitespace-nowrap relative">
+                          <thead className="bg-gray-50/50 dark:bg-black/30 text-gray-400 font-bold uppercase tracking-tight text-[10px] sticky top-0 z-10 backdrop-blur-md">
                           <tr>
                             <th className="px-4 py-3">O'quvchi</th>
                             <th className="px-2 py-3 text-center">Joriy</th>
@@ -1019,19 +1021,19 @@ const TeacherReport = () => {
             })()}
 
             {/* Summary Input */}
-            <div className="px-6 pt-4 pb-2">
+            <div className="px-6 pt-4 pb-4">
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Umumiy Xulosa</label>
               <textarea
                 value={reportSummary}
                 onChange={e => setReportSummary(e.target.value)}
                 placeholder="Bu o'quvchilar haqida umumiy fikr yoki izoh yozing..."
                 className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all min-h-[100px] resize-none"
-                autoFocus
               />
             </div>
+          </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 px-6 py-5">
+            <div className="flex gap-3 px-6 py-5 border-t border-gray-100 dark:border-white/5 shrink-0 bg-white dark:bg-[#1c1c1e] z-10">
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1 py-3 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-2xl text-[14px] font-bold transition-all"
