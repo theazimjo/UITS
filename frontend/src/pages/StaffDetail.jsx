@@ -153,6 +153,7 @@ const StaffDetail = () => {
       const allStaff = await getStaff();
       if (allStaff.data) updateGlobalStaff(allStaff.data);
       
+      toast.success("Xodim ma'lumotlari yangilandi! ✅");
       setIsEditModalOpen(false);
     } catch (err) {
       console.error('Error updating staff:', err);

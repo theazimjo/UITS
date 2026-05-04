@@ -108,10 +108,10 @@ const Payments = () => {
       await fetchPayments();
       setIsModalOpen(false);
       resetForm();
-      toast.success(isEditing ? "To'lov o'zgartirildi" : "To'lov muvaffaqiyatli saqlandi");
+      toast.success(isEditing ? "To'lov ma'lumotlari yangilandi! ✍️" : "To'lov muvaffaqiyatli saqlandi! ✅");
     } catch (err) {
       console.error('Error handling payment:', err);
-      toast.error("Amalni bajarishda muammo yuzaga keldi.");
+      toast.error("To'lovni saqlashda xatolik yuzaga keldi. ❌");
     }
   };
 
@@ -198,6 +198,7 @@ const Payments = () => {
     if (window.confirm('Haqiqatdan ham bu to\'lovni o\'chirishni xohlaysizmi?')) {
       try {
         await deletePayment(id);
+        toast.success("To'lov o'chirildi! 🗑️");
         await fetchPayments();
       } catch (err) {
         console.error('Error deleting payment:', err);

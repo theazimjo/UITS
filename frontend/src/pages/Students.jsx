@@ -31,6 +31,10 @@ const Students = () => {
   const [messageData, setMessageData] = useState({ title: '', message: '' });
   const [sendingMessage, setSendingMessage] = useState(false);
 
+  // Sync state
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
+
   // Edit state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -73,10 +77,20 @@ const Students = () => {
   const handleSync = async () => {
     try {
       setSyncing(true);
-      await syncStudents();
-      const res = await getStudents();
-      if (res.data) setGlobalStudents(res.data);
-      toast.success("Ma'lumotlar sinxronizatsiya qilindi");
+      const res = await syncStudents();
+      const resultData = res.data;
+      
+      const newStudentsRes = await getStudents();
+      if (newStudentsRes.data) setGlobalStudents(newStudentsRes.data);
+      
+      setSyncResult(resultData);
+      setSyncModalOpen(true);
+      
+      if (resultData.addedCount > 0) {
+        toast.success(`${resultData.addedCount} ta yangi o'quvchi qo'shildi!`);
+      } else {
+        toast.success("Ma'lumotlar muvaffaqiyatli sinxronizatsiya qilindi");
+      }
     } catch (err) {
       console.error('Sync error:', err);
       toast.error('Sinxronizatsiyada xatolik');
@@ -663,6 +677,73 @@ const Students = () => {
               >
                 {sendingMessage ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                 {sendingMessage ? "Yuborilmoqda..." : "Yuborish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Sync Animation */}
+      {syncing && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/60 dark:bg-black/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center">
+            <div className="relative w-20 h-20 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-[#007aff]/30 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+              <div className="absolute inset-2 rounded-full border-4 border-[#007aff]/50 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+              <RefreshCw className="w-10 h-10 text-[#007aff] animate-spin relative z-10" />
+            </div>
+            <p className="mt-6 text-[15px] font-bold text-gray-900 dark:text-white animate-pulse tracking-wide">
+              Ma'lumotlar sinxronizatsiya qilinmoqda...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Result Modal */}
+      {syncModalOpen && syncResult && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSyncModalOpen(false)}></div>
+          <div className="bg-white dark:bg-[#1d1d1f] w-full max-w-md rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600 dark:text-green-400">
+                <CheckSquare size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Sinxronizatsiya yakunlandi!</h3>
+              
+              <div className="bg-gray-50 dark:bg-black/20 rounded-2xl p-4 text-left space-y-3 mb-6 shadow-inner">
+                <div className="flex justify-between items-center border-b border-gray-200 dark:border-white/10 pb-2">
+                  <span className="text-sm font-medium text-gray-500">Jami tekshirildi:</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{syncResult.totalCount} ta</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-200 dark:border-white/10 pb-2">
+                  <span className="text-sm font-medium text-gray-500">Yangilandi:</span>
+                  <span className="font-bold text-[#007aff]">{syncResult.updatedCount} ta</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Yangi qo'shildi:</span>
+                  <span className="font-bold text-green-600">{syncResult.addedCount} ta</span>
+                </div>
+              </div>
+
+              {syncResult.addedCount > 0 && (
+                <div className="text-left mb-6 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 px-2">
+                  <p className="text-[12px] font-bold text-gray-400 uppercase mb-2">Yangi qo'shilganlar:</p>
+                  <ul className="space-y-1.5">
+                    {syncResult.addedStudents.map((name, i) => (
+                      <li key={i} className="text-[13px] font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-sm"></span>
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <button
+                onClick={() => setSyncModalOpen(false)}
+                className="w-full py-3 bg-[#007aff] hover:bg-[#0062cc] text-white rounded-xl text-[14px] font-bold shadow-lg shadow-[#007aff]/20 transition-all"
+              >
+                Tushunarli
               </button>
             </div>
           </div>

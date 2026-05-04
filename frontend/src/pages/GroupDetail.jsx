@@ -13,13 +13,14 @@ import {
   transferGroup, getGroupActivities
 } from '../services/api';
 import Modal from '../components/common/Modal';
+import toast from 'react-hot-toast';
 
 import useStore from '../store/useStore';
 
 const GroupDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { fields, courses, rooms, staff: staffList, groups, setGroups, students } = useStore();
+  const { fields, courses, rooms, staff: staffList, groups, setGroups, students, refreshAllRows } = useStore();
   const [group, setGroup] = useState(null);
   const [payments, setPayments] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -213,9 +214,10 @@ const GroupDetail = () => {
       };
       await updateGroup(id, payload);
       await fetchGroup();
-      if (fetchGroups) fetchGroups();
+      refreshAllRows();
+      toast.success("Guruh ma'lumotlari yangilandi! ✅");
       setIsEditModalOpen(false);
-    } catch (err) { console.error('Update error:', err); }
+    } catch (err) { console.error('Update error:', err); toast.error("Xatolik yuzaga keldi"); }
   };
 
   const handleCompleteGroup = async (e) => {
@@ -223,9 +225,10 @@ const GroupDetail = () => {
     try {
       await completeGroup(id, completeFormData);
       await fetchGroup();
-      if (fetchGroups) fetchGroups();
+      refreshAllRows();
+      toast.success("Guruh muvaffaqiyatli yakunlandi! 🏁");
       setIsCompleteModalOpen(false);
-    } catch (err) { console.error('Complete error:', err); }
+    } catch (err) { console.error('Complete error:', err); toast.error("Xatolik yuzaga keldi"); }
   };
 
   const handleTransferGroup = async (e) => {
@@ -238,29 +241,43 @@ const GroupDetail = () => {
         endDate: transferFormData.endDate
       });
       await fetchGroup();
-      if (fetchGroups) fetchGroups();
+      refreshAllRows();
+      toast.success("Guruh muvaffaqiyatli o'tkazildi (Transfer)! 🔀");
       setIsTransferModalOpen(false);
-    } catch (err) { console.error('Transfer error:', err); }
+    } catch (err) { console.error('Transfer error:', err); toast.error("Xatolik yuzaga keldi"); }
   };
 
   const handleEnrollMultiple = async () => {
     if (selectedStudents.length === 0) return;
+    const count = selectedStudents.length;
+    
+    // Optimistic UI: Close modal immediately as requested
+    setIsEnrollModalOpen(false);
+    
     try {
       await enrollMultipleStudents(id, { studentIds: selectedStudents, joinedDate: enrollDate });
-      await fetchGroup(true);
-      if (refreshStudents) refreshStudents();
-      if (fetchGroups) fetchGroups();
-      setIsEnrollModalOpen(false);
+      toast.success(`${count} ta o'quvchi guruhga qo'shildi! ➕`);
+      
+      // Reset selections
       setSelectedStudents([]);
       setEnrollDate(new Date().toISOString().split('T')[0]);
-    } catch (err) { console.error('Enroll multiple error:', err); }
+      
+      // Refresh data in background
+      await fetchGroup(true);
+      refreshAllRows();
+    } catch (err) { 
+      console.error('Enroll multiple error:', err); 
+      toast.error("Xatolik yuzaga keldi. ❌"); 
+    }
   };
 
   const handleStatusChange = async (studentId, status) => {
     try {
       await updateEnrollmentStatus(id, studentId, status);
       await fetchGroup(true);
-    } catch (err) { console.error('Status check error:', err); }
+      refreshAllRows();
+      toast.success("O'quvchi holati muvaffaqiyatli o'zgartirildi! ✅");
+    } catch (err) { console.error('Status check error:', err); toast.error("Xatolik yuzaga keldi"); }
   };
 
   const handleUnenroll = async (studentId) => {
@@ -268,9 +285,9 @@ const GroupDetail = () => {
     try {
       await unenrollStudent(id, studentId);
       await fetchGroup(true);
-      if (refreshStudents) refreshStudents();
-      if (fetchGroups) fetchGroups();
-    } catch (err) { console.error('Unenroll error:', err); }
+      refreshAllRows();
+      toast.success("O'quvchi guruhdan chiqarildi! 🗑️");
+    } catch (err) { console.error('Unenroll error:', err); toast.error("Xatolik yuzaga keldi"); }
   };
 
   // ----- JAMI TUSHUM HISOBLASH (SHU GURUH BO'YICHA) -----

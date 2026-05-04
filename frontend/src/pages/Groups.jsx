@@ -133,10 +133,21 @@ const Groups = () => {
       }
       setModalType(null); setEditingItem(null);
       refreshAllRows();
-      toast.success("O'zgarishlar saqlandi");
+      
+      let successMsg = "O'zgarishlar saqlandi! ✨";
+      if (!editingItem) {
+        if (type === 'group') successMsg = "Yangi guruh muvaffaqiyatli yaratildi! 🎓";
+        else if (type === 'field') successMsg = "Yangi soha qo'shildi! 📁";
+        else if (type === 'course') successMsg = "Yangi yo'nalish qo'shildi! 📚";
+        else if (type === 'room') successMsg = "Yangi xona qo'shildi! 🏫";
+      } else {
+        successMsg = "Ma'lumotlar muvaffaqiyatli yangilandi! ✅";
+      }
+      
+      toast.success(successMsg);
     } catch (err) {
       console.error(err);
-      toast.error("Amalni bajarishda xatolik yuzaga keldi");
+      toast.error("Amalni bajarishda xatolik yuzaga keldi. ❌");
     }
   };
 

@@ -123,7 +123,7 @@ const TeacherReport = () => {
   const reportedStudentIds = new Set(
     reports
       .filter(r => r.reportType === activeDate)
-      .flatMap(r => r.items?.map(i => i.studentId) || [])
+      .flatMap(r => r.items?.map(i => String(i.studentId)) || [])
   );
 
   const hasReportForPeriod = reports.some(r => r.reportType === activeDate);
@@ -138,28 +138,33 @@ const TeacherReport = () => {
   });
 
   const toggleSelect = (id) => {
-    if (reportedStudentIds.has(id)) return; // Prevent re-reporting
+    const idStr = String(id);
+    if (reportedStudentIds.has(idStr)) return; // Prevent re-reporting
     setSelectedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(idStr) ? next.delete(idStr) : next.add(idStr);
       return next;
     });
   };
 
   const toggleAll = () => {
-    const visibleIds = filteredStudents.filter(s => !reportedStudentIds.has(s.id)).map(s => s.id);
-    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+    const unselectedVisibleIds = filteredStudents
+      .filter(s => !reportedStudentIds.has(String(s.id)))
+      .map(s => String(s.id));
+    
+    const allVisibleSelected = unselectedVisibleIds.length > 0 && 
+      unselectedVisibleIds.every(id => selectedIds.has(id));
 
     if (allVisibleSelected) {
       setSelectedIds(prev => {
         const next = new Set(prev);
-        visibleIds.forEach(id => next.delete(id));
+        unselectedVisibleIds.forEach(id => next.delete(id));
         return next;
       });
     } else {
       setSelectedIds(prev => {
         const next = new Set(prev);
-        visibleIds.forEach(id => next.add(id));
+        unselectedVisibleIds.forEach(id => next.add(id));
         return next;
       });
     }
@@ -472,7 +477,12 @@ const TeacherReport = () => {
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
-                checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
+                checked={(() => {
+                  const unselectedVisibleIds = filteredStudents
+                    .filter(s => !reportedStudentIds.has(String(s.id)))
+                    .map(s => String(s.id));
+                  return unselectedVisibleIds.length > 0 && unselectedVisibleIds.every(id => selectedIds.has(id));
+                })()}
                 onChange={toggleAll}
                 className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
               />
@@ -510,8 +520,9 @@ const TeacherReport = () => {
               </thead>
               <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
                 {filteredStudents.map(s => {
-                  const isSelected = selectedIds.has(s.id);
-                  const isReported = reportedStudentIds.has(s.id);
+                  const sId = String(s.id);
+                  const isSelected = selectedIds.has(sId);
+                  const isReported = reportedStudentIds.has(sId);
                   const today = new Date().getDate();
                   const todayStatus = s.attendance?.[today];
                   const status = typeof todayStatus === 'object' ? todayStatus?.status : todayStatus;
@@ -546,7 +557,7 @@ const TeacherReport = () => {
                             <span className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[180px]">
                               {s.name}
                             </span>
-                            {reportedStudentIds.has(s.id) && (
+                            {isReported && (
                               <span className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
                                 <CheckCircle2 size={10} /> Yuborilgan
                               </span>

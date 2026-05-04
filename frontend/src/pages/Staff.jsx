@@ -66,7 +66,7 @@ const Staff = () => {
       
       const staffRes = await getStaff();
       if (staffRes.data) setGlobalStaff(staffRes.data);
-      toast.success('Xodim qo\'shildi');
+      toast.success(`${payload.name} muvaffaqiyatli qo'shildi! ✅`);
     } catch (err) {
       console.error('Error creating staff:', err);
       toast.error("Ma'lumotlarni saqlashda muammo yuzaga keldi.");

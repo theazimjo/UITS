@@ -40,6 +40,7 @@ import ParentDashboard from './pages/parent/ParentDashboard';
 
 // Icons
 import { Wallet } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 
 import useStore from './store/useStore';
 
@@ -94,6 +95,7 @@ function App() {
 
   return (
     <>
+      <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route path="/login" element={
           <Login onLoginSuccess={(u) => { 

@@ -254,6 +254,10 @@ export class StudentsService {
     const response = await axios.get('https://schoolmanage.uz/api/students/all/?school_id=1');
     const { students } = response.data;
 
+    let addedCount = 0;
+    let updatedCount = 0;
+    const addedStudents: string[] = [];
+
     for (const extStudent of students) {
       const extId = extStudent.id.toString();
       
@@ -265,8 +269,11 @@ export class StudentsService {
       if (!student) {
         student = this.studentsRepository.create({ externalId: extId });
         console.log(`Yangi o'quvchi qo'shilmoqda: ${extStudent.full_name}`);
+        addedCount++;
+        addedStudents.push(extStudent.full_name);
       } else {
         console.log(`Mavjud o'quvchi yangilanmoqda: ${extStudent.full_name}`);
+        updatedCount++;
       }
 
       // Map fields (Upsert)
@@ -284,9 +291,15 @@ export class StudentsService {
     await this.activityLogService.logAction({
       action: 'STUDENT_SYNC',
       entityName: 'STUDENT',
-      description: `${students.length} ta o'quvchi schoolmanage.uz dan sinxronizatsiya qilindi.`,
+      description: `${students.length} ta o'quvchi schoolmanage.uz dan sinxronizatsiya qilindi. (${addedCount} yangi, ${updatedCount} yangilandi)`,
     });
 
-    return { message: `${students.length} ta o'quvchi muvaffaqiyatli sinxronizatsiya qilindi.` };
+    return { 
+      message: `${students.length} ta o'quvchi muvaffaqiyatli sinxronizatsiya qilindi.`,
+      addedCount,
+      updatedCount,
+      addedStudents,
+      totalCount: students.length
+    };
   }
 }
