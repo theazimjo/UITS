@@ -15,11 +15,13 @@ import { Room } from '../groups/entities/room.entity';
 import { Enrollment } from '../groups/entities/enrollment.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 
+import { Role } from '../staff/entities/role.entity';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       User, Student, Staff, Group, Payment, Income, Expense, 
-      Field, Course, Room, Enrollment, Notification
+      Field, Course, Room, Enrollment, Notification, Role
     ]),
   ],
   providers: [DataService],

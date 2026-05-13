@@ -7,7 +7,7 @@ import {
 import { 
   clearAllData, getMe, updateProfile, updatePassword, 
   exportData, getSystemSettings, updateSystemSettings, triggerBackup,
-  uploadGoogleAuth, syncGoogleSheets
+  uploadGoogleAuth, syncGoogleSheets, importData
 } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/common/Modal';
@@ -25,6 +25,7 @@ const Settings = () => {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isUploadingJSON, setIsUploadingJSON] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   
   // System Settings (Backup)
   const [systemSettings, setSystemSettings] = useState({
@@ -190,6 +191,37 @@ const Settings = () => {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleImportData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+      toast.error("Faqat .json fayllar qabul qilinadi");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        setIsImporting(true);
+        const data = JSON.parse(event.target.result);
+        
+        if (window.confirm("Barcha ma'lumotlarni import qilishni xohlaysizmi? Bu joriy ma'lumotlarni o'chirib yozishi mumkin.")) {
+          await importData(data);
+          toast.success("Ma'lumotlar muvaffaqiyatli import qilindi!");
+          window.location.reload();
+        }
+      } catch (err) {
+        toast.error("Import qilishda xatolik yuz berdi. Fayl formati noto'g'ri bo'lishi mumkin.");
+        console.error(err);
+      } finally {
+        setIsImporting(false);
+        if (e.target) e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleUpdateSystemSettings = async (e) => {
@@ -498,6 +530,46 @@ const Settings = () => {
                         {isExporting ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Download size={18} />}
                         Yuklab olish
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Import Section */}
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[2.5rem] border border-gray-200/50 dark:border-white/10 shadow-sm p-8 mt-6">
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl">
+                        <Upload size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-[17px] font-bold text-[#1d1d1f] dark:text-white">Import qilish</h3>
+                        <p className="text-[11px] text-gray-400 italic">JSON formatidagi zaxira faylini tizimga yuklang</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5">
+                      <div className="flex-1">
+                        <h4 className="text-[14px] font-bold text-[#1d1d1f] dark:text-white mb-1">Ma'lumotlarni tiklash</h4>
+                        <p className="text-[12px] text-gray-500 leading-relaxed">
+                          Oldin yuklab olingan zaxira nusxasini (.json fayl) yuklash orqali tizim ma'lumotlarini tiklashingiz mumkin.
+                        </p>
+                      </div>
+                      
+                      <div className="w-full md:w-auto shrink-0 relative">
+                        <input
+                          type="file"
+                          id="data-import-upload"
+                          className="hidden"
+                          accept=".json,application/json"
+                          onChange={handleImportData}
+                          disabled={isImporting}
+                        />
+                        <label
+                          htmlFor="data-import-upload"
+                          className={`w-full md:w-auto px-8 py-3 bg-blue-500 text-white rounded-2xl text-[14px] font-black cursor-pointer hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2 ${isImporting ? 'opacity-70 pointer-events-none' : ''}`}
+                        >
+                          {isImporting ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Upload size={18} />}
+                          {isImporting ? "Yuklanmoqda..." : "Faylni yuklash"}
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>

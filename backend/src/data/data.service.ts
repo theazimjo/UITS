@@ -13,6 +13,7 @@ import { Course } from '../groups/entities/course.entity';
 import { Room } from '../groups/entities/room.entity';
 import { Enrollment } from '../groups/entities/enrollment.entity';
 import { Notification } from '../notifications/entities/notification.entity';
+import { Role } from '../staff/entities/role.entity';
 
 @Injectable()
 export class DataService {
@@ -29,10 +30,12 @@ export class DataService {
     @InjectRepository(Room) private readonly roomRepository: Repository<Room>,
     @InjectRepository(Enrollment) private readonly enrollmentRepository: Repository<Enrollment>,
     @InjectRepository(Notification) private readonly notificationRepository: Repository<Notification>,
+    @InjectRepository(Role) private readonly roleRepository: Repository<Role>,
   ) {}
 
   async exportAll() {
     const data = {
+      roles: await this.roleRepository.find(),
       users: await this.userRepository.find(),
       students: await this.studentRepository.find(),
       staff: await this.staffRepository.find(),
@@ -56,5 +59,38 @@ export class DataService {
     });
 
     return data;
+  }
+
+  async importData(data: any) {
+    // Eng kam bog'liqlikdan ko'proq bog'liqlikga qarab saqlaymiz
+
+    // Role jadvalini to'ldirish (agar json da bo'lmasa, staff ichidan ajratib olamiz)
+    let roles = data.roles || [];
+    if (!data.roles && data.staff) {
+      const uniqueRoles = new Map();
+      data.staff.forEach(s => {
+        if (s.role) uniqueRoles.set(s.role.id, s.role);
+      });
+      roles = Array.from(uniqueRoles.values());
+    }
+    if (roles.length > 0) await this.roleRepository.save(roles);
+
+    if (data.users) await this.userRepository.save(data.users);
+    if (data.fields) await this.fieldRepository.save(data.fields);
+    if (data.rooms) await this.roomRepository.save(data.rooms);
+    if (data.staff) await this.staffRepository.save(data.staff);
+    
+    if (data.courses) await this.courseRepository.save(data.courses);
+    if (data.students) await this.studentRepository.save(data.students);
+    
+    if (data.groups) await this.groupRepository.save(data.groups);
+    
+    if (data.enrollments) await this.enrollmentRepository.save(data.enrollments);
+    if (data.payments) await this.paymentRepository.save(data.payments);
+    if (data.incomes) await this.incomeRepository.save(data.incomes);
+    if (data.expenses) await this.expenseRepository.save(data.expenses);
+    if (data.notifications) await this.notificationRepository.save(data.notifications);
+
+    return { success: true, message: 'Data imported successfully' };
   }
 }

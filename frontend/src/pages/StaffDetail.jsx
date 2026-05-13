@@ -152,7 +152,7 @@ const StaffDetail = () => {
       await fetchData();
       const allStaff = await getStaff();
       if (allStaff.data) updateGlobalStaff(allStaff.data);
-      
+
       toast.success("Xodim ma'lumotlari yangilandi! ✅");
       setIsEditModalOpen(false);
     } catch (err) {
@@ -175,10 +175,10 @@ const StaffDetail = () => {
     const [year, month] = currentMonth.split('-').map(Number);
     const firstDay = new Date(year, month - 1, 1).getDay(); // 0-6 (Sun-Sat)
     const daysInMonth = new Date(year, month, 0).getDate();
-    
+
     // Adjust firstDay to start from Monday (1=Mon, 2=Tue, ..., 0=Sun)
     const startingDay = firstDay === 0 ? 6 : firstDay - 1;
-    
+
     const days = [];
     // Padding for early days
     for (let i = 0; i < startingDay; i++) {
@@ -336,6 +336,7 @@ const StaffDetail = () => {
       ...enrollment.student,
       groupName: group.name,
       enrollmentStatus: enrollment.status,
+      groupPrice: group.monthlyPrice || 0,
       ...(() => {
         const fullPrice = group.monthlyPrice || 0;
         const payments = (group.payments || []).filter(p => p.student?.id === enrollment.student?.id) || [];
@@ -367,7 +368,7 @@ const StaffDetail = () => {
         return {
           isPaid: paidThisMonth > 0,
           collectedByMe,
-          statusLabel: paidThisMonth > 0 
+          statusLabel: paidThisMonth > 0
             ? `To'langan (${paidThisMonth.toLocaleString()} UZS)`
             : "To'lanmagan",
           startInfo: startDay !== 1 ? `${startDay}-sanada boshlagan` : ""
@@ -383,11 +384,10 @@ const StaffDetail = () => {
     s.groupName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const activeStudentsCount = allStudents.filter(s => s.enrollmentStatus === 'ACTIVE').length;
+  const activeStudentsCount = allStudents.length;
 
-  const totalExpectedRevenue = activeGroups.reduce((acc, group) => {
-    const activeCount = (group.enrollments || []).filter(en => en.status === 'ACTIVE').length;
-    return acc + (activeCount * parseFloat(group.monthlyPrice || 0));
+  const totalExpectedRevenue = allStudents.reduce((acc, student) => {
+    return acc + parseFloat(student.groupPrice || 0);
   }, 0);
 
   // ===============================================
@@ -564,7 +564,7 @@ const StaffDetail = () => {
                               <div className="flex items-center gap-2"><Clock size={12} className="opacity-50" /> <span>{g.startTime} — {g.endTime}</span></div>
                               <div className="flex items-center gap-2"><MapPin size={12} className="opacity-50" /> <span>{g.room?.name || 'Belgilanmagan'}</span></div>
                               <div className="flex items-center gap-2 text-[#007aff] font-medium">
-                                <Users size={12} /> 
+                                <Users size={12} />
                                 <span>{allStudents.filter(s => s.groupName === g.name && s.enrollmentStatus === 'ACTIVE').length} ta o'quvchi</span>
                               </div>
                             </div>
@@ -596,7 +596,7 @@ const StaffDetail = () => {
                       className="w-full pl-8 pr-3 py-1.5 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all placeholder-gray-400 shadow-inner text-[#1d1d1f] dark:text-[#f5f5f7]"
                     />
                   </div>
-                  
+
                   <div className="flex items-center gap-4">
                     <div className="px-4 py-2 bg-[#007aff]/10 border border-[#007aff]/20 rounded-lg">
                       <p className="text-[10px] font-bold text-[#007aff] uppercase tracking-wider">Kutilgan tushum</p>
@@ -741,7 +741,7 @@ const StaffDetail = () => {
                       {salaryData.holiday > 0 && <span className="bg-[#ff9500]/10 text-[#ff9500] px-2 py-1 rounded-md border border-[#ff9500]/20">Bayram: {salaryData.holiday.toLocaleString()} UZS</span>}
                     </div>
                   )}
-                  <button 
+                  <button
                     onClick={() => setIsPaymentModalOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-[#007aff] hover:bg-[#0062cc] text-white rounded-lg text-[13px] font-medium transition-all shadow-sm border border-[#005bb5]"
                   >
@@ -777,8 +777,8 @@ const StaffDetail = () => {
                       const isToday = day === new Date().toISOString().split('T')[0];
 
                       return (
-                        <div 
-                          key={idx} 
+                        <div
+                          key={idx}
                           onClick={() => handleDayClick(day)}
                           className={`min-h-[85px] p-2 bg-white dark:bg-black/20 transition-all ${day ? 'cursor-pointer hover:bg-[#007aff]/5 dark:hover:bg-[#007aff]/10 group' : 'bg-gray-50/50 dark:bg-black/40'}`}
                         >
@@ -790,11 +790,10 @@ const StaffDetail = () => {
                               {dayTotal > 0 && (
                                 <div className="space-y-1 mt-auto">
                                   {dayPayments.map((p, i) => (
-                                    <div 
-                                      key={i} 
-                                      className={`text-[9px] px-1.5 py-0.5 rounded truncate font-medium ${
-                                        p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
-                                      }`}
+                                    <div
+                                      key={i}
+                                      className={`text-[9px] px-1.5 py-0.5 rounded truncate font-medium ${p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
+                                        }`}
                                     >
                                       {p.amount.toLocaleString()}
                                     </div>
@@ -819,14 +818,13 @@ const StaffDetail = () => {
                       [...currentMonthPayments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((p, idx) => (
                         <div key={idx} className="px-5 py-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
-                              p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
-                            }`}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
+                              }`}>
                               <CreditCard size={20} />
                             </div>
                             <div>
                               <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
-                                {p.type === 'SALARY' ? "Maosh to'lovi" : p.type === 'BONUS' ? 'Bonus' : 'Bayram puli'} 
+                                {p.type === 'SALARY' ? "Maosh to'lovi" : p.type === 'BONUS' ? 'Bonus' : 'Bayram puli'}
                                 <span className="ml-2 text-[11px] font-normal text-gray-400">{new Date(p.date).toLocaleDateString('uz-UZ')}</span>
                               </p>
                               {p.comment && <p className="text-[11px] text-gray-500 mt-1 italic">"{p.comment}"</p>}
@@ -868,12 +866,12 @@ const StaffDetail = () => {
                 </div>
 
                 {/* PAYMENT MODAL */}
-                <Modal 
-                  isOpen={isPaymentModalOpen} 
+                <Modal
+                  isOpen={isPaymentModalOpen}
                   onClose={() => {
                     setIsPaymentModalOpen(false);
                     resetPaymentForm();
-                  }} 
+                  }}
                   title={isEditingPayment ? `${staff?.name} — To'lovni tahrirlash` : `${staff?.name} — Maosh to'lash`}
                 >
                   <form onSubmit={handleAddPayment} className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
@@ -912,7 +910,7 @@ const StaffDetail = () => {
 
                       <div>
                         <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-2">TO'LOV USULI</label>
-                        <select 
+                        <select
                           className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
                           value={paymentFormData.paymentType}
                           onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentType: e.target.value })}
@@ -946,8 +944,8 @@ const StaffDetail = () => {
                           ))}
                         </div>
                         <p className="mt-1.5 text-[10px] text-gray-400">
-                          {paymentFormData.type === 'SALARY' 
-                            ? "* Bu to'lov hisoblangan oylik maoshdan (qarzdorlikdan) ayiriladi." 
+                          {paymentFormData.type === 'SALARY'
+                            ? "* Bu to'lov hisoblangan oylik maoshdan (qarzdorlikdan) ayiriladi."
                             : "* Bu to'lov qo'shimcha rag'batlantirish bo'lib, oylik maosh qarzdorligiga ta'sir qilmaydi."}
                         </p>
                       </div>
@@ -985,9 +983,9 @@ const StaffDetail = () => {
                 </Modal>
 
                 {/* DAY DETAIL MODAL */}
-                <Modal 
-                  isOpen={isDayDetailModalOpen} 
-                  onClose={() => setIsDayDetailModalOpen(false)} 
+                <Modal
+                  isOpen={isDayDetailModalOpen}
+                  onClose={() => setIsDayDetailModalOpen(false)}
                   title={`${selectedDay ? new Date(selectedDay).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' }) : ''} — To'lovlar`}
                 >
                   <div className="space-y-4">
@@ -995,9 +993,8 @@ const StaffDetail = () => {
                       getDayPayments(selectedDay).map((p, idx) => (
                         <div key={idx} className="bg-gray-50 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-xl p-4 shadow-sm border-l-4 border-l-[#007aff]">
                           <div className="flex justify-between items-start mb-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${p.type === 'SALARY' ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-[#af52de]/10 text-[#af52de]'
+                              }`}>
                               {p.type === 'SALARY' ? "Oylik" : p.type === 'BONUS' ? 'Bonus' : 'Bayram'}
                             </span>
                             <span className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">{Number(p.amount).toLocaleString()} UZS</span>
@@ -1051,11 +1048,10 @@ const StaffDetail = () => {
                         <button
                           key={type.id}
                           onClick={() => setActiveReportType(type.id)}
-                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
-                            activeReportType === type.id
+                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${activeReportType === type.id
                               ? 'bg-white dark:bg-[#636366] text-[#007aff] dark:text-white shadow-sm'
                               : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                          }`}
+                            }`}
                         >
                           {type.label}
                         </button>
@@ -1072,108 +1068,105 @@ const StaffDetail = () => {
                       {reports
                         .filter(r => activeReportType === 'ALL' || r.reportType === activeReportType)
                         .map(report => (
-                        <div key={report.id}>
-                          {/* Report Header */}
-                          <div
-                            className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
-                            onClick={() => setExpandedReportId(expandedReportId === report.id ? null : report.id)}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
-                                report.items?.some(i => i.examScore != null)
-                                  ? 'bg-[#ff9500]/10 text-[#ff9500]'
-                                  : 'bg-[#007aff]/10 text-[#007aff]'
-                              }`}>
-                                {report.items?.some(i => i.examScore != null) ? <Award size={20} /> : <FileText size={20} />}
-                              </div>
-                              <div>
-                                <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
-                                  {getPeriodLabel(report.reportType)}
-                                  <span className="ml-2 text-[11px] font-normal text-gray-400">
-                                    {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                </p>
-                                <p className="text-[11px] text-gray-500">
-                                  {report.items?.length || 0} ta o'quvchi • {report.summary ? `"${report.summary.substring(0, 50)}${report.summary.length > 50 ? '...' : ''}"` : 'Xulosa kiritilmagan'}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-blue-50/50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800`}>
-                                {report.reportType}
-                              </span>
-                              {expandedReportId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                            </div>
-                          </div>
-
-                          {/* Expanded Items */}
-                          {expandedReportId === report.id && (
-                            <div className="bg-gray-50/50 dark:bg-black/10 border-t border-gray-200/30 dark:border-white/5">
-                              <table className="w-full text-[12px]">
-                                <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500">
-                                  <tr>
-                                    <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
-                                    <th className="px-3 py-2 text-left font-medium">Guruh</th>
-                                    <th className="px-3 py-2 text-center font-medium">Davomat</th>
-                                    <th className="px-3 py-2 text-center font-medium">To'lov</th>
-                                    {report.items?.some(i => i.examScore != null) && (
-                                      <th className="px-3 py-2 text-center font-medium">Imtihon</th>
-                                    )}
-                                    <th className="px-3 py-2 text-left font-medium">Izoh</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                                  {(report.items || []).map(item => (
-                                    <tr key={item.id} className="hover:bg-white/40 dark:hover:bg-white/5">
-                                      <td className="px-5 py-2.5 font-medium text-[#1d1d1f] dark:text-white">{item.studentName}</td>
-                                      <td className="px-3 py-2.5 text-gray-500">{item.groupName}</td>
-                                      <td className="px-3 py-2.5 text-center">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#007aff]/10 text-[#007aff] font-bold text-[11px]">
-                                          {item.attendanceCount} kun
-                                        </span>
-                                      </td>
-                                      <td className="px-3 py-2.5 text-center">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                          item.paymentStatus?.includes("To'langan")
-                                            ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200'
-                                            : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200'
-                                        }`}>
-                                          {item.paymentStatus}
-                                        </span>
-                                      </td>
-                                      {report.items?.some(i => i.examScore != null) && (
-                                        <td className="px-3 py-2.5 text-center">
-                                          {item.examScore !== null && item.examScore !== undefined ? (
-                                            <div>
-                                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[11px] ${
-                                                item.examScore >= 80 ? 'bg-green-100 text-green-700' :
-                                                item.examScore >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-red-100 text-red-700'
-                                              }`}>
-                                                <Star size={10} /> {item.examScore}
-                                              </span>
-                                              {item.examComment && <p className="text-[10px] text-gray-400 mt-0.5">{item.examComment}</p>}
-                                            </div>
-                                          ) : (
-                                            <span className="text-gray-300">—</span>
-                                          )}
-                                        </td>
-                                      )}
-                                      <td className="px-3 py-2.5 text-gray-500 italic text-[11px]">{item.note || '—'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                              {report.summary && (
-                                <div className="mx-5 mb-4 mt-2 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
-                                  <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Umumiy xulosa</p>
-                                  <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
+                          <div key={report.id}>
+                            {/* Report Header */}
+                            <div
+                              className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
+                              onClick={() => setExpandedReportId(expandedReportId === report.id ? null : report.id)}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${report.items?.some(i => i.examScore != null)
+                                    ? 'bg-[#ff9500]/10 text-[#ff9500]'
+                                    : 'bg-[#007aff]/10 text-[#007aff]'
+                                  }`}>
+                                  {report.items?.some(i => i.examScore != null) ? <Award size={20} /> : <FileText size={20} />}
                                 </div>
-                              )}
+                                <div>
+                                  <p className="text-[13px] font-bold text-[#1d1d1f] dark:text-white">
+                                    {getPeriodLabel(report.reportType)}
+                                    <span className="ml-2 text-[11px] font-normal text-gray-400">
+                                      {new Date(report.createdAt).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </p>
+                                  <p className="text-[11px] text-gray-500">
+                                    {report.items?.length || 0} ta o'quvchi • {report.summary ? `"${report.summary.substring(0, 50)}${report.summary.length > 50 ? '...' : ''}"` : 'Xulosa kiritilmagan'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-blue-50/50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800`}>
+                                  {report.reportType}
+                                </span>
+                                {expandedReportId === report.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            {/* Expanded Items */}
+                            {expandedReportId === report.id && (
+                              <div className="bg-gray-50/50 dark:bg-black/10 border-t border-gray-200/30 dark:border-white/5">
+                                <table className="w-full text-[12px]">
+                                  <thead className="bg-gray-100/50 dark:bg-black/30 text-gray-500">
+                                    <tr>
+                                      <th className="px-5 py-2 text-left font-medium">O'quvchi</th>
+                                      <th className="px-3 py-2 text-left font-medium">Guruh</th>
+                                      <th className="px-3 py-2 text-center font-medium">Davomat</th>
+                                      <th className="px-3 py-2 text-center font-medium">To'lov</th>
+                                      {report.items?.some(i => i.examScore != null) && (
+                                        <th className="px-3 py-2 text-center font-medium">Imtihon</th>
+                                      )}
+                                      <th className="px-3 py-2 text-left font-medium">Izoh</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                                    {(report.items || []).map(item => (
+                                      <tr key={item.id} className="hover:bg-white/40 dark:hover:bg-white/5">
+                                        <td className="px-5 py-2.5 font-medium text-[#1d1d1f] dark:text-white">{item.studentName}</td>
+                                        <td className="px-3 py-2.5 text-gray-500">{item.groupName}</td>
+                                        <td className="px-3 py-2.5 text-center">
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#007aff]/10 text-[#007aff] font-bold text-[11px]">
+                                            {item.attendanceCount} kun
+                                          </span>
+                                        </td>
+                                        <td className="px-3 py-2.5 text-center">
+                                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.paymentStatus?.includes("To'langan")
+                                              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200'
+                                              : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200'
+                                            }`}>
+                                            {item.paymentStatus}
+                                          </span>
+                                        </td>
+                                        {report.items?.some(i => i.examScore != null) && (
+                                          <td className="px-3 py-2.5 text-center">
+                                            {item.examScore !== null && item.examScore !== undefined ? (
+                                              <div>
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[11px] ${item.examScore >= 80 ? 'bg-green-100 text-green-700' :
+                                                    item.examScore >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                                                      'bg-red-100 text-red-700'
+                                                  }`}>
+                                                  <Star size={10} /> {item.examScore}
+                                                </span>
+                                                {item.examComment && <p className="text-[10px] text-gray-400 mt-0.5">{item.examComment}</p>}
+                                              </div>
+                                            ) : (
+                                              <span className="text-gray-300">—</span>
+                                            )}
+                                          </td>
+                                        )}
+                                        <td className="px-3 py-2.5 text-gray-500 italic text-[11px]">{item.note || '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                {report.summary && (
+                                  <div className="mx-5 mb-4 mt-2 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Umumiy xulosa</p>
+                                    <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                     </div>
                   ) : (
                     <div className="py-12 text-center text-gray-500">

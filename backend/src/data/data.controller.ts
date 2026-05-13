@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { DataService } from './data.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -10,5 +10,11 @@ export class DataController {
   @Get('export')
   async exportData() {
     return this.dataService.exportAll();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('import')
+  async importData(@Body() data: any) {
+    return this.dataService.importData(data);
   }
 }
