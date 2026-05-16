@@ -596,15 +596,6 @@ const StaffDetail = () => {
                       className="w-full pl-8 pr-3 py-1.5 bg-white/60 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-[#007aff]/50 transition-all placeholder-gray-400 shadow-inner text-[#1d1d1f] dark:text-[#f5f5f7]"
                     />
                   </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="px-4 py-2 bg-[#007aff]/10 border border-[#007aff]/20 rounded-lg">
-                      <p className="text-[10px] font-bold text-[#007aff] uppercase tracking-wider">Kutilgan tushum</p>
-                      <p className="text-[15px] font-bold text-[#1d1d1f] dark:text-white">
-                        {totalExpectedRevenue.toLocaleString()} <span className="text-[10px] font-normal opacity-60 ml-0.5">UZS</span>
-                      </p>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex-1 overflow-x-auto">
@@ -669,6 +660,16 @@ const StaffDetail = () => {
               <div className="space-y-6 animate-fade-in">
                 {/* Top Summary Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                  {/* Kutilgan Tushum */}
+                  <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm relative overflow-hidden group">
+                    <div className="absolute -right-3 -top-3 text-[#007aff] opacity-[0.08] group-hover:opacity-20 transition-opacity"><Users size={80} /></div>
+                    <p className="text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Kutilgan Tushum</p>
+                    <h3 className="text-2xl font-bold text-[#1d1d1f] dark:text-white">
+                      {totalExpectedRevenue.toLocaleString()} <span className="text-[11px] text-gray-400 font-normal">UZS</span>
+                    </h3>
+                    <p className="text-[10px] text-gray-500 mt-2">Guruhdagi barcha o'quvchilardan kutilgan summa</p>
+                  </div>
 
                   {/* Asosiy Tushum */}
                   <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm relative overflow-hidden group">
@@ -1049,8 +1050,8 @@ const StaffDetail = () => {
                           key={type.id}
                           onClick={() => setActiveReportType(type.id)}
                           className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${activeReportType === type.id
-                              ? 'bg-white dark:bg-[#636366] text-[#007aff] dark:text-white shadow-sm'
-                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                            ? 'bg-white dark:bg-[#636366] text-[#007aff] dark:text-white shadow-sm'
+                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                             }`}
                         >
                           {type.label}
@@ -1076,8 +1077,8 @@ const StaffDetail = () => {
                             >
                               <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${report.items?.some(i => i.examScore != null)
-                                    ? 'bg-[#ff9500]/10 text-[#ff9500]'
-                                    : 'bg-[#007aff]/10 text-[#007aff]'
+                                  ? 'bg-[#ff9500]/10 text-[#ff9500]'
+                                  : 'bg-[#007aff]/10 text-[#007aff]'
                                   }`}>
                                   {report.items?.some(i => i.examScore != null) ? <Award size={20} /> : <FileText size={20} />}
                                 </div>
@@ -1129,8 +1130,8 @@ const StaffDetail = () => {
                                         </td>
                                         <td className="px-3 py-2.5 text-center">
                                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.paymentStatus?.includes("To'langan")
-                                              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200'
-                                              : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200'
+                                            ? 'bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200'
+                                            : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200'
                                             }`}>
                                             {item.paymentStatus}
                                           </span>
@@ -1140,8 +1141,8 @@ const StaffDetail = () => {
                                             {item.examScore !== null && item.examScore !== undefined ? (
                                               <div>
                                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[11px] ${item.examScore >= 80 ? 'bg-green-100 text-green-700' :
-                                                    item.examScore >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                                                      'bg-red-100 text-red-700'
+                                                  item.examScore >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
                                                   }`}>
                                                   <Star size={10} /> {item.examScore}
                                                 </span>

@@ -61,35 +61,65 @@ export class DataService {
     return data;
   }
 
+  // Id larni saqlab qolgan holda ma'lumotlarni kiritish va ketma-ketlikni (sequence) to'g'rilash
+  private async savePreservingIds(repo: Repository<any>, tableName: string, items: any[]) {
+    if (!items || items.length === 0) return;
+    for (const item of items) {
+      try {
+        // Ob'yekt ko'rinishidagi bog'liqliklarni (relation) faqat ID raqamga aylantiramiz
+        // Masalan: { teacher: { id: 2 } } -> { teacher: 2 }
+        const insertItem = { ...item };
+        for (const key in insertItem) {
+          if (insertItem[key] !== null && typeof insertItem[key] === 'object' && !Array.isArray(insertItem[key])) {
+            if (insertItem[key].id !== undefined) {
+              insertItem[key] = insertItem[key].id;
+            }
+          }
+        }
+        await repo.createQueryBuilder().insert().values(insertItem).execute();
+      } catch (e) {
+        // Agar ID allaqachon mavjud bo'lsa (yoki boshqa xato), shunchaki yangilaymiz (update)
+        await repo.save(item);
+      }
+    }
+    // Postgres uchun ID ketma-ketligini (sequence) to'g'rilab qo'yamiz, 
+    // aks holda yangi ma'lumot qo'shganda ID conflict bo'ladi
+    try {
+      await repo.query(`SELECT setval('${tableName}_id_seq', COALESCE((SELECT MAX(id)+1 FROM "${tableName}"), 1), false)`);
+    } catch (e) {}
+  }
+
   async importData(data: any) {
     // Eng kam bog'liqlikdan ko'proq bog'liqlikga qarab saqlaymiz
 
-    // Role jadvalini to'ldirish (agar json da bo'lmasa, staff ichidan ajratib olamiz)
-    let roles = data.roles || [];
-    if (!data.roles && data.staff) {
-      const uniqueRoles = new Map();
-      data.staff.forEach(s => {
-        if (s.role) uniqueRoles.set(s.role.id, s.role);
-      });
-      roles = Array.from(uniqueRoles.values());
-    }
-    if (roles.length > 0) await this.roleRepository.save(roles);
+    // Role jadvalini oldindan asosiy rollar bilan to'ldiramiz (Bazada yo'q bo'lsa xato bermasligi uchun)
+    await this.roleRepository.save([
+      { id: 1, name: 'Admin' },
+      { id: 2, name: 'Teacher' },
+      { id: 3, name: 'Manager' },
+      { id: 4, name: 'Staff' }
+    ]);
 
-    if (data.users) await this.userRepository.save(data.users);
-    if (data.fields) await this.fieldRepository.save(data.fields);
-    if (data.rooms) await this.roomRepository.save(data.rooms);
-    if (data.staff) await this.staffRepository.save(data.staff);
+    let roles = data.roles || [];
+    if (roles.length > 0) {
+      await this.roleRepository.save(roles);
+    }
+
+    if (data.users) await this.savePreservingIds(this.userRepository, 'user', data.users);
+    if (data.fields) await this.savePreservingIds(this.fieldRepository, 'field', data.fields);
+    if (data.rooms) await this.savePreservingIds(this.roomRepository, 'room', data.rooms);
+    if (data.staff) await this.savePreservingIds(this.staffRepository, 'staff', data.staff);
     
-    if (data.courses) await this.courseRepository.save(data.courses);
-    if (data.students) await this.studentRepository.save(data.students);
+    if (data.courses) await this.savePreservingIds(this.courseRepository, 'course', data.courses);
+    if (data.students) await this.savePreservingIds(this.studentRepository, 'student', data.students);
     
-    if (data.groups) await this.groupRepository.save(data.groups);
+    if (data.groups) await this.savePreservingIds(this.groupRepository, 'group', data.groups);
     
-    if (data.enrollments) await this.enrollmentRepository.save(data.enrollments);
-    if (data.payments) await this.paymentRepository.save(data.payments);
-    if (data.incomes) await this.incomeRepository.save(data.incomes);
-    if (data.expenses) await this.expenseRepository.save(data.expenses);
-    if (data.notifications) await this.notificationRepository.save(data.notifications);
+    if (data.enrollments) await this.savePreservingIds(this.enrollmentRepository, 'enrollment', data.enrollments);
+    if (data.payments) await this.savePreservingIds(this.paymentRepository, 'payment', data.payments);
+    if (data.incomes) await this.savePreservingIds(this.incomeRepository, 'income', data.incomes);
+    if (data.expenses) await this.savePreservingIds(this.expenseRepository, 'expense', data.expenses);
+    if (data.notifications) await this.savePreservingIds(this.notificationRepository, 'notification', data.notifications);
 
     return { success: true, message: 'Data imported successfully' };
   }
