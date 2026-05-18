@@ -30,8 +30,8 @@ export class MonthlyReportItem {
   @Column()
   groupName: string;
 
-  @Column({ type: 'int', default: 0 })
-  attendanceCount: number;
+  @Column({ type: 'varchar', length: 100, nullable: true, default: '' })
+  attendanceCount: string;
 
   @Column({ type: 'varchar', length: 50, default: '' })
   paymentStatus: string;
@@ -59,6 +59,15 @@ export class MonthlyReportItem {
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   examStatus: string; // O'tdi / O'tmadi
+
+  @Column({ type: 'int', nullable: true })
+  progressScore: number; // 1-5
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  homeworkStatus: string; // Aktiv, Passiv, Bajarmaydi
+
+  @Column({ type: 'text', nullable: true })
+  conclusion: string; // O'zlashtirmoqda, Qiynalyapti, Kritik ...
 
   @Column({ type: 'text', nullable: true })
   note: string;

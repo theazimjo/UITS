@@ -358,6 +358,31 @@ export class TeacherController {
       });
     }
 
+    // Fetch payments for these students in this month to set isPaid
+    try {
+      if (studentIds.length > 0) {
+        const studentPayments = await this.paymentRepo.createQueryBuilder('p')
+          .leftJoinAndSelect('p.student', 'student')
+          .where('student.id IN (:...ids)', { ids: studentIds })
+          .andWhere('p.month = :month', { month: targetMonth })
+          .getMany();
+
+        const paidStudentIds = new Set(studentPayments.map(p => p.student?.id).filter(Boolean));
+        students.forEach(s => {
+          s.isPaid = paidStudentIds.has(s.id);
+        });
+      } else {
+        students.forEach(s => {
+          s.isPaid = false;
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching payments for getMyAttendance:', e.message);
+      students.forEach(s => {
+        s.isPaid = false;
+      });
+    }
+
     // Initialize grades object for all students if not already present
     students.forEach(s => {
       if (!s.grades) s.grades = {};
@@ -570,7 +595,7 @@ export class TeacherController {
     groupIds?: { [id: number]: number };
     examScores?: { [id: number]: number };
     examComments?: { [id: number]: string };
-    
+
     // New exam fields
     theoryScores?: { [id: number]: number };
     practiceScores?: { [id: number]: number };
@@ -578,7 +603,13 @@ export class TeacherController {
     totalScores?: { [id: number]: number };
     percentages?: { [id: number]: number };
     examStatuses?: { [id: number]: string };
-    
+
+    // New per-student fields
+    attendanceCounts?: { [id: number]: number };
+    progressScores?: { [id: number]: number };
+    homeworkStatuses?: { [id: number]: string };
+    conclusions?: { [id: number]: string };
+
     mode?: 'merge' | 'replace';
     reportId?: number; // Added to identify the report being edited
   }) {
@@ -604,20 +635,41 @@ export class TeacherController {
       }
     }
 
+    // Query payments for selected students in the given month to determine paymentStatus
+    let paidStudentIds = new Set<number>();
+    try {
+      if (body.studentIds && body.studentIds.length > 0) {
+        const studentPayments = await this.paymentRepo.createQueryBuilder('p')
+          .leftJoinAndSelect('p.student', 'student')
+          .where('student.id IN (:...ids)', { ids: body.studentIds.map(Number) })
+          .andWhere('p.month = :month', { month: body.month })
+          .getMany();
+
+        paidStudentIds = new Set(studentPayments.map(p => p.student?.id).filter(Boolean));
+      }
+    } catch (e) {
+      console.error('Error fetching payments for submitReport:', e.message);
+    }
+
     // Build items from selected students
     const items = (body.studentIds || []).map(sid => {
       const ri = new MonthlyReportItem();
       ri.studentId = sid;
       ri.studentName = body.studentNames?.[sid] || String(sid);
       ri.groupName = body.groupNames?.[sid] || '';
-      ri.attendanceCount = 0;
-      ri.paymentStatus = '';
-      
+      ri.attendanceCount = body.attendanceCounts?.[sid] !== undefined && body.attendanceCounts?.[sid] !== null ? String(body.attendanceCounts[sid]) : '';
+      ri.paymentStatus = paidStudentIds.has(Number(sid)) ? "To'langan" : "To'lanmagan";
+
+      // Detailed fields
+      if (body.progressScores?.[sid]) ri.progressScore = Number(body.progressScores[sid]);
+      if (body.homeworkStatuses?.[sid]) ri.homeworkStatus = body.homeworkStatuses[sid];
+      if (body.conclusions?.[sid]) ri.conclusion = body.conclusions[sid];
+
       // Legacy examScore support
       if (body.examScores?.[sid]) {
         ri.examScore = Number(body.examScores[sid]);
       }
-      
+
       // New Detailed Exam fields
       if (body.theoryScores?.[sid]) ri.theoryScore = Number(body.theoryScores[sid]);
       if (body.practiceScores?.[sid]) ri.practiceScore = Number(body.practiceScores[sid]);
@@ -639,7 +691,7 @@ export class TeacherController {
       summary: body.summary || '',
       items,
     });
-    
+
     const savedReport = await this.monthlyReportRepo.save(report);
 
     // If it's an EXAM, also save to dedicated Exam table for student profile lookups
@@ -668,6 +720,64 @@ export class TeacherController {
     }
 
     return savedReport;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('attendance-summary')
+  async getAttendanceSummary(
+    @Query('month') month: string,
+    @Query('groupId') groupId: number,
+  ) {
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) return {};
+
+    // Get all students in the group
+    const enrollments = await this.enrollmentRepo.find({
+      where: { group: { id: groupId }, status: EnrollmentStatus.ACTIVE },
+      relations: ['student'],
+    });
+
+    const students = enrollments.map(e => e.student).filter(s => s && s.externalId);
+    if (students.length === 0) return {};
+
+    // Calculate lesson days in the month
+    const [year, monthNum] = month.split('-').map(Number);
+    const startDate = new Date(year, monthNum - 1, 1);
+    const endDate = new Date(year, monthNum, 0);
+
+    const lessonDays: string[] = [];
+    // Map Dush, Sesh, Chor, Pay, Juma, Shan, Yak to 1, 2, 3, 4, 5, 6, 0
+    const dayMap: { [key: string]: number } = {
+      'Dush': 1, 'Sesh': 2, 'Chor': 3, 'Pay': 4, 'Paysh': 4, 'Juma': 5, 'Shan': 6, 'Yak': 0
+    };
+    const targetDayNums = group.days.map(d => dayMap[d.trim()]).filter(d => d !== undefined);
+
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      if (targetDayNums.includes(d.getDay())) {
+        lessonDays.push(d.toISOString().slice(0, 10));
+      }
+    }
+
+    const totalLessons = lessonDays.length;
+    const summary: { [studentId: number]: { total: number, present: number, absent: number } } = {};
+
+    for (const student of students) {
+      const records = await this.attendanceRecordRepo.find({
+        where: {
+          externalId: student.externalId,
+          date: In(lessonDays),
+        }
+      });
+
+      const presentCount = records.filter(r => r.status === 'present').length;
+      summary[student.id] = {
+        total: totalLessons,
+        present: presentCount,
+        absent: totalLessons - presentCount,
+      };
+    }
+
+    return summary;
   }
 
   // GET /teacher/my-reports — teacher reads their own reports

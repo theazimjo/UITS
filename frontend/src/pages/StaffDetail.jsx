@@ -1112,10 +1112,12 @@ const StaffDetail = () => {
                                       <th className="px-3 py-2 text-left font-medium">Guruh</th>
                                       <th className="px-3 py-2 text-center font-medium">Davomat</th>
                                       <th className="px-3 py-2 text-center font-medium">To'lov</th>
+                                      <th className="px-3 py-2 text-center font-medium">O'zlashtirish</th>
+                                      <th className="px-3 py-2 text-center font-medium">Vazifa</th>
                                       {report.items?.some(i => i.examScore != null) && (
                                         <th className="px-3 py-2 text-center font-medium">Imtihon</th>
                                       )}
-                                      <th className="px-3 py-2 text-left font-medium">Izoh</th>
+                                      <th className="px-3 py-2 text-left font-medium">Xulosa/Izoh</th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
@@ -1125,7 +1127,7 @@ const StaffDetail = () => {
                                         <td className="px-3 py-2.5 text-gray-500">{item.groupName}</td>
                                         <td className="px-3 py-2.5 text-center">
                                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#007aff]/10 text-[#007aff] font-bold text-[11px]">
-                                            {item.attendanceCount} kun
+                                            {isNaN(Number(item.attendanceCount)) || !item.attendanceCount ? item.attendanceCount || '—' : `${item.attendanceCount} kun`}
                                           </span>
                                         </td>
                                         <td className="px-3 py-2.5 text-center">
@@ -1135,6 +1137,26 @@ const StaffDetail = () => {
                                             }`}>
                                             {item.paymentStatus}
                                           </span>
+                                        </td>
+                                        <td className="px-3 py-2.5 text-center">
+                                          {item.progressScore ? (
+                                            <div className="flex items-center justify-center gap-0.5">
+                                              {[...Array(5)].map((_, i) => (
+                                                <Star key={i} size={10} className={i < item.progressScore ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />
+                                              ))}
+                                              <span className="ml-1 font-bold text-amber-600">{item.progressScore}</span>
+                                            </div>
+                                          ) : '—'}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-center">
+                                          {item.homeworkStatus ? (
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.homeworkStatus === 'Aktiv' ? 'bg-emerald-100 text-emerald-600' :
+                                              item.homeworkStatus === 'Passiv' ? 'bg-amber-100 text-amber-600' :
+                                                'bg-red-100 text-red-600'
+                                              }`}>
+                                              {item.homeworkStatus}
+                                            </span>
+                                          ) : '—'}
                                         </td>
                                         {report.items?.some(i => i.examScore != null) && (
                                           <td className="px-3 py-2.5 text-center">
@@ -1153,17 +1175,21 @@ const StaffDetail = () => {
                                             )}
                                           </td>
                                         )}
-                                        <td className="px-3 py-2.5 text-gray-500 italic text-[11px]">{item.note || '—'}</td>
+                                        <td className="px-3 py-2.5 text-gray-500 italic text-[11px]">
+                                          <div className="flex flex-col gap-1">
+                                            {item.conclusion && (
+                                              <span className={`font-bold ${item.conclusion.includes('Kritik') ? 'text-red-500' : 'text-blue-500'}`}>
+                                                {item.conclusion}
+                                              </span>
+                                            )}
+                                            <span>{item.note || ''}</span>
+                                            {!item.conclusion && !item.note && '—'}
+                                          </div>
+                                        </td>
                                       </tr>
                                     ))}
                                   </tbody>
                                 </table>
-                                {report.summary && (
-                                  <div className="mx-5 mb-4 mt-2 p-3 bg-white dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Umumiy xulosa</p>
-                                    <p className="text-[12px] text-[#1d1d1f] dark:text-gray-300 italic">"{report.summary}"</p>
-                                  </div>
-                                )}
                               </div>
                             )}
                           </div>

@@ -139,6 +139,8 @@ export const getAllMonthlyReports = (month) => api.get('/staff/reports/all', { p
 export const sendTeacherReport = (data) => api.post('/teacher/send-report', data);
 export const getMyTeacherReports = (month) => api.get('/teacher/my-reports', { params: { month } });
 export const deleteTeacherReport = (id) => api.delete(`/teacher/reports/${id}`);
+export const getAttendanceSummary = (month, groupId) => api.get('/teacher/attendance-summary', { params: { month, groupId } });
+export const getCurrentAverages = (month, groupId) => api.get('/teacher/current-averages', { params: { month, groupId } });
 
 // Parent Portal
 export const getParentChildren = () => api.get('/parent/children');

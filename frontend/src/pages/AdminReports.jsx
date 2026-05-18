@@ -174,7 +174,7 @@ const ReportModal = ({ report, teacher, currentMonth, onClose }) => {
                                                         <>
                                                             <td className="py-3 px-4 text-center">
                                                                 <span className="font-medium text-blue-600 dark:text-blue-400">
-                                                                    {item.attendanceCount} <span className="text-xs text-gray-400 font-normal">kun</span>
+                                                                    {isNaN(Number(item.attendanceCount)) || !item.attendanceCount ? item.attendanceCount || '—' : `${item.attendanceCount} kun`}
                                                                 </span>
                                                             </td>
                                                             <td className="py-3 px-4 text-center">
@@ -326,8 +326,8 @@ const AdminReports = () => {
 
     const getPeriodLabel = (type) => {
         switch (type) {
-            case '10_DAY': return "10-kunlik";
-            case '20_DAY': return "20-kunlik";
+            case '10_DAY': return "1-10 kunlik";
+            case '20_DAY': return "11-20 kunlik";
             case 'END_MONTH': return "Oy yakuni";
             case 'EXAM': return "Imtihon";
             default: return type;
@@ -458,20 +458,20 @@ const AdminReports = () => {
                 </aside>
 
                 {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+                <main className="flex-1 overflow-y-auto p-6 lg:p-8 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
                     {reportsLoading ? (
                         <div className="h-full flex flex-col items-center justify-center gap-4 text-gray-400">
                             <RefreshCw size={32} className="animate-spin text-blue-500" />
                             <p className="text-sm font-medium">Ma'lumotlar yuklanmoqda...</p>
                         </div>
                     ) : activeType === 'EXAM' ? (
-                        <div className="bg-white dark:bg-black/20 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
-                            <div className="overflow-x-auto">
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10">
                                 <table className="w-full text-[12px] border-collapse">
                                     <thead className="bg-[#f8f9fa] dark:bg-gray-800 text-gray-700 dark:text-gray-200 uppercase tracking-tight text-[10px] font-black border-b border-gray-200 dark:border-gray-700">
                                         <tr>
-                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center w-10">№</th>
-                                            <th className="px-6 py-3 border border-gray-200 dark:border-gray-700 text-left sticky left-0 bg-[#f8f9fa] dark:bg-gray-800 z-10">F.I.O</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center w-10 sticky left-0 bg-[#f8f9fa] dark:bg-gray-800 z-10">№</th>
+                                            <th className="px-6 py-3 border border-gray-200 dark:border-gray-700 text-left sticky left-10 bg-[#f8f9fa] dark:bg-gray-800 z-10">F.I.O</th>
                                             <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">O'qituvchi</th>
                                             <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">Yo'nalish</th>
                                             <th className="px-2 py-3 border border-gray-200 dark:border-gray-700 text-center">Joriy</th>
@@ -487,8 +487,8 @@ const AdminReports = () => {
                                         {flattenedExamData().length > 0 ? (
                                             flattenedExamData().map((item, idx) => (
                                                 <tr key={idx} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group">
-                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center text-gray-500 font-medium">{idx + 1}</td>
-                                                    <td className="px-6 py-2.5 border border-gray-100 dark:border-gray-800 font-bold text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-900 z-10 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/10">
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center text-gray-500 font-medium sticky left-0 bg-white dark:bg-gray-900 z-10 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/10">{idx + 1}</td>
+                                                    <td className="px-6 py-2.5 border border-gray-100 dark:border-gray-800 font-bold text-gray-900 dark:text-white sticky left-10 bg-white dark:bg-gray-900 z-10 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/10">
                                                         {item.studentName}
                                                     </td>
                                                     <td className="px-4 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 font-medium">
@@ -535,70 +535,108 @@ const AdminReports = () => {
                             </div>
                         </div>
                     ) : reports.filter(r => activeType === 'ALL' || r.reportType === activeType).length > 0 ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
-                            {reports
-                                .filter(r => activeType === 'ALL' || r.reportType === activeType)
-                                .map((r) => {
-                                const teacher = staffList.find(s => s.id === r.teacherId) || { name: 'Noma\'lum o\'qituvchi' };
-                                const studentsCount = r.items?.length || 0;
-                                const unpaidCount = r.items?.filter(i => i.paymentStatus !== 'paid').length || 0;
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10">
+                                <table className="w-full text-[12px] border-collapse">
+                                    <thead className="bg-[#f8f9fa] dark:bg-gray-800 text-gray-700 dark:text-gray-200 uppercase tracking-tight text-[10px] font-black border-b border-gray-200 dark:border-gray-700">
+                                        <tr>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center w-10 sticky left-0 bg-[#f8f9fa] dark:bg-gray-800 z-10">№</th>
+                                            <th className="px-6 py-3 border border-gray-200 dark:border-gray-700 text-left sticky left-10 bg-[#f8f9fa] dark:bg-gray-800 z-10">O'quvchi</th>
+                                            <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">O'qituvchi</th>
+                                            <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">Guruh</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center">Davr</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center">Davomat</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center">O'zlashtirish</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center">Vazifa</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center">To'lov</th>
+                                            <th className="px-6 py-3 border border-gray-200 dark:border-gray-700 text-left">Xulosa</th>
+                                            <th className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-left">Sana</th>
+                                            <th className="px-3 py-3 border border-gray-200 dark:border-gray-700 text-center w-20">Amal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 dark:divide-white/5">
+                                        {(() => {
+                                            const filteredReports = reports.filter(r => activeType === 'ALL' || r.reportType === activeType);
+                                            const flatStudents = filteredReports.flatMap(report => 
+                                                (report.items || []).map(item => ({
+                                                    ...item,
+                                                    reportType: report.reportType,
+                                                    reportCreatedAt: report.createdAt,
+                                                    reportId: report.id,
+                                                    parentReport: report,
+                                                    teacherName: staffList.find(s => s.id === report.teacherId)?.name || '—'
+                                                }))
+                                            );
 
-                                return (
-                                    <div
-                                        key={r.id}
-                                        onClick={() => setSelectedReport(r)}
-                                        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 cursor-pointer hover:shadow-md hover:border-blue-200 dark:hover:border-blue-900 transition-all group flex flex-col"
-                                    >
-                                        {/* Card Header */}
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold text-gray-700 dark:text-gray-300">
-                                                    {teacher.name?.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">{teacher.name}</p>
-                                                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                        <Clock size={12} /> {getRelativeTime(r.createdAt)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span className={`px-2 py-1 rounded text-[11px] font-medium border ${r.reportType === 'END_MONTH'
-                                                ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
-                                                : r.reportType === '20_DAY'
-                                                    ? 'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
-                                                    : 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
-                                                }`}>
-                                                {getPeriodLabel(r.reportType)}
-                                            </span>
-                                        </div>
-
-                                        {/* Summary Text */}
-                                        <div className="flex-1 mb-5">
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                                                {r.summary || <span className="italic opacity-60">Xulosa yozilmagan...</span>}
-                                            </p>
-                                        </div>
-
-                                        {/* Stats Grid */}
-                                        <div className="grid grid-cols-3 gap-2 py-3 border-t border-gray-100 dark:border-gray-700">
-                                            <div className="text-center">
-                                                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">O'quvchilar</p>
-                                                <p className="font-semibold text-gray-900 dark:text-gray-100">{studentsCount}</p>
-                                            </div>
-                                            <div className="text-center border-l border-r border-gray-100 dark:border-gray-700">
-                                                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Davomat</p>
-                                                <p className="font-semibold text-blue-600 dark:text-blue-400">Yaxshi</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Qarzdorlar</p>
-                                                <p className={`font-semibold ${unpaidCount > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                                    {unpaidCount}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                            return flatStudents.map((item, idx) => (
+                                                <tr key={idx} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group">
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center text-gray-500 font-medium sticky left-0 bg-white dark:bg-gray-900 z-10 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/10">{idx + 1}</td>
+                                                    <td className="px-6 py-2.5 border border-gray-100 dark:border-gray-800 font-bold text-gray-900 dark:text-white sticky left-10 bg-white dark:bg-gray-900 z-10 group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/10">
+                                                        {item.studentName}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 font-medium">
+                                                        {item.teacherName}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400">
+                                                        {item.groupName || '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center">
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${item.reportType === 'END_MONTH'
+                                                            ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
+                                                            : item.reportType === '20_DAY'
+                                                                ? 'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+                                                                : 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                                                            }`}>
+                                                            {getPeriodLabel(item.reportType)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center font-medium text-blue-600">
+                                                        {isNaN(Number(item.attendanceCount)) || !item.attendanceCount ? item.attendanceCount || '—' : `${item.attendanceCount} kun`}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center font-bold">
+                                                        {item.progressScore !== null && item.progressScore !== undefined ? `${item.progressScore} ball` : '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center">
+                                                        {item.homeworkStatus ? (
+                                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${item.homeworkStatus === 'Bajarildi' || item.homeworkStatus?.includes('Yaxshi') || item.homeworkStatus === 'Aktiv'
+                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400'
+                                                                : item.homeworkStatus === 'Bajarilmadi' || item.homeworkStatus?.includes('Yomon') || item.homeworkStatus === 'Bajarmaydi'
+                                                                    ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-400'
+                                                                    : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-400'
+                                                                }`}>
+                                                                {item.homeworkStatus}
+                                                            </span>
+                                                        ) : '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center">
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${item.paymentStatus?.includes("To'langan") || item.paymentStatus === 'paid'
+                                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-950/30 dark:border-emerald-800'
+                                                            : 'bg-red-50 border-red-200 text-red-500 dark:bg-red-950/30 dark:border-red-800'
+                                                            }`}>
+                                                            {item.paymentStatus?.includes("To'langan") || item.paymentStatus === 'paid' ? "To'langan" : "To'lanmagan"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-500 max-w-xs truncate italic" title={item.conclusion || ''}>
+                                                        {item.conclusion || '—'}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 border border-gray-100 dark:border-gray-800 text-gray-400 tabular-nums">
+                                                        {new Date(item.reportCreatedAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 border border-gray-100 dark:border-gray-800 text-center">
+                                                        <button
+                                                            onClick={() => setSelectedReport(item.parentReport)}
+                                                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-blue-600 transition-colors"
+                                                            title="Batafsil ko'rish"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto">
