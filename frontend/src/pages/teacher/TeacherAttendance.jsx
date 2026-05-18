@@ -3,10 +3,24 @@ import { Link } from 'react-router-dom';
 import useStore from '../../store/useStore';
 import { ClipboardCheck, ChevronLeft, ChevronRight, Loader2, UserCheck, UserX, Users, RefreshCcw } from 'lucide-react';
 
+const getGroupScheduleType = (groupDays) => {
+  if (!groupDays) return 'other';
+  const daysArray = Array.isArray(groupDays)
+    ? groupDays
+    : (typeof groupDays === 'string' ? groupDays.split(',') : []);
+  const days = daysArray.map(d => d.toLowerCase().trim());
+  const isOdd = days.some(d => d.includes('dush') || d.includes('chor') || d.includes('jum'));
+  const isEven = days.some(d => d.includes('sesh') || d.includes('pay') || d.includes('shan'));
+  if (isOdd && !isEven) return 'toq';
+  if (isEven && !isOdd) return 'juft';
+  return 'other';
+};
+
 const TeacherAttendance = () => {
-  const { students: allStudents, loading, refreshAllRows, saveGrade } = useStore();
+  const { students: allStudents, groups = [], loading, refreshAllRows, saveGrade } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [scheduleTab, setScheduleTab] = useState('all'); // 'all', 'toq', 'juft'
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null); // { student, day, score, comment }
   const [gradeInput, setGradeInput] = useState({ score: '', comment: '' });
@@ -25,9 +39,9 @@ const TeacherAttendance = () => {
   const handleCellClick = (student, day) => {
     const existingGrade = student.grades?.[day] || { score: '', comment: '' };
     setSelectedCell({ student, day });
-    setGradeInput({ 
-      score: existingGrade.score || '', 
-      comment: existingGrade.comment || '' 
+    setGradeInput({
+      score: existingGrade.score || '',
+      comment: existingGrade.comment || ''
     });
   };
 
@@ -63,21 +77,37 @@ const TeacherAttendance = () => {
 
   const monthNames = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
   const [year, month] = currentMonth.split('-').map(Number);
-  
+
   const today = new Date();
   const isCurrentMonth = today.toISOString().slice(0, 7) === currentMonth;
   const todayDay = today.getDate();
 
   const students = allStudents || [];
   const uniqueGroups = [...new Set(students.map(s => s.groupName).filter(Boolean))];
-  const filteredStudents = selectedGroup === 'all' ? students : students.filter(s => s.groupName === selectedGroup);
-  
+
+  const getFilteredStudents = () => {
+    const base = selectedGroup === 'all'
+      ? students
+      : students.filter(s => s.groupName === selectedGroup);
+
+    if (scheduleTab === 'all') return base;
+
+    return base.filter(student => {
+      const studentGroup = (groups || []).find(g => g.id === student.groupId);
+      if (!studentGroup) return false;
+      const scheduleType = getGroupScheduleType(studentGroup.days);
+      return scheduleType === scheduleTab;
+    });
+  };
+
+  const filteredStudents = getFilteredStudents();
+
   const todayArrived = filteredStudents.filter(s => s.attendance?.[todayDay] === 'present').length;
   const daysInMonth = new Date(year, month, 0).getDate();
 
   return (
     <div className="h-full w-full overflow-hidden bg-white/60 dark:bg-[#1e1e1e]/80 backdrop-blur-2xl flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] scroll-smooth">
-      
+
       {/* macOS Title Bar Area */}
       <div className="h-12 border-b border-gray-200/50 dark:border-white/10 flex items-center px-4 justify-between shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md z-20">
         <div className="flex items-center w-32">
@@ -96,8 +126,9 @@ const TeacherAttendance = () => {
         </div>
       </div>
 
-      {/* Control Bar (Month & Group) */}
-      <div className="px-6 py-3 border-b border-gray-200/50 dark:border-white/10 bg-white/30 dark:bg-white/5 shrink-0 flex flex-col sm:flex-row justify-between items-center gap-4 z-10">
+      {/* Control Bar (Month, Schedule & Group) */}
+      <div className="px-6 py-3 border-b border-gray-200/50 dark:border-white/10 bg-white/30 dark:bg-white/5 shrink-0 flex flex-col md:flex-row justify-between items-center gap-4 z-10">
+        {/* Month Selector */}
         <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
           <button onClick={() => changeMonth(-1)} className="px-2 py-1.5 hover:bg-white dark:hover:bg-white/10 rounded-md transition-all text-gray-600 dark:text-gray-300">
             <ChevronLeft size={16} />
@@ -110,6 +141,29 @@ const TeacherAttendance = () => {
           </button>
         </div>
 
+        {/* Schedule Segmented Tabs */}
+        <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner">
+          <button
+            onClick={() => setScheduleTab('all')}
+            className={`px-4 py-1.5 rounded-md text-[11px] font-bold transition-all ${scheduleTab === 'all' ? 'bg-white dark:bg-white/10 text-[#007aff] dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+          >
+            Hammasi
+          </button>
+          <button
+            onClick={() => setScheduleTab('toq')}
+            className={`px-4 py-1.5 rounded-md text-[11px] font-bold transition-all ${scheduleTab === 'toq' ? 'bg-white dark:bg-white/10 text-[#007aff] dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+          >
+            Toq kunlar
+          </button>
+          <button
+            onClick={() => setScheduleTab('juft')}
+            className={`px-4 py-1.5 rounded-md text-[11px] font-bold transition-all ${scheduleTab === 'juft' ? 'bg-white dark:bg-white/10 text-[#007aff] dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+          >
+            Juft kunlar
+          </button>
+        </div>
+
+        {/* Sync & Group Selection */}
         <div className="flex items-center gap-3">
           <button
             onClick={handleSync}
@@ -141,50 +195,13 @@ const TeacherAttendance = () => {
 
       <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 relative">
         <div className="max-w-[1400px] mx-auto space-y-6 h-full">
-          
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in text-left">
-            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm flex items-center justify-between group overflow-hidden relative">
-              <div className="absolute -right-4 -bottom-4 text-[#007aff]/5 group-hover:scale-110 transition-transform duration-1000">
-                <Users size={120} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-1 text-[#007aff]">
-                  <Users size={16} />
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest leading-none">Jami O'quvchilar</p>
-                </div>
-                <p className="text-2xl font-bold text-[#1d1d1f] dark:text-white leading-tight">
-                  {filteredStudents.length} <span className="text-xs font-medium text-gray-400">nafar</span>
-                </p>
-              </div>
-            </div>
 
-            <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl p-5 border border-gray-200/50 dark:border-white/10 shadow-sm flex items-center justify-between group overflow-hidden relative">
-               <div className="absolute -right-4 -bottom-4 text-[#34c759]/5 group-hover:scale-110 transition-transform duration-1000">
-                <UserCheck size={120} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-1 text-[#34c759]">
-                  <UserCheck size={16} />
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest leading-none">Bugun Kelganlar</p>
-                </div>
-                <p className="text-2xl font-bold text-[#34c759] leading-tight">
-                  {isCurrentMonth ? todayArrived : '---'} <span className="text-xs font-medium opacity-60">o'quvchi</span>
-                </p>
-              </div>
-              <div className="relative z-10 text-right">
-                 <p className="text-[9px] text-gray-400 uppercase font-black mb-1.5 tracking-tighter">Holat</p>
-                 <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${isCurrentMonth ? 'bg-[#34c759]/10 text-[#34c759]' : 'bg-gray-100 text-gray-400'}`}>
-                    {isCurrentMonth ? 'LIVE' : 'OFFLINE'}
-                 </div>
-              </div>
-            </div>
-          </div>
+
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-40 animate-pulse">
-               <Loader2 className="w-8 h-8 text-[#007aff] animate-spin mb-4" />
-               <p className="text-[13px] font-medium text-gray-500">Ma'lumotlar yuklanmoqda...</p>
+              <Loader2 className="w-8 h-8 text-[#007aff] animate-spin mb-4" />
+              <p className="text-[13px] font-medium text-gray-500">Ma'lumotlar yuklanmoqda...</p>
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-40 bg-white/40 dark:bg-black/10 rounded-xl border border-gray-200/50 dark:border-white/5 border-dashed">
@@ -198,13 +215,13 @@ const TeacherAttendance = () => {
                 <table className="w-full text-left text-[13px]">
                   <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-20">
                     <tr>
-                      <th className="px-5 py-3 font-medium uppercase tracking-wider text-[11px] sticky left-0 bg-gray-100 dark:bg-[#1e1e1e] z-30 min-w-[220px]">
+                      <th className="px-5 py-3 font-medium uppercase tracking-wider text-[11px] sticky left-0 bg-gray-100 dark:bg-[#1e1e1e] z-30 min-w-[280px]">
                         Ism-sharif
                       </th>
                       <th className="px-5 py-3 font-medium uppercase tracking-wider text-[11px] min-w-[130px]">Guruh</th>
                       {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                        <th 
-                          key={day} 
+                        <th
+                          key={day}
                           className={`text-center px-1 py-3 font-bold min-w-[42px] transition-all relative ${isCurrentMonth && day === todayDay ? 'text-[#007aff] bg-[#007aff]/5' : ''}`}
                         >
                           <span className="text-[11px]">{day}</span>
@@ -220,21 +237,34 @@ const TeacherAttendance = () => {
                       const att = student.attendance || {};
                       return (
                         <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group text-left">
-                          <td className="px-5 py-3 sticky left-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-[#007aff]/5 transition-colors border-r border-gray-100 dark:border-white/5">
+                          <td className="px-5 py-3 sticky left-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-[#007aff]/5 transition-colors border-r border-gray-100 dark:border-white/5 min-w-[280px]">
                             <div className="flex items-center gap-3">
                               {student.photo ? (
-                                <img src={student.photo} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm" />
+                                <img src={student.photo} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm animate-fade-in" />
                               ) : (
-                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[11px] font-bold text-gray-500">
+                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
                                   {student.name?.substring(0, 1)}
                                 </div>
                               )}
-                              <Link 
-                                to={`/teacher/students/${student.id}`}
-                                className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[150px] hover:text-[#007aff] hover:underline transition-colors"
-                              >
-                                {student.name}
-                              </Link>
+                              <div className="flex flex-col gap-0.5 min-w-0">
+                                <Link
+                                  to={`/teacher/students/${student.id}`}
+                                  className="font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate max-w-[150px] hover:text-[#007aff] hover:underline transition-colors block text-[13px] leading-tight"
+                                >
+                                  {student.name}
+                                </Link>
+                                <div>
+                                  {student.isPaid ? (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20 shrink-0 leading-none">
+                                      To'langan
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/20 shrink-0 leading-none">
+                                      To'lanmagan
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="px-5 py-3 text-gray-500 text-[12px]">{student.groupName}</td>
@@ -244,10 +274,10 @@ const TeacherAttendance = () => {
                             const isToday = isCurrentMonth && day === todayDay;
                             const grades = student.grades || {};
                             const grade = grades[day];
-                            
+
                             return (
-                              <td 
-                                key={day} 
+                              <td
+                                key={day}
                                 onClick={() => handleCellClick(student, day)}
                                 className={`text-center px-0.5 py-2 cursor-pointer hover:bg-[#007aff]/10 transition-colors ${isToday ? 'bg-[#007aff]/[0.02]' : ''}`}
                               >
@@ -279,7 +309,7 @@ const TeacherAttendance = () => {
                                       </div>
                                     </div>
                                   )}
-                                  
+
                                   {/* Times shown below for present students or on hover */}
                                   {typeof attObj === 'object' && attObj?.arrived_at && (
                                     <div className="flex flex-col leading-none scale-[0.8] origin-top opacity-60 group-hover/cell:opacity-100 transition-opacity">
@@ -320,8 +350,8 @@ const TeacherAttendance = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Baho (0-100)</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     value={gradeInput.score}
                     onChange={(e) => setGradeInput({ ...gradeInput, score: e.target.value })}
                     className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[15px] outline-none focus:border-[#007aff] transition-colors"
@@ -331,7 +361,7 @@ const TeacherAttendance = () => {
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Izoh</label>
-                  <textarea 
+                  <textarea
                     value={gradeInput.comment}
                     onChange={(e) => setGradeInput({ ...gradeInput, comment: e.target.value })}
                     className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#007aff] transition-colors h-24 resize-none"
@@ -341,13 +371,13 @@ const TeacherAttendance = () => {
               </div>
 
               <div className="flex gap-3 mt-8">
-                <button 
+                <button
                   onClick={() => setSelectedCell(null)}
                   className="flex-1 px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/5 text-[14px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-all"
                 >
                   Bekor qilish
                 </button>
-                <button 
+                <button
                   onClick={onSaveGrade}
                   disabled={isSavingGrade}
                   className="flex-1 px-4 py-3 rounded-xl bg-[#007aff] text-[14px] font-bold text-white hover:bg-[#0076ed] shadow-[0_4px_12px_rgba(0,122,255,0.3)] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
