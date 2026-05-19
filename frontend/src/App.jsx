@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
-// Services
-import { 
-  getStudents, syncStudents, 
-  getStaff, getRoles, 
-  getGroups, getFields, getCourses, getRooms 
-} from './services/api';
 
 // Components
 import Layout from './components/layout/Layout';
@@ -38,8 +32,7 @@ import TeacherReport from './pages/teacher/TeacherReport';
 // Parent Pages
 import ParentDashboard from './pages/parent/ParentDashboard';
 
-// Icons
-import { Wallet } from 'lucide-react';
+// Notifications
 import { Toaster } from 'react-hot-toast';
 
 import useStore from './store/useStore';
@@ -156,12 +149,12 @@ function App() {
         </Route>
 
         {/* Parent Routes */}
-        <Route path="/parent" element={
-          <ProtectedRoute>
-            <ParentDashboard />
-          </ProtectedRoute>
-        }>
-          <Route path="dashboard" element={<ParentDashboard />} />
+        <Route path="/parent">
+          <Route path="dashboard" element={
+            <ProtectedRoute>
+              <ParentDashboard />
+            </ProtectedRoute>
+          } />
         </Route>
         
         

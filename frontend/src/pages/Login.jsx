@@ -119,11 +119,9 @@ const Login = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        {/* Support Links */}
-        <div className="mt-8 flex items-center justify-center gap-6">
-          <button className="text-[12px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest">Parolni unutdingizmi?</button>
-          <div className="w-1 h-1 bg-gray-700 rounded-full"></div>
-          <button className="text-[12px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest">Yordam</button>
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-[12px] text-gray-500 font-medium">Muammolar bo'lsa administratorga murojaat qiling</p>
         </div>
       </div>
       

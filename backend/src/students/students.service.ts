@@ -45,12 +45,7 @@ export class StudentsService {
     });
   }
 
-  async onApplicationBootstrap() {
-    const tables = await this.studentsRepository.query(
-      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
-    );
-    console.log('Mavjud jadvallar:', tables.map((t) => t.table_name).join(', '));
-  }
+
 
   async findAll(): Promise<Student[]> {
     return this.studentsRepository.find({ relations: ['enrollments', 'enrollments.group', 'payments'] });

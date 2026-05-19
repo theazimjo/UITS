@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { Student } from './entities/student.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -36,7 +36,7 @@ export class StudentsController {
     return this.studentsService.findExams(+id);
   }
 
-  @Post(':id')
+  @Patch(':id')
   async update(@Param('id') id: string, @Body() data: Partial<Student>): Promise<Student | null> {
     if (isNaN(+id)) return null;
     return this.studentsService.update(+id, data);

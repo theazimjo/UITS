@@ -34,7 +34,7 @@ import { ConfigModule } from '@nestjs/config';
       password: process.env.DB_PASSWORD || '2255',
       database: process.env.DB_NAME || 'crm_db',
       autoLoadEntities: true,
-      synchronize: process.env.DB_SYNC === 'true' || true, // Note: synchronize should be false in production usually
+      synchronize: process.env.DB_SYNC === 'true', // Production-da false bo'lishi kerak (default: false)
     }),
     AuthModule,
     UsersModule,
@@ -71,7 +71,7 @@ export class AppModule implements OnApplicationBootstrap {
         password: hashedPassword,
         role: 'admin',
       });
-      console.log('[AppBootstrap] Default admin created: admin / admin123');
+      console.log('[AppBootstrap] Default admin created successfully.');
     } else {
       console.log('[AppBootstrap] Admin user already exists.');
     }

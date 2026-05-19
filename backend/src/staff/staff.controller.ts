@@ -23,6 +23,30 @@ export class StaffController {
     return this.staffService.findOne(staff.id);
   }
 
+  // --- Static routes BEFORE :id ---
+
+  @Roles('admin')
+  @Get('reports/all')
+  getAllMonthlyReports(@Query('month') month?: string) {
+    return this.staffService.getAllMonthlyReports(month);
+  }
+
+  @Roles('admin')
+  @Patch('payments/:paymentId')
+  updatePayment(@Param('paymentId') paymentId: string, @Body() data: any) {
+    if (isNaN(+paymentId)) throw new NotFoundException('Invalid Payment ID');
+    return this.staffService.updatePayment(+paymentId, data);
+  }
+
+  @Roles('admin')
+  @Delete('payments/:paymentId')
+  deletePayment(@Param('paymentId') paymentId: string) {
+    if (isNaN(+paymentId)) throw new NotFoundException('Invalid Payment ID');
+    return this.staffService.deletePayment(+paymentId);
+  }
+
+  // --- Dynamic :id routes ---
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Staff | null> {
     if (isNaN(+id)) return null;
@@ -37,6 +61,18 @@ export class StaffController {
   @Post(':id/payments')
   addPayment(@Param('id') id: string, @Body() data: any) {
     return this.staffService.addPayment(+id, data);
+  }
+
+  @Post(':id/monthly-report')
+  createMonthlyReport(@Param('id') id: string, @Body() data: any) {
+    if (isNaN(+id)) throw new NotFoundException('Invalid ID');
+    return this.staffService.createMonthlyReport(+id, data);
+  }
+
+  @Get(':id/monthly-reports')
+  getMonthlyReports(@Param('id') id: string, @Query('month') month?: string) {
+    if (isNaN(+id)) throw new NotFoundException('Invalid ID');
+    return this.staffService.getMonthlyReports(+id, month);
   }
 
   @Roles('admin')
@@ -57,31 +93,5 @@ export class StaffController {
   remove(@Param('id') id: string): Promise<void> {
     if (isNaN(+id)) return Promise.resolve();
     return this.staffService.remove(+id);
-  }
-
-  @Get(':id/monthly-reports')
-  getMonthlyReports(@Param('id') id: string, @Query('month') month?: string) {
-    if (isNaN(+id)) throw new NotFoundException('Invalid ID');
-    return this.staffService.getMonthlyReports(+id, month);
-  }
-
-  @Roles('admin')
-  @Get('reports/all')
-  getAllMonthlyReports(@Query('month') month?: string) {
-    return this.staffService.getAllMonthlyReports(month);
-  }
-
-  @Roles('admin')
-  @Patch('payments/:paymentId')
-  updatePayment(@Param('paymentId') paymentId: string, @Body() data: any) {
-    if (isNaN(+paymentId)) throw new NotFoundException('Invalid Payment ID');
-    return this.staffService.updatePayment(+paymentId, data);
-  }
-
-  @Roles('admin')
-  @Delete('payments/:paymentId')
-  deletePayment(@Param('paymentId') paymentId: string) {
-    if (isNaN(+paymentId)) throw new NotFoundException('Invalid Payment ID');
-    return this.staffService.deletePayment(+paymentId);
   }
 }

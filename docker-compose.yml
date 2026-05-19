@@ -26,6 +26,8 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=2255
       - DB_NAME=crm_db
+      - DB_SYNC=true
+      - JWT_SECRET=uits-crm-jwt-secret-change-in-production-2026
       - CHOKIDAR_USEPOLLING=true
       - NODE_OPTIONS=--max-old-space-size=2048
     command: sh -c "npm run build && npm run start:prod"
