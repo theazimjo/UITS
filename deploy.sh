@@ -30,7 +30,8 @@ fi
 # 2. Tozalash (Eski konteynerlarni to'xtatish juda muhim!)
 echo "[2/6] Eski konteynerlarni to'xtatish va joy ochish..."
 docker compose -f docker-compose.prod.yml down || true
-docker system prune -f --volumes
+# Faqat konteynerlar va networkni tozalash (imagelarni O'CHIRMAYMIZ!)
+docker system prune -f
 
 # 3. Ketma-ket build qilish (Resurslarni tejash uchun)
 echo "[3/6] Servislarni ketma-ket build qilish..."
@@ -44,12 +45,12 @@ docker compose -f docker-compose.prod.yml build frontend
 echo "   > Sertifikat servisini build qilish..."
 docker compose -f docker-compose.prod.yml build certificate
 
-# 4. Servislarni ishga tushirish
+# 4. Servislarni ishga tushirish (build qilingan imagelar bilan)
 echo "[4/6] Yangi imageni build qilib, konteynerni ishga tushirish..."
 docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build
 
 # 5. Natijani tekshirish
-echo "[5/6] Konteynern holati:"
+echo "[5/6] Konteyner holati:"
 docker compose -f docker-compose.prod.yml ps
 
 echo ""
