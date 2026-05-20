@@ -50,3 +50,23 @@ desktop.ini
 **/*.keystore
 **/android/app/src/main/res/drawable-*/
 **/android/app/src/main/res/mipmap-*/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.tox/
+**/.coverage
+**/htmlcov/
+
+# Databases
+**/*.sqlite3
+
+# Media
+**/web-sertificate/media/
+**/web-sertificate/static/CACHE/
+
+# JSON Secrets
+**/web-sertificate/data/*.json
