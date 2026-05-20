@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, size = '2xl' }) => {
   // UX yaxshilanishi: Modal ochilganda orqa fon skroll bo'lishini to'xtatish
   useEffect(() => {
     if (isOpen) {
@@ -16,6 +16,18 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const sizeClasses = {
+    'sm': 'max-w-sm',
+    'md': 'max-w-md',
+    'lg': 'max-w-lg',
+    'xl': 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
+    '6xl': 'max-w-6xl',
+  };
+  const maxWidthClass = sizeClasses[size] || 'max-w-2xl';
 
   // Eng yuqori darajadagi portal konteyneri
   const modalContent = (
@@ -33,7 +45,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
         {/* Modalning o'zi */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl bg-white/80 dark:bg-[#1e1e1e]/90 border text-black dark:text-white border-gray-200/50 dark:border-white/10 rounded-xl relative flex flex-col transform transition-all overflow-hidden backdrop-blur-2xl"
+          className={`w-full ${maxWidthClass} bg-white/80 dark:bg-[#1e1e1e]/90 border text-black dark:text-white border-gray-200/50 dark:border-white/10 rounded-xl relative flex flex-col transform transition-all overflow-hidden backdrop-blur-2xl`}
           style={{
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0,0,0,0.05)'
           }}

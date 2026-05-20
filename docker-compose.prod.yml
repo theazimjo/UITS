@@ -42,12 +42,27 @@ services:
       args:
         # Frontend build vaqtida API URL o'rnatiladi
         VITE_API_URL: ${VITE_API_URL}
+        VITE_CERT_API_URL: ${VITE_CERT_API_URL:-http://localhost:8000/sertifikat}
     container_name: crm-frontend
     restart: always
     ports:
       - '80:80'
     depends_on:
       - backend
+      - certificate
+    networks:
+      - crm-network
+
+  certificate:
+    build:
+      context: ./web-sertificate
+      dockerfile: Dockerfile
+    container_name: crm-certificate
+    restart: always
+    ports:
+      - '8000:8000'
+    volumes:
+      - certificate_data:/app/media
     networks:
       - crm-network
 
@@ -57,3 +72,4 @@ networks:
 
 volumes:
   postgres_data:
+  certificate_data:

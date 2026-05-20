@@ -1,9 +1,10 @@
 import React from 'react';
-import { RefreshCw, Trash2, Phone, Users, ChevronRight, Fingerprint, Search, ChevronLeft, CheckSquare, Square, MessageSquare, Filter, Send, X, Loader2 } from 'lucide-react';
+import { RefreshCw, Trash2, Phone, Users, ChevronRight, Fingerprint, Search, ChevronLeft, CheckSquare, Square, MessageSquare, Filter, Send, X, Loader2, Award, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getStudents, deleteAllStudents } from '../services/api';
+import { getStudents, deleteAllStudents, getCertificateCourses, generateBulkCertificates, generateBulkCertificatesPreview } from '../services/api';
 
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Skeleton from '../components/common/Skeleton';
 
 import useStore from '../store/useStore';
@@ -30,6 +31,33 @@ const Students = () => {
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageData, setMessageData] = useState({ title: '', message: '' });
   const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Certificate states
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseKey, setSelectedCourseKey] = useState('');
+  const [certDate, setCertDate] = useState('');
+  const [generatingCert, setGeneratingCert] = useState(false);
+  const [previews, setPreviews] = useState([]);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [activeLightboxImage, setActiveLightboxImage] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Load certificate templates and set default date
+  useEffect(() => {
+    if (isCertModalOpen) {
+      setCertDate(new Date().toLocaleDateString('ru-RU'));
+      getCertificateCourses()
+        .then(res => {
+          const coursesList = res.data?.courses || [];
+          setCourses(coursesList);
+          if (coursesList.length > 0) {
+            setSelectedCourseKey(coursesList[0].key);
+          }
+        })
+        .catch(e => console.error(e));
+    }
+  }, [isCertModalOpen]);
 
   // Sync state
   const [syncModalOpen, setSyncModalOpen] = useState(false);
@@ -79,13 +107,13 @@ const Students = () => {
       setSyncing(true);
       const res = await syncStudents();
       const resultData = res.data;
-      
+
       const newStudentsRes = await getStudents();
       if (newStudentsRes.data) setGlobalStudents(newStudentsRes.data);
-      
+
       setSyncResult(resultData);
       setSyncModalOpen(true);
-      
+
       if (resultData.addedCount > 0) {
         toast.success(`${resultData.addedCount} ta yangi o'quvchi qo'shildi!`);
       } else {
@@ -127,7 +155,86 @@ const Students = () => {
     });
   }, [students, searchTerm, selectedStatus, payFilter]);
 
-  // Qidiruv yoki Status o'zgarganda birinchi sahifaga qaytish
+  const courseDisplayNames = {
+    ks: 'Kompyuter savodxonligi',
+    photo: 'Grafik dizayn (Photoshop)',
+    admin: 'Admin',
+    web: 'Web dizayn',
+    webprogram: 'Web dasturlash (React)',
+    py: 'Python Backend',
+    max3d_int: '3D Max Interior',
+    max3d_ext: '3D Max Exterior',
+    max3d_mod: '3D Max Modeling',
+    max3d: '3D Max',
+    word_data: 'MS Word',
+    doctor_data: 'Tibbiyot',
+  };
+
+  const handleBulkGenerateCerts = async () => {
+    if (selectedIds.size === 0) return;
+    setPreviewLoading(true);
+    try {
+      const selectedStudentsData = students
+        .filter(s => selectedIds.has(s.id))
+        .map(s => ({ fullName: s.name }));
+
+      const res = await generateBulkCertificatesPreview({
+        students: selectedStudentsData,
+        courseKey: selectedCourseKey,
+        date: certDate
+      });
+
+      if (res.data?.previews) {
+        setPreviews(res.data.previews);
+        setIsPreviewMode(true);
+      } else {
+        toast.error("Sertifikatlar previewlarini yuklashda xatolik");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Sertifikat previewsini yaratishda xatolik yuz berdi");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmBulkGenerateCerts = async () => {
+    if (selectedIds.size === 0) return;
+    setGeneratingCert(true);
+    try {
+      const selectedStudentsData = students
+        .filter(s => selectedIds.has(s.id))
+        .map(s => ({ fullName: s.name }));
+
+      const res = await generateBulkCertificates({
+        students: selectedStudentsData,
+        courseKey: selectedCourseKey,
+        date: certDate
+      });
+
+      const blob = new Blob([res.data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `sertifikatlar_${selectedCourseKey}_${certDate.replace(/\./g, '_')}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Sertifikatlar muvaffaqiyatli saqlandi va yuklab olindi!");
+      setSelectedIds(new Set());
+      setIsCertModalOpen(false);
+      setIsPreviewMode(false);
+      setPreviews([]);
+    } catch (e) {
+      console.error(e);
+      toast.error("Sertifikat saqlash va yuklashda xatolik yuz berdi");
+    } finally {
+      setGeneratingCert(false);
+    }
+  };
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedStatus]);
@@ -198,8 +305,8 @@ const Students = () => {
                 key={f.id}
                 onClick={() => setPayFilter(f.id)}
                 className={`px-3 py-1 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5
-                  ${payFilter === f.id 
-                    ? 'bg-white dark:bg-white/10 text-[#007aff] shadow-sm' 
+                  ${payFilter === f.id
+                    ? 'bg-white dark:bg-white/10 text-[#007aff] shadow-sm'
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
               >
                 <f.icon size={12} />
@@ -218,6 +325,18 @@ const Students = () => {
           >
             <MessageSquare size={14} />
             Xabar yuborish {selectedIds.size > 0 && `(${selectedIds.size})`}
+          </button>
+
+          <button
+            onClick={() => setIsCertModalOpen(true)}
+            disabled={selectedIds.size === 0}
+            className={`flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-[13px] font-medium transition-all shadow-sm
+              ${selectedIds.size > 0
+                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20'
+                : 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-not-allowed opacity-50'}`}
+          >
+            <Award size={14} />
+            Sertifikat {selectedIds.size > 0 && `(${selectedIds.size})`}
           </button>
 
           <button
@@ -248,8 +367,8 @@ const Students = () => {
             key={tab.id}
             onClick={() => setSelectedStatus(tab.id)}
             className={`px-4 py-1.5 rounded-lg text-[13px] font-medium transition-all
-              ${selectedStatus === tab.id 
-                ? 'bg-[#007aff] text-white shadow-sm' 
+              ${selectedStatus === tab.id
+                ? 'bg-[#007aff] text-white shadow-sm'
                 : 'text-gray-500 hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5 hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7]'}`}
           >
             {tab.label}
@@ -320,127 +439,127 @@ const Students = () => {
                     paginatedStudents.map((student) => {
                       const activeEnrollment = student.enrollments?.find(e => e.status === 'ACTIVE');
                       const activeGroup = activeEnrollment?.group;
-                      
+
                       const currentMonth = '2026-04'; // Per user local time
                       const monthlyPayments = student.payments?.filter(p => p.month === currentMonth) || [];
                       const paidAmt = monthlyPayments.reduce((sum, p) => sum + (Number(p.amount || 0) - Number(p.discount || 0) + Number(p.penalty || 0)), 0);
                       const isPaid = paidAmt > 0;
 
                       return (
-                      <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-pointer">
-                        <td className="px-5 py-3" onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedIds(prev => {
-                            const next = new Set(prev);
-                            if (next.has(student.id)) next.delete(student.id);
-                            else next.add(student.id);
-                            return next;
-                          });
-                        }}>
-                          <button className={`text-gray-400 hover:text-[#007aff] transition-colors ${selectedIds.has(student.id) ? 'text-[#007aff]' : ''}`}>
-                            {selectedIds.has(student.id) ? <CheckSquare size={16} /> : <Square size={16} />}
-                          </button>
-                        </td>
-                        <td className="px-5 py-3" onClick={() => navigate(`/students/${student.id}`)}>
-                          <div className="flex items-center gap-3">
-                            {student.photo ? (
-                              <img
-                                src={student.photo}
-                                alt={student.name}
-                                className="w-9 h-9 rounded-full object-cover border border-gray-200 dark:border-white/10 shadow-sm"
-                              />
-                            ) : (
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-sm shadow-sm">
-                                {student.name.substring(0, 1).toUpperCase()}
+                        <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group cursor-pointer">
+                          <td className="px-5 py-3" onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(student.id)) next.delete(student.id);
+                              else next.add(student.id);
+                              return next;
+                            });
+                          }}>
+                            <button className={`text-gray-400 hover:text-[#007aff] transition-colors ${selectedIds.has(student.id) ? 'text-[#007aff]' : ''}`}>
+                              {selectedIds.has(student.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                            </button>
+                          </td>
+                          <td className="px-5 py-3" onClick={() => navigate(`/students/${student.id}`)}>
+                            <div className="flex items-center gap-3">
+                              {student.photo ? (
+                                <img
+                                  src={student.photo}
+                                  alt={student.name}
+                                  className="w-9 h-9 rounded-full object-cover border border-gray-200 dark:border-white/10 shadow-sm"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-sm shadow-sm">
+                                  {student.name.substring(0, 1).toUpperCase()}
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
+                                  {student.name}
+                                </p>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {student.schoolName || 'UITS Academy'}
+                                </p>
                               </div>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-3">
+                            <select
+                              value={student.status || 'YANGI'}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleStatusChange(student.id, e.target.value)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border outline-none cursor-pointer transition-all ${getStatusStyle(student.status || 'YANGI')}`}
+                            >
+                              <option value="YANGI">YANGI</option>
+                              <option value="OQIYAPTI">O'QIYAPTI</option>
+                              <option value="PAUZADA">PAUZADA</option>
+                              <option value="BITIRGAN">BITIRGAN</option>
+                              <option value="CHETLATILGAN">CHETLATILGAN</option>
+                            </select>
+                          </td>
+
+                          <td className="px-5 py-3">
+                            {activeGroup ? (
+                              <div className="flex flex-col">
+                                <span className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">{activeGroup.name}</span>
+                                <span className="text-[10px] text-gray-400 truncate max-w-[120px]">
+                                  {activeGroup.course?.name || '---'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-[11px] italic">Guruh yo'q</span>
                             )}
-                            <div>
-                              <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
-                                {student.name}
-                              </p>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                {student.schoolName || 'UITS Academy'}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td className="px-5 py-3">
-                          <select
-                            value={student.status || 'YANGI'}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => handleStatusChange(student.id, e.target.value)}
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border outline-none cursor-pointer transition-all ${getStatusStyle(student.status || 'YANGI')}`}
-                          >
-                            <option value="YANGI">YANGI</option>
-                            <option value="OQIYAPTI">O'QIYAPTI</option>
-                            <option value="PAUZADA">PAUZADA</option>
-                            <option value="BITIRGAN">BITIRGAN</option>
-                            <option value="CHETLATILGAN">CHETLATILGAN</option>
-                          </select>
-                        </td>
-
-                        <td className="px-5 py-3">
-                          {activeGroup ? (
-                            <div className="flex flex-col">
-                              <span className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">{activeGroup.name}</span>
-                              <span className="text-[10px] text-gray-400 truncate max-w-[120px]">
-                                {activeGroup.course?.name || '---'}
+                          <td className="px-5 py-3">
+                            {isPaid ? (
+                              <div className="flex flex-col">
+                                <span className="text-green-600 dark:text-green-400 font-semibold text-[12px]">
+                                  {paidAmt.toLocaleString()} UZS
+                                </span>
+                                <span className="text-[10px] text-gray-400">To'langan</span>
+                              </div>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] font-medium rounded border border-red-100 dark:border-red-800/50">
+                                To'lanmagan
                               </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-[11px] italic">Guruh yo'q</span>
-                          )}
-                        </td>
+                            )}
+                          </td>
 
-                        <td className="px-5 py-3">
-                          {isPaid ? (
-                            <div className="flex flex-col">
-                              <span className="text-green-600 dark:text-green-400 font-semibold text-[12px]">
-                                {paidAmt.toLocaleString()} UZS
-                              </span>
-                              <span className="text-[10px] text-gray-400">To'langan</span>
+                          <td className="px-5 py-3">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2 text-[12px] text-gray-600 dark:text-gray-300">
+                                <Phone size={13} className="text-gray-400" />
+                                <span>{student.parentPhone || student.phone || 'Kiritilmagan'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+                                <Fingerprint size={13} className="text-gray-400" />
+                                <span>ID: {student.externalId || student.id}</span>
+                              </div>
                             </div>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] font-medium rounded border border-red-100 dark:border-red-800/50">
-                              To'lanmagan
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="px-5 py-3">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 text-[12px] text-gray-600 dark:text-gray-300">
-                              <Phone size={13} className="text-gray-400" />
-                              <span>{student.parentPhone || student.phone || 'Kiritilmagan'}</span>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditClick(student); }}
+                                className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded-md transition-all"
+                                title="Tahrirlash"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => navigate(`/students/${student.id}`)}
+                                className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1d1d1f] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
+                              >
+                                <ChevronRight size={16} />
+                              </button>
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 font-mono">
-                              <Fingerprint size={13} className="text-gray-400" />
-                              <span>ID: {student.externalId || student.id}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleEditClick(student); }}
-                              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded-md transition-all"
-                              title="Tahrirlash"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button 
-                              onClick={() => navigate(`/students/${student.id}`)}
-                              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1d1d1f] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
-                            >
-                              <ChevronRight size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
                     /* Empty State or No Search Results */
                     <tr>
                       <td colSpan="6" className="px-5 py-16 text-center">
@@ -599,7 +718,7 @@ const Students = () => {
       {isMessageModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !sendingMessage && setIsMessageModalOpen(false)}></div>
-          
+
           <div className="bg-white dark:bg-[#1d1d1f] w-full max-w-lg rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between bg-gray-50/50 dark:bg-white/5">
@@ -612,7 +731,7 @@ const Students = () => {
                   <p className="text-[11px] text-gray-500">{selectedIds.size} ta o'quvchi tanlangan</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setIsMessageModalOpen(false)}
                 className="p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full transition-colors text-gray-400"
               >
@@ -709,7 +828,7 @@ const Students = () => {
                 <CheckSquare size={32} />
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Sinxronizatsiya yakunlandi!</h3>
-              
+
               <div className="bg-gray-50 dark:bg-black/20 rounded-2xl p-4 text-left space-y-3 mb-6 shadow-inner">
                 <div className="flex justify-between items-center border-b border-gray-200 dark:border-white/10 pb-2">
                   <span className="text-sm font-medium text-gray-500">Jami tekshirildi:</span>
@@ -748,6 +867,154 @@ const Students = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Certificate Generation Modal */}
+      <Modal
+        isOpen={isCertModalOpen}
+        onClose={() => {
+          setIsCertModalOpen(false);
+          setIsPreviewMode(false);
+          setPreviews([]);
+        }}
+        title={isPreviewMode ? "Sertifikatlar previewsi" : "Tanlangan o'quvchilarga sertifikat yaratish"}
+        size={isPreviewMode ? "5xl" : "2xl"}
+      >
+        {isPreviewMode ? (
+          <div className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+            <p className="text-[13px] text-gray-500">
+              Sertifikatlar ko'rinishini tekshiring. Tasdiqlaganingizdan so'ng sertifikatlar saqlanadi va yuklab olinadi. Istalgan sertifikat ustiga bosib batafsil ko'rishingiz mumkin.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto p-1 bg-gray-50 dark:bg-black/20 rounded-2xl border border-gray-200 dark:border-white/10 custom-scrollbar mb-4">
+              {previews.map((prev, index) => (
+                <div 
+                  key={index}
+                  onClick={() => setActiveLightboxImage(prev.imageData)}
+                  className="relative group cursor-pointer border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-black/40 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-sm"
+                >
+                  <img src={prev.imageData} alt={prev.fullName} className="w-full h-auto object-contain" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-[12px] font-bold text-white bg-black/60 px-3 py-1.5 rounded-lg backdrop-blur-sm">Batafsil ko'rish</span>
+                  </div>
+                  <div className="p-2 border-t border-gray-100 dark:border-white/5 bg-white/90 dark:bg-[#1a1a1a]/90">
+                    <p className="text-[11px] font-bold text-gray-900 dark:text-white truncate">{prev.fullName}</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">{prev.certId} • {prev.date}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPreviewMode(false);
+                  setPreviews([]);
+                }}
+                className="flex-1 py-3 text-[14px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                Orqaga
+              </button>
+              <button
+                onClick={handleConfirmBulkGenerateCerts}
+                disabled={generatingCert}
+                className="flex-[2] py-3 bg-[#30d158] hover:bg-[#24b045] disabled:bg-gray-400 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-green-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                {generatingCert ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Saqlanmoqda...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    Tasdiqlash va yuklab olish
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+            <p className="text-[13px] text-gray-500">
+              Tanlangan <strong>{selectedIds.size}</strong> ta o'quvchi uchun sertifikatlar avtomatik ravishda ketma-ket ID raqamlari bilan yaratiladi va ZIP formatida yuklab olinadi.
+            </p>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Kurs (Shablon)</label>
+              <select
+                value={selectedCourseKey}
+                onChange={(e) => setSelectedCourseKey(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+              >
+                <option value="">Tanlang...</option>
+                {courses.map(c => (
+                  <option key={c.key} value={c.key}>{courseDisplayNames[c.key] || c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Sertifikat sanasi</label>
+              <input
+                type="text"
+                value={certDate}
+                onChange={(e) => setCertDate(e.target.value)}
+                placeholder="20.05.2026"
+                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setIsCertModalOpen(false)}
+                className="flex-1 py-3 text-[14px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleBulkGenerateCerts}
+                disabled={previewLoading || !selectedCourseKey || !certDate}
+                className="flex-[2] py-3 bg-[#007aff] hover:bg-[#0062cc] disabled:bg-gray-400 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-[#007aff]/20 transition-all flex items-center justify-center gap-2"
+              >
+                {previewLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Yuklanmoqda...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    Generatsiya qilish
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Lightbox for certificate detailed preview */}
+      {activeLightboxImage && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setActiveLightboxImage(null)}></div>
+          <div className="relative z-10 max-w-4xl w-full bg-transparent p-2 flex flex-col items-center animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setActiveLightboxImage(null)}
+              className="absolute -top-12 right-2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={activeLightboxImage}
+              alt="Sertifikat batafsil ko'rinishi"
+              className="max-h-[80vh] w-auto object-contain rounded-2xl shadow-2xl border border-white/10"
+            />
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -45,6 +45,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/sertifikat': {
+        target: 'http://certificate:8000',
+        changeOrigin: true,
+      },
     },
   },
 })

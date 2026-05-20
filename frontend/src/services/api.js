@@ -155,4 +155,20 @@ export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read
 export const exportData = () => api.get('/data/export');
 export const importData = (data) => api.post('/data/import', data);
 
+// Certificate Service (Django backend on port 8000)
+const certApi = axios.create({
+  baseURL: import.meta.env.VITE_CERT_API_URL || '/sertifikat',
+});
+export const getCertificateCourses = () => certApi.get('/api/courses/');
+export const getCertificates = (search = '') => certApi.get(`/api/certificates/?search=${search}`);
+export const getCertificateStats = () => certApi.get('/api/certificates/stats/');
+export const getCertificateDetail = (certId) => certApi.get(`/api/certificates/${certId}/detail/`);
+export const getCertificateImageUrl = (certId) => `${certApi.defaults.baseURL}/api/certificates/${certId}/image/`;
+export const createCertificate = (data) => certApi.post('/api/certificates/create/', data);
+export const getNextCertificateId = () => certApi.get('/api/certificates/next-id/');
+export const deleteCertificate = (pk) => certApi.delete(`/api/certificates/${pk}/delete/`);
+export const generateCertificates = (courseKey) => `${certApi.defaults.baseURL}/${courseKey}/`;
+export const generateBulkCertificates = (data) => certApi.post('/api/certificates/generate-bulk/', data, { responseType: 'blob' });
+export const generateBulkCertificatesPreview = (data) => certApi.post('/api/certificates/preview-bulk/', data);
+
 export default api;

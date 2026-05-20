@@ -18,7 +18,7 @@ if [ "$FREE_SWAP" -eq "0" ]; then
 fi
 
 # 1. So'nggi kodni olish
-echo "[1/5] Git-dan so'nggi versiyani yuklab olish..."
+echo "[1/6] Git-dan so'nggi versiyani yuklab olish..."
 git pull origin main
 
 # Android papkasini o'chirish (Serverda kerak emas)
@@ -28,12 +28,12 @@ if [ -d "android" ]; then
 fi
 
 # 2. Tozalash (Eski konteynerlarni to'xtatish juda muhim!)
-echo "[2/5] Eski konteynerlarni to'xtatish va joy ochish..."
+echo "[2/6] Eski konteynerlarni to'xtatish va joy ochish..."
 docker compose -f docker-compose.prod.yml down || true
 docker system prune -f --volumes
 
 # 3. Ketma-ket build qilish (Resurslarni tejash uchun)
-echo "[3/5] Servislarni ketma-ket build qilish..."
+echo "[3/6] Servislarni ketma-ket build qilish..."
 
 echo "   > Backendni build qilish..."
 docker compose -f docker-compose.prod.yml build backend
@@ -41,15 +41,19 @@ docker compose -f docker-compose.prod.yml build backend
 echo "   > Frontendni build qilish (bu biroz vaqt olishi mumkin)..."
 docker compose -f docker-compose.prod.yml build frontend
 
+echo "   > Sertifikat servisini build qilish..."
+docker compose -f docker-compose.prod.yml build certificate
+
 # 4. Servislarni ishga tushirish
-echo "[4/5] Yangi imageni build qilib, konteynerni ishga tushirish..."
+echo "[4/6] Yangi imageni build qilib, konteynerni ishga tushirish..."
 docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build
 
 # 5. Natijani tekshirish
-echo "[5/5] Konteynern holati:"
+echo "[5/6] Konteynern holati:"
 docker compose -f docker-compose.prod.yml ps
 
 echo ""
 echo "✅ Deploy muvaffaqiyatli yakunlandi!"
-echo "   Frontend: http://$(curl -s ifconfig.me)"
-echo "   Backend:  http://$(curl -s ifconfig.me):3000"
+echo "   Frontend:    http://$(curl -s ifconfig.me)"
+echo "   Backend:     http://$(curl -s ifconfig.me):3000"
+echo "   Sertifikat:  http://$(curl -s ifconfig.me):8000"

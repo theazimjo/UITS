@@ -4,14 +4,14 @@ import {
   ChevronLeft, User, Phone, MapPin, Calendar,
   BookOpen, Trash2, Search, Info, Edit2,
   CreditCard, ArrowRight, History, CheckCircle, RefreshCw,
-  ChevronRight, Fingerprint, GraduationCap, Building
+  ChevronRight, Fingerprint, GraduationCap, Building, X
 } from 'lucide-react';
-import { getStudentById, getPaymentsByStudent, getStudentAttendance, updateStudent, getStudentExams } from '../services/api';
+import { getStudentById, getPaymentsByStudent, getStudentAttendance, updateStudent, getStudentExams, getCertificates, getCertificateImageUrl, getStudents } from '../services/api';
 import { Award } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
-import { getStudents } from '../services/api';
 
 const StudentDetail = () => {
   const { setStudents: setGlobalStudents } = useStore();
@@ -33,6 +33,9 @@ const StudentDetail = () => {
   const [viewDate, setViewDate] = useState(new Date());
   const [attCache, setAttCache] = useState({});
   const [attSource, setAttSource] = useState(null); // 'cache' | 'external'
+  const [studentCertificates, setStudentCertificates] = useState([]);
+  const [certsLoading, setCertsLoading] = useState(false);
+  const [activeLightboxImage, setActiveLightboxImage] = useState(null);
 
   useEffect(() => {
     fetchStudentData();
@@ -45,12 +48,28 @@ const StudentDetail = () => {
     }
   }, [student]);
 
+  const fetchStudentCertificates = async () => {
+    if (!student) return;
+    try {
+      setCertsLoading(true);
+      const res = await getCertificates(student.name);
+      setStudentCertificates(res.data?.certificates || res.data || []);
+    } catch (err) {
+      console.error('Error fetching student certificates:', err);
+    } finally {
+      setCertsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'attendance') {
       fetchAttendanceData();
     }
     if (activeTab === 'exams') {
       fetchExams();
+    }
+    if (activeTab === 'certificates') {
+      fetchStudentCertificates();
     }
   }, [viewDate, activeTab]);
 
@@ -221,7 +240,8 @@ const StudentDetail = () => {
             { id: 'groups', label: 'Guruhlar', icon: <BookOpen size={14} /> },
             { id: 'payments', label: 'To\'lovlar', icon: <CreditCard size={14} /> },
             { id: 'attendance', label: 'Davomat', icon: <History size={14} /> },
-            { id: 'exams', label: 'Imtihonlar', icon: <Award size={14} /> }
+            { id: 'exams', label: 'Imtihonlar', icon: <Award size={14} /> },
+            { id: 'certificates', label: 'Sertifikatlar', icon: <Award size={14} /> }
           ].map(t => (
             <button
               key={t.id}
@@ -636,9 +656,92 @@ const StudentDetail = () => {
               </div>
             </div>
           )}
+          {/* TAB 6: CERTIFICATES */}
+          {activeTab === 'certificates' && (
+            <div className="space-y-6 animate-fade-in">
+              {certsLoading ? (
+                <div className="py-16 flex items-center justify-center bg-white/60 dark:bg-black/20 rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm">
+                  <div className="w-8 h-8 border-2 border-[#007aff] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : studentCertificates.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {studentCertificates.map((cert) => (
+                    <div 
+                      key={cert.id}
+                      className="relative group border border-gray-200/50 dark:border-white/10 rounded-xl overflow-hidden bg-white/60 dark:bg-black/20 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-sm flex flex-col"
+                    >
+                      <div className="relative aspect-[4/3] bg-gray-100 dark:bg-black/40 overflow-hidden flex items-center justify-center border-b border-gray-100 dark:border-white/5">
+                        <img 
+                          src={getCertificateImageUrl(cert.certId)} 
+                          alt={cert.fullName} 
+                          className="w-full h-full object-contain cursor-pointer"
+                          onClick={() => setActiveLightboxImage(getCertificateImageUrl(cert.certId))}
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                          <span className="text-[12px] font-bold text-white bg-black/60 px-3 py-1.5 rounded-lg backdrop-blur-sm">Batafsil ko'rish</span>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white/40 dark:bg-white/[0.02]">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">{cert.fullName}</p>
+                            <p className="text-[11px] text-gray-400 font-mono mt-0.5">{cert.certId}</p>
+                          </div>
+                          <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium rounded border border-blue-100 dark:border-blue-800/50">
+                            {cert.template || 'UITS Sertifikat'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[12px] text-gray-500 mt-4 border-t border-gray-100 dark:border-white/5 pt-3">
+                          <span>Sana: {cert.date}</span>
+                          <a 
+                            href={getCertificateImageUrl(cert.certId)} 
+                            download={`sertifikat_${cert.certId}.jpg`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#007aff] hover:underline font-bold flex items-center gap-1"
+                          >
+                            Yuklab olish (JPG)
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-16 text-center bg-white/60 dark:bg-black/20 rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm">
+                  <Award size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                  <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-1">Sertifikatlar topilmadi</h3>
+                  <p className="text-[13px] text-gray-500 max-w-sm mx-auto">
+                    Ushbu talaba uchun hali hech qanday sertifikat yaratilmagan.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </div>
+
+      {/* Lightbox for certificate detailed preview */}
+      {activeLightboxImage && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setActiveLightboxImage(null)}></div>
+          <div className="relative z-10 max-w-4xl w-full bg-transparent p-2 flex flex-col items-center animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setActiveLightboxImage(null)}
+              className="absolute -top-12 right-2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={activeLightboxImage}
+              alt="Sertifikat batafsil ko'rinishi"
+              className="max-h-[80vh] w-auto object-contain rounded-2xl shadow-2xl border border-white/10"
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
