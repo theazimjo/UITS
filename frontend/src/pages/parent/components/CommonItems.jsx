@@ -1,6 +1,15 @@
 import React from 'react';
 import { Award, CreditCard, TrendingUp, CheckCircle2, Clock, LogOut, BookOpen, User, Calendar, History, MessageSquare, QuoteIcon } from 'lucide-react';
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 export const StatCard = ({ icon: Icon, label, value, subValue, colorClass, borderClass }) => (
   <div className={`bg-white dark:bg-white/5 p-4 md:p-6 rounded-[2rem] border ${borderClass} shadow-sm group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden`}>
     <div className={`absolute -right-2 -top-2 w-16 h-16 ${colorClass} opacity-5 rounded-full blur-xl group-hover:opacity-10 transition-all`}></div>
@@ -47,13 +56,23 @@ export const ChildSelector = ({ children, selectedChildId, onSelect }) => (
           }`}
       >
         <div className={`w-12 h-12 rounded-full border-2 overflow-hidden bg-gray-200 shadow-sm transition-transform duration-500 ${selectedChildId === child.id ? 'scale-110 border-blue-400' : 'border-white/20'}`}>
-          {child.photo ? (
-            <img src={child.photo} alt={child.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-blue-500">
-              <User size={24} />
-            </div>
-          )}
+          {getStudentPhotoUrl(child.photo) ? (
+            <img
+              src={getStudentPhotoUrl(child.photo)}
+              alt={child.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div
+            style={{ display: getStudentPhotoUrl(child.photo) ? 'none' : 'flex' }}
+            className="w-full h-full flex items-center justify-center text-blue-500"
+          >
+            <User size={24} />
+          </div>
         </div>
         <div className="text-left">
           <p className="text-[14px] font-black tracking-tight">{child.name}</p>

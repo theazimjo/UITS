@@ -126,6 +126,15 @@ const MessageModal = ({ isOpen, onClose, targetName, studentIds }) => {
   );
 };
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 const TeacherGroups = () => {
   const { groups: allGroups, loading, refreshAllRows } = useStore();
   const [activeTab, setActiveTab] = useState('faol'); // faol, tugatgan, otkazilgan
@@ -482,8 +491,8 @@ const TeacherGroups = () => {
 
                       return (
                         <div key={e.id || i} className="flex items-center gap-4 p-4 bg-gray-50/50 dark:bg-white/[0.03] rounded-3xl border border-gray-100 dark:border-white/5 hover:scale-[1.02] transition-all">
-                          {e.student?.photo ? (
-                            <img src={e.student.photo} alt="" className="w-11 h-11 rounded-2xl object-cover shadow-sm" />
+                          {getStudentPhotoUrl(e.student?.photo) ? (
+                            <img src={getStudentPhotoUrl(e.student?.photo)} alt="" className="w-11 h-11 rounded-2xl object-cover shadow-sm" />
                           ) : (
                             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-[15px] font-black shadow-lg">
                               {e.student?.name?.charAt(0)}

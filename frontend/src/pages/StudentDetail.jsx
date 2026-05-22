@@ -13,6 +13,15 @@ import { createPortal } from 'react-dom';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 const StudentDetail = () => {
   const { setStudents: setGlobalStudents } = useStore();
   const { id } = useParams();
@@ -183,13 +192,23 @@ const StudentDetail = () => {
       {/* Header / Profile Summary */}
       <div className="px-6 py-6 flex flex-col sm:flex-row items-center gap-6 border-b border-gray-200/50 dark:border-white/10 bg-white/30 dark:bg-white/5 shrink-0 z-10">
         <div className="relative">
-          {student.photo ? (
-            <img src={student.photo} alt={student.name} className="w-20 h-20 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-lg" />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 border-2 border-white dark:border-gray-800 shadow-lg">
-              <User size={32} />
-            </div>
-          )}
+          {getStudentPhotoUrl(student.photo) ? (
+            <img
+              src={getStudentPhotoUrl(student.photo)}
+              alt={student.name}
+              className="w-20 h-20 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-lg"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div
+            style={{ display: getStudentPhotoUrl(student.photo) ? 'none' : 'flex' }}
+            className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 border-2 border-white dark:border-gray-800 shadow-lg"
+          >
+            <User size={32} />
+          </div>
           <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#34c759] border-2 border-white dark:border-[#1e1e1e] shadow-sm flex items-center justify-center">
             <CheckCircle size={12} className="text-white" />
           </div>

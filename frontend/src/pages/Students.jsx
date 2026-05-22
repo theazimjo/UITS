@@ -13,6 +13,15 @@ import { updateStudent, syncStudents, sendNotifications } from '../services/api'
 import Modal from '../components/common/Modal';
 import { Edit } from 'lucide-react';
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 const Students = () => {
   const { students: globalStudents, setStudents: setGlobalStudents, loading } = useStore();
   const students = Array.isArray(globalStudents) ? globalStudents : [];
@@ -462,17 +471,23 @@ const Students = () => {
                           </td>
                           <td className="px-5 py-3" onClick={() => navigate(`/students/${student.id}`)}>
                             <div className="flex items-center gap-3">
-                              {student.photo ? (
+                              {getStudentPhotoUrl(student.photo) ? (
                                 <img
-                                  src={student.photo}
+                                  src={getStudentPhotoUrl(student.photo)}
                                   alt={student.name}
                                   className="w-9 h-9 rounded-full object-cover border border-gray-200 dark:border-white/10 shadow-sm"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                  }}
                                 />
-                              ) : (
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-sm shadow-sm">
-                                  {student.name.substring(0, 1).toUpperCase()}
-                                </div>
-                              )}
+                              ) : null}
+                              <div
+                                style={{ display: getStudentPhotoUrl(student.photo) ? 'none' : 'flex' }}
+                                className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-sm shadow-sm"
+                              >
+                                {student.name.substring(0, 1).toUpperCase()}
+                              </div>
                               <div>
                                 <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
                                   {student.name}

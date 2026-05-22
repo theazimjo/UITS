@@ -26,6 +26,15 @@ const QuoteIcon = ({ className }) => (
   </svg>
 );
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 const ParentDashboard = () => {
   const [children, setChildren] = useState([]);
   const [selectedChildId, setSelectedChildId] = useState(null);
@@ -206,13 +215,23 @@ const ParentDashboard = () => {
               <div className="relative shrink-0">
                 <div className="absolute inset-0 bg-blue-500 blur-[40px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
                 <div className="w-40 h-40 md:w-56 md:h-56 rounded-[3.5rem] border-8 border-white dark:border-black shadow-2xl overflow-hidden bg-gray-200 relative z-10">
-                  {selectedChild?.photo ? (
-                    <img src={selectedChild.photo} alt={selectedChild.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[#007aff] bg-blue-50">
-                      <UserIcon size={80} strokeWidth={1} />
-                    </div>
-                  )}
+                  {getStudentPhotoUrl(selectedChild?.photo) ? (
+                    <img
+                      src={getStudentPhotoUrl(selectedChild.photo)}
+                      alt={selectedChild.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    style={{ display: getStudentPhotoUrl(selectedChild?.photo) ? 'none' : 'flex' }}
+                    className="w-full h-full flex items-center justify-center text-[#007aff] bg-blue-50"
+                  >
+                    <UserIcon size={80} strokeWidth={1} />
+                  </div>
                 </div>
               </div>
 

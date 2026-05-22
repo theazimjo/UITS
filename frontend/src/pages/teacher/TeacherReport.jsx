@@ -22,6 +22,15 @@ const getPeriodLabel = (type) => {
   }
 };
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 const TeacherReport = () => {
   const { students: allStudents, groups, loading, refreshAllRows } = useStore();
 
@@ -602,8 +611,8 @@ const TeacherReport = () => {
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-3">
-                          {s.photo ? (
-                            <img src={s.photo} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm shrink-0" />
+                          {getStudentPhotoUrl(s.photo) ? (
+                            <img src={getStudentPhotoUrl(s.photo)} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm shrink-0" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
                               {s.name?.charAt(0)}

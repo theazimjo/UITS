@@ -16,6 +16,15 @@ const getGroupScheduleType = (groupDays) => {
   return 'other';
 };
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 const TeacherAttendance = () => {
   const { students: allStudents, groups = [], loading, refreshAllRows, saveGrade } = useStore();
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -239,8 +248,8 @@ const TeacherAttendance = () => {
                         <tr key={student.id} className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group text-left">
                           <td className="px-5 py-3 sticky left-0 bg-white/95 dark:bg-[#1e1e1e]/95 z-10 group-hover:bg-[#007aff]/5 transition-colors border-r border-gray-100 dark:border-white/5 min-w-[280px]">
                             <div className="flex items-center gap-3">
-                              {student.photo ? (
-                                <img src={student.photo} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm animate-fade-in" />
+                              {getStudentPhotoUrl(student.photo) ? (
+                                <img src={getStudentPhotoUrl(student.photo)} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200/50 shadow-sm animate-fade-in" />
                               ) : (
                                 <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
                                   {student.name?.substring(0, 1)}

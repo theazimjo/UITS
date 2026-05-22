@@ -24,6 +24,15 @@ import Skeleton from '../components/common/Skeleton';
 
 import useStore from '../store/useStore';
 
+const getStudentPhotoUrl = (photo) => {
+  if (!photo || photo === 'null' || photo === 'undefined') return null;
+  if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+    return photo;
+  }
+  const cleanPath = photo.startsWith('/') ? photo.slice(1) : photo;
+  return `https://schoolmanage.uz/${cleanPath}`;
+};
+
 const Dashboard = () => {
   const { students, staff, groups, loading: globalLoading } = useStore();
   const studentsCount = students.length;
@@ -527,12 +536,24 @@ const Dashboard = () => {
                 .map((s) => (
                   <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-[#007aff]/30 transition-all group">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center overflow-hidden border border-gray-300 dark:border-white/20 transition-transform group-hover:scale-110">
-                        {s.photo ? (
-                          <img src={s.photo} alt={s.name} className="w-full h-full object-cover" />
-                        ) : (
+                      <div className="relative w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center overflow-hidden border border-gray-300 dark:border-white/20 transition-transform group-hover:scale-110 shrink-0">
+                        {getStudentPhotoUrl(s.photo) ? (
+                          <img
+                            src={getStudentPhotoUrl(s.photo)}
+                            alt={s.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          style={{ display: getStudentPhotoUrl(s.photo) ? 'none' : 'flex' }}
+                          className="w-full h-full items-center justify-center bg-gray-100 dark:bg-white/10"
+                        >
                           <Users size={16} className="text-gray-400" />
-                        )}
+                        </div>
                       </div>
                       <div>
                         <p className="text-[14px] font-bold text-gray-800 dark:text-gray-200 group-hover:text-[#007aff] transition-colors">{s.name}</p>
