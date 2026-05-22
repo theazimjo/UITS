@@ -10,16 +10,7 @@ const Header = ({ currentUser }) => {
 
       {/* Chap qism: Qidiruv */}
       <div className="flex items-center gap-6">
-        <div className="relative group hidden md:block">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#007aff] transition-colors pointer-events-none">
-            <Search size={16} />
-          </div>
-          <input
-            type="text"
-            placeholder="Qidirish..."
-            className="pl-9 pr-4 py-1.5 bg-white/50 dark:bg-black/30 border border-gray-200/50 dark:border-white/10 rounded-md w-64 xl:w-80 outline-none text-[13px] text-gray-800 dark:text-white placeholder-gray-500 transition-all duration-200 focus:ring-2 focus:ring-[#007aff]/50 focus:border-transparent shadow-inner"
-          />
-        </div>
+      
       </div>
 
       {/* O'ng qism: Amallar va Profil */}
