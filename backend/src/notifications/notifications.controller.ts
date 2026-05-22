@@ -31,6 +31,8 @@ export class NotificationsController {
     if (role === 'parent') {
       const parentPhone = req.user.username;
       return this.notificationsService.findForParent(parentPhone);
+    } else if (role === 'admin' || role === 'manager') {
+      return this.notificationsService.findAllForAdmin();
     } else {
       const username = req.user.username;
       return this.notificationsService.findForStaffByUsername(username);

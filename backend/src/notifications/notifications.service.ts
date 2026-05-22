@@ -101,4 +101,11 @@ export class NotificationsService {
       order: { createdAt: 'DESC' }
     });
   }
+
+  async findAllForAdmin() {
+    return this.notificationRepo.find({
+      order: { createdAt: 'DESC' },
+      take: 50
+    });
+  }
 }
