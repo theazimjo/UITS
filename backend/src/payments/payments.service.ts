@@ -6,6 +6,7 @@ import { Group } from '../groups/entities/group.entity';
 import { GroupPhase } from '../groups/entities/group-phase.entity';
 import { LessThanOrEqual } from 'typeorm';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PaymentsService {
@@ -17,6 +18,7 @@ export class PaymentsService {
     @InjectRepository(GroupPhase)
     private groupPhaseRepository: Repository<GroupPhase>,
     private activityLogService: ActivityLogService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(data: any) {
@@ -61,9 +63,18 @@ export class PaymentsService {
     const saved = await this.paymentRepository.save(payment);
     const p = await this.paymentRepository.findOne({ 
       where: { id: saved.id }, 
-      relations: ['student'] 
+      relations: ['student', 'teacher', 'group'] 
     });
     
+    if (p && p.teacher) {
+      const groupName = p.group ? ` "${p.group.name}"` : '';
+      await this.notificationsService.sendToStaff(
+        p.teacher.id,
+        "O'quvchi to'lovi",
+        `Siz o'tadigan${groupName} guruhidagi o'quvchingiz ${p.student?.name || 'Noma\'lum'} ${Number(saved.amount).toLocaleString('uz-UZ')} so'm to'lov qildi.`
+      ).catch(err => console.error('Failing to send payment notification:', err));
+    }
+
     await this.activityLogService.logAction({
       action: 'PAYMENT_CREATE',
       entityName: 'PAYMENT',

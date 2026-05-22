@@ -13,6 +13,7 @@ import { Student } from '../students/entities/student.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Staff } from '../staff/entities/staff.entity';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class GroupsService implements OnModuleInit {
@@ -28,6 +29,7 @@ export class GroupsService implements OnModuleInit {
     @InjectRepository(Staff) private readonly staffRepo: Repository<Staff>,
     private readonly activityLogService: ActivityLogService,
     private readonly dataSource: DataSource,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async onModuleInit() {
@@ -91,6 +93,14 @@ export class GroupsService implements OnModuleInit {
       await this.phaseRepo.save(phase);
     }
 
+    if (g.teacherId) {
+      await this.notificationsService.sendToStaff(
+        g.teacherId,
+        "Yangi guruh biriktirildi",
+        `Sizga yangi "${g.name}" guruhi biriktirildi.`
+      ).catch(err => console.error('Failing to send group creation notification:', err));
+    }
+
     await this.activityLogService.logAction({ action: 'GROUP_CREATE', entityName: 'GROUP', entityId: g.id, description: `Yangi "${g.name}" guruhi yaratildi.` });
     return this.findOneGroup(g.id);
   }
@@ -101,6 +111,8 @@ export class GroupsService implements OnModuleInit {
       relations: ['phases']
     });
     if (!group) return null;
+
+    const oldTeacherId = group.teacherId;
     
     // Explicitly update IDs if provided in data and nullify relations to force TypeORM to use new IDs
     // Also use Number() to ensure we don't pass empty strings or NaN to the DB
@@ -113,6 +125,22 @@ export class GroupsService implements OnModuleInit {
       if (activePhase) {
         activePhase.teacherId = group.teacherId;
         await this.phaseRepo.save(activePhase).catch(e => console.error('Phase update fail:', e));
+      }
+
+      // Notify new teacher
+      await this.notificationsService.sendToStaff(
+        tId,
+        "Yangi guruh biriktirildi",
+        `Sizga yangi "${group.name}" guruhi biriktirildi.`
+      ).catch(err => console.error('Failing to send group assignment notification:', err));
+
+      // Notify old teacher
+      if (oldTeacherId) {
+        await this.notificationsService.sendToStaff(
+          oldTeacherId,
+          "Guruh biriktiruvi bekor qilindi",
+          `Siz o'tadigan "${group.name}" guruhi boshqa o'qituvchiga biriktirildi.`
+        ).catch(err => console.error('Failing to send group unassignment notification:', err));
       }
     }
 
@@ -222,6 +250,8 @@ export class GroupsService implements OnModuleInit {
       const group = await manager.findOne(Group, { where: { id } });
       if (!group) throw new Error('Group not found');
 
+      const oldTeacherId = group.teacherId;
+
       const currentPhase = await manager.findOne(GroupPhase, {
         where: { group: { id }, endDate: IsNull() }
       });
@@ -268,6 +298,25 @@ export class GroupsService implements OnModuleInit {
 
       await manager.save(Group, group);
 
+      // Send notifications for transfer
+      if (!isNaN(tId) && tId !== oldTeacherId) {
+        // Notify new teacher
+        await this.notificationsService.sendToStaff(
+          tId,
+          "Yangi guruh biriktirildi",
+          `Boshqa o'qituvchidan "${group.name}" guruhi sizga o'tkazildi.`
+        ).catch(err => console.error('Failing to send transfer notification to new teacher:', err));
+
+        // Notify old teacher
+        if (oldTeacherId) {
+          await this.notificationsService.sendToStaff(
+            oldTeacherId,
+            "Guruh o'tkazildi",
+            `Siz o'tadigan "${group.name}" guruhi boshqa o'qituvchiga o'tkazildi.`
+          ).catch(err => console.error('Failing to send transfer notification to old teacher:', err));
+        }
+      }
+
       // LOG HISTORY
       await this.activityLogService.logAction({
         action: 'GROUP_TRANSFER',
@@ -287,6 +336,8 @@ export class GroupsService implements OnModuleInit {
 
   async completeGroup(id: number, endDate: string) {
     return this.dataSource.transaction(async (manager) => {
+      const group = await manager.findOne(Group, { where: { id } });
+
       await manager.update(Group, id, {
         status: GroupStatus.COMPLETED,
         endDate: endDate
@@ -306,6 +357,14 @@ export class GroupsService implements OnModuleInit {
         { group: { id }, status: EnrollmentStatus.ACTIVE }, 
         { status: EnrollmentStatus.GRADUATED }
       );
+
+      if (group && group.teacherId) {
+        await this.notificationsService.sendToStaff(
+          group.teacherId,
+          "Guruh yakunlandi",
+          `Siz o'tadigan "${group.name}" guruhi faoliyati yakunlandi.`
+        ).catch(err => console.error('Failing to send group completion notification:', err));
+      }
 
       // LOG HISTORY
       await this.activityLogService.logAction({

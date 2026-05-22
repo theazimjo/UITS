@@ -148,6 +148,7 @@ export const getChildAttendance = (id, date = '') => api.get(`/parent/child/${id
 export const getChildExams = (id) => api.get(`/parent/child/${id}/exams`);
 export const getChildPayments = (id) => api.get(`/parent/child/${id}/payments`);
 export const getParentNotifications = () => api.get('/notifications/parent');
+export const getMyNotifications = () => api.get('/notifications/me');
 export const sendNotifications = (data) => api.post('/notifications/send', data);
 export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`);
 

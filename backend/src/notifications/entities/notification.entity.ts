@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
+import { Staff } from '../../staff/entities/staff.entity';
 
 @Entity()
 export class Notification {
@@ -18,9 +19,15 @@ export class Notification {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
-  studentId: number;
+  @Column({ nullable: true })
+  studentId?: number;
 
-  @ManyToOne(() => Student)
-  student: Student;
+  @ManyToOne(() => Student, { nullable: true })
+  student?: Student;
+
+  @Column({ nullable: true })
+  staffId?: number;
+
+  @ManyToOne(() => Staff, { nullable: true })
+  staff?: Staff;
 }

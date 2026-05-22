@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { 
   getStudents, getStaff, getRoles, getGroups, getFields, getCourses, getRooms,
   getTeacherGroups, getTeacherStudents, getTeacherAttendance, saveGrade,
-  getParentNotifications, markNotificationRead
+  getParentNotifications, getMyNotifications, markNotificationRead
 } from '../services/api';
 
 const useStore = create((set, get) => ({
@@ -105,8 +105,12 @@ const useStore = create((set, get) => ({
     try {
       const userStr = localStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : null;
-      if (user?.role === 'parent') {
+      if (!user) return;
+      if (user.role === 'parent') {
         const res = await getParentNotifications();
+        set({ notifications: res.data || [] });
+      } else {
+        const res = await getMyNotifications();
         set({ notifications: res.data || [] });
       }
     } catch (e) {

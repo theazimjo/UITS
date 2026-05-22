@@ -9,6 +9,7 @@ import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
 import * as bcrypt from 'bcrypt';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class StaffService {
@@ -22,6 +23,7 @@ export class StaffService {
     @InjectRepository(ReportDate)
     private readonly reportDateRepo: Repository<ReportDate>,
     private readonly activityLogService: ActivityLogService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(): Promise<Staff[]> {
@@ -161,6 +163,13 @@ export class StaffService {
       staff
     });
     const saved = await this.staffPaymentRepository.save(payment);
+    
+    await this.notificationsService.sendToStaff(
+      staffId,
+      "Oylik to'lovi",
+      `Sizga ${Number(data.amount).toLocaleString('uz-UZ')} so'm miqdorida to'lov qabul qilindi (Turi: ${data.type || 'maosh'}).`
+    ).catch(err => console.error('Failing to send staff payment notification:', err));
+
     await this.activityLogService.logAction({
       action: 'STAFF_PAYMENT',
       entityName: 'STAFF',

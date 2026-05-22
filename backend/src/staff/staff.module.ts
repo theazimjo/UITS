@@ -18,6 +18,7 @@ import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
 import { Exam } from './entities/exam.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { Exam } from './entities/exam.entity';
       Exam,
     ]),
     ActivityLogModule,
+    NotificationsModule,
   ],
   providers: [StaffService],
   controllers: [StaffController, RolesController, TeacherController],

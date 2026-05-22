@@ -4,6 +4,7 @@ import { Repository, In } from 'typeorm';
 import { Student } from '../students/entities/student.entity';
 import { Enrollment } from '../groups/entities/enrollment.entity';
 import { Notification } from './entities/notification.entity';
+import { Staff } from '../staff/entities/staff.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -14,6 +15,8 @@ export class NotificationsService {
     private readonly studentRepo: Repository<Student>,
     @InjectRepository(Enrollment)
     private readonly enrollmentRepo: Repository<Enrollment>,
+    @InjectRepository(Staff)
+    private readonly staffRepo: Repository<Staff>,
   ) { }
 
   async sendBulk(data: { studentIds: number[]; title: string; message: string }, senderId?: number, senderRole?: string) {
@@ -72,5 +75,30 @@ export class NotificationsService {
     if (!n) throw new NotFoundException('Bildirishnoma topilmadi');
     n.isRead = true;
     return this.notificationRepo.save(n);
+  }
+
+  async sendToStaff(staffId: number, title: string, message: string) {
+    const notification = this.notificationRepo.create({
+      staffId,
+      title,
+      message
+    });
+    return this.notificationRepo.save(notification);
+  }
+
+  async findForStaffByUsername(username: string) {
+    const staff = await this.staffRepo.findOne({ where: { username } });
+    if (!staff) return [];
+    return this.notificationRepo.find({
+      where: { staffId: staff.id },
+      order: { createdAt: 'DESC' }
+    });
+  }
+
+  async findForStaff(staffId: number) {
+    return this.notificationRepo.find({
+      where: { staffId },
+      order: { createdAt: 'DESC' }
+    });
   }
 }

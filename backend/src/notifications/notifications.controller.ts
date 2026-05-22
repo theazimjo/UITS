@@ -12,7 +12,7 @@ export class NotificationsController {
   @Post('send')
   @Roles('admin', 'manager', 'teacher')
   async sendBulk(@Body() data: { studentIds: number[]; title: string; message: string }, @Request() req) {
-    const senderId = req.user.id;
+    const senderId = req.user.userId;
     const senderRole = req.user.role;
     return this.notificationsService.sendBulk(data, senderId, senderRole);
   }
@@ -22,6 +22,19 @@ export class NotificationsController {
   async getForParent(@Request() req) {
     const parentPhone = req.user.username; // Usually username is phone for parents
     return this.notificationsService.findForParent(parentPhone);
+  }
+
+  @Get('me')
+  @Roles('admin', 'manager', 'teacher', 'parent')
+  async getForMe(@Request() req) {
+    const role = req.user.role;
+    if (role === 'parent') {
+      const parentPhone = req.user.username;
+      return this.notificationsService.findForParent(parentPhone);
+    } else {
+      const username = req.user.username;
+      return this.notificationsService.findForStaffByUsername(username);
+    }
   }
 
   @Patch(':id/read')
