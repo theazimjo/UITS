@@ -48,7 +48,7 @@ services:
       - '5173:5173'
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - VITE_CERT_API_URL=http://localhost:8000/sertifikat
+      - VITE_CERT_API_URL=/sertifikat
     volumes:
       - ./frontend:/app
       - /app/node_modules

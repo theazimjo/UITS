@@ -72,15 +72,33 @@ export class TeacherController {
       relations: ['enrollments', 'enrollments.student', 'course'],
     });
 
-    const activeGroups = groups.filter(
-      (g) => g.status === GroupStatus.ACTIVE || g.status === GroupStatus.WAITING,
-    );
+    const activeGroups = groups.filter((g) => {
+      if (g.status !== GroupStatus.ACTIVE && g.status !== GroupStatus.WAITING) {
+        return false;
+      }
+      if (g.startDate) {
+        const startMonth = g.startDate.slice(0, 7); // "YYYY-MM"
+        if (targetMonth < startMonth) return false;
+      }
+      if (g.endDate) {
+        const endMonth = g.endDate.slice(0, 7); // "YYYY-MM"
+        if (targetMonth > endMonth) return false;
+      }
+      return true;
+    });
 
     // Unique active students across all teacher's groups
     const studentMap = new Map<number, any>();
     activeGroups.forEach((g) => {
       g.enrollments?.forEach((e) => {
         if (e.status === EnrollmentStatus.ACTIVE && e.student) {
+          if (e.joinedDate) {
+            const joinedStr = typeof e.joinedDate === 'string'
+              ? e.joinedDate
+              : e.joinedDate.toISOString();
+            const joinedMonth = joinedStr.slice(0, 7);
+            if (targetMonth < joinedMonth) return;
+          }
           studentMap.set(e.student.id, {
             id: e.student.id,
             name: e.student.name,
@@ -103,7 +121,17 @@ export class TeacherController {
 
     // Expected Income (Only for CURRENTLY active groups in the selected month)
     const expectedIncome = activeGroups.reduce((sum, g) => {
-      const activeCount = g.enrollments?.filter(e => e.status === EnrollmentStatus.ACTIVE).length || 0;
+      const activeCount = g.enrollments?.filter((e) => {
+        if (e.status !== EnrollmentStatus.ACTIVE) return false;
+        if (e.joinedDate) {
+          const joinedStr = typeof e.joinedDate === 'string'
+            ? e.joinedDate
+            : e.joinedDate.toISOString();
+          const joinedMonth = joinedStr.slice(0, 7);
+          if (targetMonth < joinedMonth) return false;
+        }
+        return true;
+      }).length || 0;
       return sum + (activeCount * Number(g.monthlyPrice || 0));
     }, 0);
 
@@ -127,10 +155,23 @@ export class TeacherController {
     }
 
     // Student Distribution
-    const studentDistribution = activeGroups.map(g => ({
-      name: g.name,
-      value: g.enrollments?.filter(e => e.status === EnrollmentStatus.ACTIVE).length || 0,
-    })).filter(d => d.value > 0);
+    const studentDistribution = activeGroups.map((g) => {
+      const activeEnrollments = g.enrollments?.filter((e) => {
+        if (e.status !== EnrollmentStatus.ACTIVE) return false;
+        if (e.joinedDate) {
+          const joinedStr = typeof e.joinedDate === 'string'
+            ? e.joinedDate
+            : e.joinedDate.toISOString();
+          const joinedMonth = joinedStr.slice(0, 7);
+          if (targetMonth < joinedMonth) return false;
+        }
+        return true;
+      }) || [];
+      return {
+        name: g.name,
+        value: activeEnrollments.length,
+      };
+    }).filter((d) => d.value > 0);
 
     return {
       month: targetMonth,
@@ -140,17 +181,30 @@ export class TeacherController {
       expectedIncome,
       financialTrend,
       studentDistribution,
-      groups: activeGroups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        status: g.status,
-        days: g.days,
-        startTime: g.startTime,
-        endTime: g.endTime,
-        courseName: g.course?.name,
-        studentCount: g.enrollments?.filter((e) => e.status === EnrollmentStatus.ACTIVE).length || 0,
-        monthlyPrice: g.monthlyPrice,
-      })),
+      groups: activeGroups.map((g) => {
+        const activeCount = g.enrollments?.filter((e) => {
+          if (e.status !== EnrollmentStatus.ACTIVE) return false;
+          if (e.joinedDate) {
+            const joinedStr = typeof e.joinedDate === 'string'
+              ? e.joinedDate
+              : e.joinedDate.toISOString();
+            const joinedMonth = joinedStr.slice(0, 7);
+            if (targetMonth < joinedMonth) return false;
+          }
+          return true;
+        }).length || 0;
+        return {
+          id: g.id,
+          name: g.name,
+          status: g.status,
+          days: g.days,
+          startTime: g.startTime,
+          endTime: g.endTime,
+          courseName: g.course?.name,
+          studentCount: activeCount,
+          monthlyPrice: g.monthlyPrice,
+        };
+      }),
     };
   }
 

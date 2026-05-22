@@ -206,7 +206,6 @@ const TeacherAttendance = () => {
         <div className="max-w-[1400px] mx-auto space-y-6 h-full">
 
 
-
           {loading ? (
             <div className="flex flex-col items-center justify-center py-40 animate-pulse">
               <Loader2 className="w-8 h-8 text-[#007aff] animate-spin mb-4" />

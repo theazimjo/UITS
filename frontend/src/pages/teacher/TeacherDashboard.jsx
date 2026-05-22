@@ -3,7 +3,7 @@ import { getTeacherDashboard, getTeacherGroups, getTeacherAttendance } from '../
 import {
   Users, BookOpen, ClipboardCheck, TrendingUp, Loader2,
   LayoutDashboard, RefreshCw, ChevronLeft, ChevronRight, Layers,
-  Calendar, Clock, MapPin, Phone
+  Calendar, Clock, MapPin, Phone, Plus, Pencil, Trash2, Eye, StickyNote
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -14,6 +14,15 @@ const MONTHS_SHORT = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'S
 
 const PIE_COLORS = ['#2dd4bf', '#3b82f6', '#f97316', '#22c55e', '#a855f7', '#ef4444', '#eab308'];
 const DOT_COLORS = ['bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
+
+const NOTE_COLORS = [
+  { name: 'Sariq', bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border-yellow-200 dark:border-yellow-800/40', top: 'bg-yellow-300 dark:bg-yellow-600', dot: 'bg-yellow-400' },
+  { name: 'Apelsin', bg: 'bg-orange-100 dark:bg-orange-900/30', border: 'border-orange-200 dark:border-orange-800/40', top: 'bg-orange-300 dark:bg-orange-600', dot: 'bg-orange-400' },
+  { name: 'Pushti', bg: 'bg-pink-100 dark:bg-pink-900/30', border: 'border-pink-200 dark:border-pink-800/40', top: 'bg-pink-300 dark:bg-pink-600', dot: 'bg-pink-400' },
+  { name: 'Yashil', bg: 'bg-emerald-100 dark:bg-emerald-900/30', border: 'border-emerald-200 dark:border-emerald-800/40', top: 'bg-emerald-300 dark:bg-emerald-600', dot: 'bg-emerald-400' },
+  { name: 'Ko\'k', bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-200 dark:border-blue-800/40', top: 'bg-blue-300 dark:bg-blue-600', dot: 'bg-blue-400' },
+  { name: 'Binafsha', bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-200 dark:border-purple-800/40', top: 'bg-purple-300 dark:bg-purple-600', dot: 'bg-purple-400' },
+];
 
 /* ──────────────────── Custom Legend (rasmdagidek) ──────────────────── */
 const SubjectLegend = ({ items }) => (
@@ -81,6 +90,39 @@ const TeacherDashboard = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const calendarRef = useRef(null);
+
+  // Attendance Overview state
+  const [overviewGroup, setOverviewGroup] = useState('all');
+
+  // Quick Notes state
+  const getNotesKey = () => {
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    return `teacher_quick_notes_${user?.id || 'default'}`;
+  };
+  const loadNotes = () => {
+    try { const raw = localStorage.getItem(getNotesKey()); return raw ? JSON.parse(raw) : []; }
+    catch { return []; }
+  };
+  const [notes, setNotes] = useState(loadNotes);
+  const [noteText, setNoteText] = useState('');
+  const [noteColor, setNoteColor] = useState(0);
+  const [editingNote, setEditingNote] = useState(null);
+
+  const persistNotes = (updated) => { setNotes(updated); localStorage.setItem(getNotesKey(), JSON.stringify(updated)); };
+  const addNote = () => {
+    if (!noteText.trim()) return;
+    persistNotes([{ id: Date.now(), text: noteText.trim(), color: noteColor, createdAt: new Date().toISOString() }, ...notes]);
+    setNoteText('');
+  };
+  const deleteNote = (id) => persistNotes(notes.filter(n => n.id !== id));
+  const startEditNote = (note) => setEditingNote({ ...note });
+  const saveEditNote = () => {
+    if (!editingNote) return;
+    persistNotes(notes.map(n => n.id === editingNote.id ? { ...n, text: editingNote.text, color: editingNote.color } : n));
+    setEditingNote(null);
+  };
+  const cycleNoteColor = (id) => persistNotes(notes.map(n => n.id === id ? { ...n, color: (n.color + 1) % NOTE_COLORS.length } : n));
 
   const currentMonth = useMemo(() => selectedDate.slice(0, 7), [selectedDate]);
 
@@ -568,7 +610,6 @@ const TeacherDashboard = () => {
 
               </div>
 
-              {/* ── Today's Schedule & Students Row ── */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 
                 {/* Bugungi Guruhlar (Today's Class Schedule) */}
@@ -740,6 +781,179 @@ const TeacherDashboard = () => {
                   </div>
                 </div>
 
+              </div>
+
+              {/* ── Attendance Overview + Quick Notes Row ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+                {/* Attendance Overview */}
+                <div className="lg:col-span-2 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm p-5 flex flex-col">
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <h3 className="text-[14px] font-bold text-gray-900 dark:text-white">Attendance Overview</h3>
+                    <select
+                      value={overviewGroup}
+                      onChange={(e) => setOverviewGroup(e.target.value)}
+                      className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-gray-700 dark:text-gray-300 outline-none cursor-pointer max-w-[130px] truncate"
+                    >
+                      <option value="all">Barcha guruhlar</option>
+                      {todayGroups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {(() => {
+                    const relevantStudents = overviewGroup === 'all'
+                      ? todayStudents
+                      : todayStudents.filter(s => s.groupName === todayGroups.find(g => g.id === Number(overviewGroup))?.name);
+                    const total = relevantStudents.length;
+                    const present = relevantStudents.filter(s => s.attendanceStatus === 'present').length;
+                    const absent = total - present;
+                    const presentPct = total > 0 ? Math.round((present / total) * 100) : 0;
+                    const absentPct = total > 0 ? Math.round((absent / total) * 100) : 0;
+
+                    return (
+                      <>
+                        <div className="flex justify-center" style={{ height: 170 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={
+                                  total > 0
+                                    ? [{ name: 'Keldi', value: present }, { name: 'Kelmadi', value: absent }].filter(d => d.value > 0)
+                                    : [{ name: "Ma'lumot yo'q", value: 1 }]
+                                }
+                                cx="50%" cy="50%" innerRadius={52} outerRadius={78}
+                                paddingAngle={total > 0 && present > 0 && absent > 0 ? 4 : 0}
+                                dataKey="value" strokeWidth={0} startAngle={90} endAngle={-270}
+                              >
+                                {total > 0 ? (
+                                  <>
+                                    <Cell fill="#34c759" />
+                                    {absent > 0 && <Cell fill="#ff3b30" />}
+                                  </>
+                                ) : (
+                                  <Cell fill="#e5e7eb" />
+                                )}
+                              </Pie>
+                              <Tooltip
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', fontSize: 12, padding: '8px 12px' }}
+                                formatter={(v, n) => [`${v} o'quvchi`, n]}
+                              />
+                              <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" className="fill-gray-400 dark:fill-gray-500" style={{ fontSize: 11, fontWeight: 600 }}>Jami</text>
+                              <text x="50%" y="58%" textAnchor="middle" dominantBaseline="middle" className="fill-gray-900 dark:fill-white" style={{ fontSize: 18, fontWeight: 900 }}>
+                                {total > 0 ? `${presentPct}%` : '—'}
+                              </text>
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-6 mt-2 mb-3">
+                          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#34c759]" /><span className="text-[11px] font-medium text-gray-500">Keldi</span></div>
+                          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ff3b30]" /><span className="text-[11px] font-medium text-gray-500">Kelmadi</span></div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-4 mt-1">
+                          <div className="text-center">
+                            <p className="text-[18px] font-black text-emerald-500">{presentPct}%</p>
+                            <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-wider">Keldi</p>
+                          </div>
+                          <div className="w-px h-8 bg-gray-200 dark:bg-white/10" />
+                          <div className="text-center">
+                            <p className="text-[18px] font-black text-rose-500">{absentPct}%</p>
+                            <p className="text-[10px] font-bold text-rose-600/70 uppercase tracking-wider">Kelmadi</p>
+                          </div>
+                        </div>
+                        <p className="text-center text-[11px] text-gray-400 mt-2 font-semibold">Jami o'quvchilar: {total}</p>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Quick Notes */}
+                <div className="lg:col-span-3 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm p-5 flex flex-col max-h-[460px]">
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <StickyNote size={16} className="text-amber-500" />
+                      <h3 className="text-[14px] font-bold text-gray-900 dark:text-white">Quick Notes</h3>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {NOTE_COLORS.map((c, i) => (
+                        <button key={i} onClick={() => setNoteColor(i)}
+                          className={`w-5 h-5 rounded-full ${c.dot} transition-all ${noteColor === i ? 'ring-2 ring-offset-1 ring-gray-400 dark:ring-gray-500 scale-110' : 'hover:scale-110 opacity-70 hover:opacity-100'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mb-3 shrink-0">
+                    <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)}
+                      placeholder="Yangi eslatma yozing..."
+                      className="flex-1 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-[12px] outline-none focus:border-blue-400 transition-colors resize-none h-[52px]"
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); } }}
+                    />
+                    <button onClick={addNote} disabled={!noteText.trim()}
+                      className="px-3 py-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[11px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 self-start"
+                    >
+                      <Plus size={14} /><span className="hidden sm:inline">Qo'shish</span>
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    {notes.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                        <StickyNote className="w-8 h-8 mb-2 opacity-30" />
+                        <p className="text-[11px] font-medium">Eslatmalar yo'q</p>
+                      </div>
+                    ) : (
+                      notes.map(note => {
+                        const color = NOTE_COLORS[note.color] || NOTE_COLORS[0];
+                        const isEditing = editingNote?.id === note.id;
+                        return (
+                          <div key={note.id} className={`rounded-xl border ${color.border} ${color.bg} overflow-hidden transition-all`}>
+                            <div className={`h-1.5 ${color.top}`} />
+                            <div className="px-3.5 py-2.5">
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <textarea value={editingNote.text} onChange={(e) => setEditingNote({ ...editingNote, text: e.target.value })}
+                                    className="w-full bg-white/60 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg px-2.5 py-2 text-[12px] outline-none resize-none h-16" autoFocus
+                                  />
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex gap-1">
+                                      {NOTE_COLORS.map((c, i) => (
+                                        <button key={i} onClick={() => setEditingNote({ ...editingNote, color: i })}
+                                          className={`w-4 h-4 rounded-full ${c.dot} ${editingNote.color === i ? 'ring-2 ring-offset-1 ring-gray-400' : 'opacity-60 hover:opacity-100'}`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                      <button onClick={() => setEditingNote(null)} className="px-2 py-1 text-[10px] font-bold text-gray-500 hover:bg-white/60 rounded-md">Bekor</button>
+                                      <button onClick={saveEditNote} className="px-2 py-1 text-[10px] font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md">Saqlash</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{note.text}</p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <span className="text-[9px] font-semibold text-gray-400">
+                                      {new Date(note.createdAt).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric' })}, {new Date(note.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <button onClick={() => cycleNoteColor(note.id)} className="p-1 hover:bg-white/50 dark:hover:bg-black/20 rounded-md text-gray-400 hover:text-gray-600 transition-colors" title="Rang"><Eye size={12} /></button>
+                                      <button onClick={() => startEditNote(note)} className="p-1 hover:bg-white/50 dark:hover:bg-black/20 rounded-md text-gray-400 hover:text-gray-600 transition-colors" title="Tahrirlash"><Pencil size={12} /></button>
+                                      <button onClick={() => deleteNote(note.id)} className="p-1 hover:bg-white/50 dark:hover:bg-black/20 rounded-md text-gray-400 hover:text-rose-500 transition-colors" title="O'chirish"><Trash2 size={12} /></button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
             </>
           )}
