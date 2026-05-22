@@ -41,8 +41,8 @@ services:
       dockerfile: Dockerfile.prod
       args:
         # Frontend build vaqtida API URL o'rnatiladi
-        VITE_API_URL: ${VITE_API_URL}
-        VITE_CERT_API_URL: ${VITE_CERT_API_URL:-/sertifikat}
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_CERT_API_URL: /sertifikat
     container_name: crm-frontend
     restart: always
     ports:
