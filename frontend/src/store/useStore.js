@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { 
   getStudents, getStaff, getRoles, getGroups, getFields, getCourses, getRooms,
   getTeacherGroups, getTeacherStudents, getTeacherAttendance, saveGrade,
-  getParentNotifications, getMyNotifications, markNotificationRead
+  getParentNotifications, getMyNotifications, markNotificationRead,
+  getProjectTasks, createProjectTask, updateProjectTask as apiUpdateProjectTask
 } from '../services/api';
 
 const useStore = create((set, get) => ({
@@ -15,6 +16,7 @@ const useStore = create((set, get) => ({
   courses: [],
   rooms: [],
   notifications: [],
+  projectTasks: [],
   user: null,
   loading: false,
   
@@ -126,6 +128,41 @@ const useStore = create((set, get) => ({
       }));
     } catch (e) {
       console.error('Error marking as read:', e);
+    }
+  },
+
+  fetchProjectTasks: async () => {
+    try {
+      const res = await getProjectTasks();
+      set({ projectTasks: res.data || [] });
+    } catch (e) {
+      console.error('Error fetching project tasks:', e);
+    }
+  },
+
+  addProjectTask: async (taskData) => {
+    try {
+      const res = await createProjectTask(taskData);
+      set((state) => ({
+        projectTasks: [res.data, ...state.projectTasks]
+      }));
+      return res.data;
+    } catch (e) {
+      console.error('Error adding project task:', e);
+      throw e;
+    }
+  },
+
+  updateProjectTaskStatus: async (id, status, replyMessage) => {
+    try {
+      const res = await apiUpdateProjectTask(id, { status, replyMessage });
+      set((state) => ({
+        projectTasks: state.projectTasks.map(t => t.id === id ? res.data : t)
+      }));
+      return res.data;
+    } catch (e) {
+      console.error('Error updating project task status:', e);
+      throw e;
     }
   }
 }));

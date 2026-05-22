@@ -172,4 +172,8 @@ export const generateCertificates = (courseKey) => `${certApi.defaults.baseURL}/
 export const generateBulkCertificates = (data) => certApi.post('/api/certificates/generate-bulk/', data, { responseType: 'blob' });
 export const generateBulkCertificatesPreview = (data) => certApi.post('/api/certificates/preview-bulk/', data);
 
+export const getProjectTasks = () => api.get('/project-items');
+export const createProjectTask = (data) => api.post('/project-items', data);
+export const updateProjectTask = (id, data) => api.patch(`/project-items/${id}`, data);
+
 export default api;

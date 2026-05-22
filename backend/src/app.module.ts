@@ -17,6 +17,7 @@ import { DataModule } from './data/data.module';
 import { SettingsModule } from './settings/settings.module';
 import { BackupModule } from './backup/backup.module';
 import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
+import { ProjectsModule } from './projects/projects.module';
 import { User } from './users/entities/user.entity';
 import { UsersService } from './users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -53,6 +54,7 @@ import { ConfigModule } from '@nestjs/config';
     SettingsModule,
     BackupModule,
     GoogleSheetsModule,
+    ProjectsModule,
   ],
 })
 export class AppModule implements OnApplicationBootstrap {
