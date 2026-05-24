@@ -8,9 +8,20 @@ import toast from 'react-hot-toast';
 import {
   Award, Search, Plus, Trash2, Download, Eye, RefreshCw,
   FileText, ChevronRight, X, BookOpen, Users, LayoutDashboard,
-  ExternalLink, Calendar, Hash, User
+  ExternalLink, Calendar, Hash, User, Filter, FilterX, HelpCircle,
+  GraduationCap, ChevronDown, Check, Phone
 } from 'lucide-react';
 import Modal from '../components/common/Modal';
+import Skeleton from '../components/common/Skeleton';
+
+// Uzbek month names helper
+const getMonthNameUz = (m) => {
+  const names = [
+    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
+  ];
+  return names[m - 1] || 'Noma\'lum';
+};
 
 const CertificatesPage = () => {
   const [certificates, setCertificates] = useState([]);
@@ -19,6 +30,10 @@ const CertificatesPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
+
+  // Filtering states
+  const [selectedCourse, setSelectedCourse] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('all');
 
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -86,7 +101,7 @@ const CertificatesPage = () => {
   };
 
   const handleCreate = async () => {
-    if (!newCert.fullName || !newCert.certId || !newCert.date) {
+    if (!newCert.fullName || !newCert.certId || !newCert.date || !newCert.template) {
       toast.error('Barcha maydonlarni to\'ldiring');
       return;
     }
@@ -136,20 +151,6 @@ const CertificatesPage = () => {
     return 'Boshqa';
   };
 
-  const getCourseColor = (template) => {
-    if (!template) return 'bg-gray-500';
-    if (template.includes('computer_science')) return 'bg-blue-500';
-    if (template.includes('grafik_design')) return 'bg-purple-500';
-    if (template.includes('admin')) return 'bg-amber-500';
-    if (template.includes('web_design')) return 'bg-cyan-500';
-    if (template.includes('front_end')) return 'bg-indigo-500';
-    if (template.includes('python')) return 'bg-emerald-500';
-    if (template.includes('max3D') || template.includes('3dmax')) return 'bg-orange-500';
-    if (template.includes('ms_word')) return 'bg-sky-500';
-    if (template.includes('doctor')) return 'bg-rose-500';
-    return 'bg-gray-500';
-  };
-
   const courseDisplayNames = {
     ks: 'Kompyuter savodxonligi',
     photo: 'Grafik dizayn (Photoshop)',
@@ -165,40 +166,225 @@ const CertificatesPage = () => {
     doctor_data: 'Tibbiyot',
   };
 
+  // Extract unique months dynamically from certificates list
+  const uniqueMonths = useMemo(() => {
+    const monthsMap = {};
+    certificates.forEach(c => {
+      if (!c.date) return;
+      const parts = c.date.split('.');
+      if (parts.length === 3) {
+        const m = parseInt(parts[1], 10);
+        const y = parseInt(parts[2], 10);
+        if (!isNaN(m) && !isNaN(y)) {
+          const key = `${y}-${String(m).padStart(2, '0')}`;
+          monthsMap[key] = { year: y, month: m };
+        }
+      }
+    });
+
+    return Object.keys(monthsMap)
+      .sort((a, b) => b.localeCompare(a))
+      .map(key => ({
+        key,
+        label: `${getMonthNameUz(monthsMap[key].month)} ${monthsMap[key].year}`,
+        year: monthsMap[key].year,
+        month: monthsMap[key].month
+      }));
+  }, [certificates]);
+
+  // Compute stats on the current (unfiltered) list
+  const dynamicStats = useMemo(() => {
+    const total = certificates.length;
+    const byTemplate = {};
+    
+    certificates.forEach(c => {
+      const t = c.template || 'other';
+      byTemplate[t] = (byTemplate[t] || 0) + 1;
+    });
+
+    let topCourseTemplate = '';
+    let topCourseCount = 0;
+    Object.entries(byTemplate).forEach(([t, count]) => {
+      if (count > topCourseCount) {
+        topCourseCount = count;
+        topCourseTemplate = t;
+      }
+    });
+
+    let thisMonthCount = 0;
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    
+    certificates.forEach(c => {
+      if (!c.date) return;
+      const parts = c.date.split('.');
+      if (parts.length === 3) {
+        const m = parseInt(parts[1], 10);
+        const y = parseInt(parts[2], 10);
+        if (m === currentMonth && y === currentYear) {
+          thisMonthCount++;
+        }
+      }
+    });
+
+    return {
+      total,
+      byTemplate,
+      topCourse: getCourseName(topCourseTemplate),
+      topCourseCount,
+      thisMonthCount
+    };
+  }, [certificates]);
+
+  // Filter local certificates based on dropdown filters
+  const filteredCertificates = useMemo(() => {
+    return certificates.filter(cert => {
+      // Course/Template Filter
+      const matchesCourse = selectedCourse === 'all' || cert.template === selectedCourse;
+      
+      // Month Filter
+      let matchesMonth = true;
+      if (selectedMonth !== 'all' && cert.date) {
+        const parts = cert.date.split('.');
+        if (parts.length === 3) {
+          const m = parseInt(parts[1], 10);
+          const y = parseInt(parts[2], 10);
+          const certMonthKey = `${y}-${String(m).padStart(2, '0')}`;
+          matchesMonth = certMonthKey === selectedMonth;
+        } else {
+          matchesMonth = false;
+        }
+      }
+      
+      return matchesCourse && matchesMonth;
+    });
+  }, [certificates, selectedCourse, selectedMonth]);
+
+  // Helper: Count certificates for a given course option
+  const getCourseCertCount = (template) => {
+    if (template === 'all') return certificates.length;
+    return dynamicStats.byTemplate[template] || 0;
+  };
+
+  const isFilterActive = selectedCourse !== 'all' || selectedMonth !== 'all' || search !== '';
+
+  const clearFilters = () => {
+    setSelectedCourse('all');
+    setSelectedMonth('all');
+    setSearch('');
+  };
+
+  const colorStyles = {
+    blue: { bg: 'bg-[#007aff]/10', text: 'text-[#007aff]', border: 'group-hover:border-[#007aff]/30' },
+    indigo: { bg: 'bg-[#5856d6]/10', text: 'text-[#5856d6]', border: 'group-hover:border-[#5856d6]/30' },
+    emerald: { bg: 'bg-[#34c759]/10', text: 'text-[#34c759]', border: 'group-hover:border-[#34c759]/30' },
+    purple: { bg: 'bg-[#af52de]/10', text: 'text-[#af52de]', border: 'group-hover:border-[#af52de]/30' },
+    rose: { bg: 'bg-[#ff3b30]/10', text: 'text-[#ff3b30]', border: 'group-hover:border-[#ff3b30]/30' },
+    orange: { bg: 'bg-[#ff9500]/10', text: 'text-[#ff9500]', border: 'group-hover:border-[#ff9500]/30' },
+  };
+
+  const statsList = [
+    {
+      label: "Jami sertifikatlar",
+      value: loading ? <Skeleton width="50px" height="28px" /> : stats.total,
+      icon: <Award size={20} />,
+      color: 'orange',
+      sub: "Barcha berilgan sertifikatlar"
+    },
+    {
+      label: 'Shu oyda berilgan',
+      value: loading ? <Skeleton width="50px" height="28px" /> : dynamicStats.thisMonthCount,
+      icon: <Calendar size={20} />,
+      color: 'blue',
+      sub: `${getMonthNameUz(new Date().getMonth() + 1)} oyi uchun`
+    },
+    {
+      label: 'Eng faol yo\'nalish',
+      value: loading ? <Skeleton width="120px" height="28px" /> : (dynamicStats.topCourse || 'Boshqa'),
+      icon: <BookOpen size={20} />,
+      color: 'purple',
+      sub: `${dynamicStats.topCourseCount} ta sertifikat`
+    },
+    {
+      label: 'Yo\'nalishlar soni',
+      value: loading ? <Skeleton width="40px" height="28px" /> : Object.keys(dynamicStats.byTemplate).length,
+      icon: <GraduationCap size={20} />,
+      color: 'emerald',
+      sub: "Kamida 1 ta sertifikat bor"
+    }
+  ];
+
   return (
     <div className="h-full w-full flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] bg-[#f5f5f7] dark:bg-[#1d1d1f]">
-
-      {/* Toolbar */}
-      <div className="min-h-[56px] py-3 lg:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4 z-30 sticky top-0">
-        <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-amber-500 text-white rounded-md shadow-sm">
+      
+      {/* macOS Finder-style Toolbar */}
+      <div className="min-h-[56px] py-3 lg:py-0 border-b border-gray-200/50 dark:border-white/10 flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 shrink-0 bg-white/40 dark:bg-black/20 backdrop-blur-md gap-4 z-20 sticky top-0">
+        
+        {/* Title Area */}
+        <div className="flex-shrink-0 flex items-center gap-3">
+          <div className="p-1.5 bg-[#ff9500] text-white rounded-md shadow-sm">
             <Award size={16} />
           </div>
           <div>
             <h2 className="text-[15px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight leading-none">Sertifikatlar</h2>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-              Jami {stats.total} ta sertifikat • {courses.length} ta kurs
+              Jami: {filteredCertificates.length} ta sertifikat
             </p>
           </div>
         </div>
 
+        {/* Filters and Actions Area */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Search */}
-          <div className="flex items-center gap-2 bg-white dark:bg-white/10 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm flex-1 lg:min-w-[240px]">
+          {/* Search bar */}
+          <div className="flex items-center gap-2 bg-white dark:bg-white/10 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm flex-1 sm:flex-initial sm:min-w-[220px]">
             <Search size={14} className="text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ism yoki ID bo'yicha qidirish..."
-              className="bg-transparent text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] outline-none border-none w-full"
+              placeholder="Talaba ismi yoki ID..."
+              className="bg-transparent text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] outline-none border-none w-full placeholder-gray-450"
             />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-650">
+                <X size={12} />
+              </button>
+            )}
           </div>
 
+          {/* Month selector dropdown */}
+          <div className="flex items-center gap-2 bg-white dark:bg-white/10 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm">
+            <Calendar size={14} className="text-[#ff9500]" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] outline-none border-none pr-6 cursor-pointer focus:ring-0 p-0"
+            >
+              <option value="all" className="dark:bg-slate-900 text-[#1d1d1f] dark:text-[#f5f5f7]">Barcha oylar</option>
+              {uniqueMonths.map(m => (
+                <option key={m.key} value={m.key} className="dark:bg-slate-900 text-[#1d1d1f] dark:text-[#f5f5f7]">{m.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="h-4 w-px bg-gray-300 dark:bg-white/10 hidden sm:block"></div>
+
+          {/* Clear & Add actions */}
           <div className="flex items-center gap-2">
+            {isFilterActive && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-colors"
+              >
+                <FilterX size={14} />
+                <span className="hidden sm:inline">Tozalash</span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-[#007aff] hover:bg-[#0066d6] text-white shadow-sm transition-all"
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all shadow-sm bg-[#007aff] hover:bg-[#0062cc] text-white border border-[#005bb5]"
             >
               <Plus size={14} />
               <span>Yangi</span>
@@ -215,157 +401,208 @@ const CertificatesPage = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 lg:p-10">
-        <div className="max-w-[1700px] mx-auto space-y-8 pb-10">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 p-6">
+        <div className="max-w-[1200px] mx-auto space-y-6 flex flex-col h-full">
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {Object.entries(stats.byCourse || {}).slice(0, 6).map(([name, count]) => (
-              <div key={name} className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-gray-200/50 dark:border-white/10 group hover:-translate-y-1 transition-all shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-8 h-8 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center">
-                    <Award size={16} />
+          {/* Segmented Control for Course Directions */}
+          <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner overflow-x-auto scrollbar-hide shrink-0">
+            <button
+              onClick={() => setSelectedCourse('all')}
+              className={`px-4 py-1.5 text-[12px] font-medium rounded-md transition-all whitespace-nowrap ${
+                selectedCourse === 'all'
+                  ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              Barchasi ({getCourseCertCount('all')})
+            </button>
+            {courses.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => setSelectedCourse(c.template)}
+                className={`px-4 py-1.5 text-[12px] font-medium rounded-md transition-all whitespace-nowrap ${
+                  selectedCourse === c.template
+                    ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                }`}
+              >
+                {courseDisplayNames[c.key] || c.name} ({getCourseCertCount(c.template)})
+              </button>
+            ))}
+          </div>
+
+          {/* Stats Cards Section */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+            {statsList.map((stat, i) => (
+              <div
+                key={i}
+                className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col justify-between group hover:-translate-y-0.5 transition-all duration-300"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
+                    {stat.icon}
                   </div>
-                  <span className="text-xl font-bold text-black dark:text-white tabular-nums">{count}</span>
                 </div>
-                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-tight truncate">{name}</p>
+                <div>
+                  <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight truncate">{stat.label}</p>
+                  <h3 className="text-xl font-bold text-[#1d1d1f] dark:text-white tracking-tight mt-0.5">{stat.value}</h3>
+                  <p className="text-[9px] text-gray-400 mt-1 line-clamp-1">{stat.sub}</p>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Certificates Table */}
-          <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[2rem] border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-200/50 dark:border-white/10">
-              <h3 className="text-lg font-bold text-[#1d1d1f] dark:text-white flex items-center gap-2">
-                <FileText size={22} className="text-amber-500" />
-                Sertifikatlar ro'yxati
-              </h3>
-              <p className="text-[12px] text-gray-500 uppercase font-black tracking-widest mt-1">
-                {certificates.length} ta natija
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <RefreshCw size={24} className="animate-spin text-gray-400" />
-              </div>
-            ) : certificates.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                <Award size={48} className="mb-4 opacity-30" />
-                <p className="text-[14px] font-medium">Sertifikatlar topilmadi</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-white/5">
-                {certificates.map((cert) => (
-                  <div
-                    key={cert.id}
-                    className="flex items-center justify-between px-6 py-4 hover:bg-white/50 dark:hover:bg-white/5 transition-all group"
-                  >
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm ${getCourseColor(cert.template)}`}>
-                        <Award size={18} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-bold text-[#1d1d1f] dark:text-white truncate group-hover:text-[#007aff] transition-colors">
-                          {cert.fullName}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <Hash size={10} />{cert.certId}
-                          </span>
-                          <span className="text-[11px] font-medium text-gray-400 flex items-center gap-1">
-                            <Calendar size={10} />{cert.date}
-                          </span>
-                          <span className="text-[11px] font-medium text-gray-400 hidden sm:inline">
-                            {getCourseName(cert.template)}
-                          </span>
+          {/* macOS Finder-style Table Container */}
+          <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0 flex-1">
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
+                  <tr>
+                    <th className="px-5 py-2.5 font-medium">Talaba ma'lumotlari</th>
+                    <th className="px-5 py-2.5 font-medium">Sertifikat ID</th>
+                    <th className="px-5 py-2.5 font-medium">Berilgan sana</th>
+                    <th className="px-5 py-2.5 font-medium text-right"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                  {loading ? (
+                    Array(6).fill(0).map((_, i) => (
+                      <tr key={i}>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <Skeleton variant="circle" width="36px" height="36px" />
+                            <div className="space-y-2 flex-1">
+                              <Skeleton width="140px" height="14px" />
+                              <Skeleton width="90px" height="10px" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3"><Skeleton width="100px" height="14px" /></td>
+                        <td className="px-5 py-3"><Skeleton width="80px" height="14px" /></td>
+                        <td className="px-5 py-3"></td>
+                      </tr>
+                    ))
+                  ) : filteredCertificates.length > 0 ? (
+                    filteredCertificates.map((cert) => (
+                      <tr
+                        key={cert.id}
+                        className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group"
+                      >
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-[12px] shadow-sm shrink-0">
+                              {(cert.fullName || 'S').substring(0, 1).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7] group-hover:text-[#007aff] transition-colors">
+                                {cert.fullName}
+                              </p>
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                {getCourseName(cert.template)}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                          {cert.certId}
+                        </td>
+                        <td className="px-5 py-3 text-gray-600 dark:text-gray-450 font-medium text-[12px]">
+                          {cert.date}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openPreview(cert.certId)}
+                              className="p-1 text-gray-450 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded transition-all cursor-pointer"
+                              title="Ko'rish"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <a
+                              href={getCertificateImageUrl(cert.certId) + '?download=true'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-gray-450 hover:text-[#34c759] hover:bg-[#34c759]/10 rounded transition-all cursor-pointer"
+                              title="Yuklab olish"
+                            >
+                              <Download size={15} />
+                            </a>
+                            <button
+                              onClick={() => handleDelete(cert.id, cert.fullName)}
+                              className="p-1 text-gray-450 hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded transition-all cursor-pointer"
+                              title="O'chirish"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="px-5 py-20 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-3">
+                            <Award size={24} className="text-gray-400" />
+                          </div>
+                          <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1">Sertifikatlar topilmadi</p>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400">Tanlangan saralash bo'yicha ma'lumot yo'q.</p>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => openPreview(cert.certId)}
-                        className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 transition-all"
-                        title="Ko'rish"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <a
-                        href={getCertificateImageUrl(cert.certId) + '?download=true'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-500 transition-all"
-                        title="Yuklab olish"
-                      >
-                        <Download size={16} />
-                      </a>
-                      <button
-                        onClick={() => handleDelete(cert.id, cert.fullName)}
-                        className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500 transition-all"
-                        title="O'chirish"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
         </div>
       </div>
 
-      {/* Create Certificate Modal */}
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Yangi sertifikat yaratish">
-        <div className="space-y-5 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+      {/* CREATE STAFF/CERTIFICATE MODAL */}
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Yangi sertifikat">
+        <div className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] px-1">
           <div>
-            <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">To'liq ism</label>
-            <div className="relative">
-              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">To'liq ism (F.I.SH)</label>
+            <input
+              type="text"
+              value={newCert.fullName}
+              onChange={(e) => setNewCert(p => ({ ...p, fullName: e.target.value }))}
+              placeholder="Masalan: Aliyev Vali"
+              className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Sertifikat ID</label>
               <input
-                value={newCert.fullName}
-                onChange={(e) => setNewCert(p => ({ ...p, fullName: e.target.value }))}
-                placeholder="Familiya Ism"
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[14px] outline-none focus:border-[#007aff] transition-colors"
+                type="text"
+                value={newCert.certId}
+                onChange={(e) => setNewCert(p => ({ ...p, certId: e.target.value }))}
+                placeholder="ID-001001"
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Berilgan sana</label>
+              <input
+                type="text"
+                value={newCert.date}
+                onChange={(e) => setNewCert(p => ({ ...p, date: e.target.value }))}
+                placeholder="01.01.2026"
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">Sertifikat ID</label>
-              <div className="relative">
-                <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={newCert.certId}
-                  onChange={(e) => setNewCert(p => ({ ...p, certId: e.target.value }))}
-                  placeholder="ID-001001"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[14px] outline-none focus:border-[#007aff] transition-colors"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">Sana</label>
-              <div className="relative">
-                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={newCert.date}
-                  onChange={(e) => setNewCert(p => ({ ...p, date: e.target.value }))}
-                  placeholder="01.01.2026"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[14px] outline-none focus:border-[#007aff] transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
           <div>
-            <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">Kurs (Shablon)</label>
+            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Kurs (Shablon)</label>
             <select
               value={newCert.template}
               onChange={(e) => setNewCert(p => ({ ...p, template: e.target.value }))}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[14px] outline-none focus:border-[#007aff] transition-colors"
+              className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
             >
               <option value="">Tanlang...</option>
               {courses.map(c => (
@@ -374,35 +611,52 @@ const CertificatesPage = () => {
             </select>
           </div>
 
-          <button
-            onClick={handleCreate}
-            className="w-full py-3 bg-[#007aff] hover:bg-[#0066d6] text-white font-bold text-[14px] rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98]"
-          >
-            Sertifikat yaratish
-          </button>
+          <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+            <button
+              onClick={() => setIsCreateOpen(false)}
+              className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <button
+              onClick={handleCreate}
+              className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors"
+            >
+              Saqlash
+            </button>
+          </div>
         </div>
       </Modal>
 
       {/* Preview Modal */}
       <Modal isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} title={`Sertifikat: ${previewCertId}`}>
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4 px-1">
           {previewCertId && (
             <img
               src={getCertificateImageUrl(previewCertId)}
               alt={`Sertifikat ${previewCertId}`}
-              className="w-full rounded-xl border border-gray-200 dark:border-white/10 shadow-lg"
+              className="w-full rounded-lg border border-gray-200/50 dark:border-white/10 shadow-sm"
               onError={(e) => { e.target.src = ''; e.target.alt = 'Sertifikat rasmini yuklashda xatolik'; }}
             />
           )}
-          <a
-            href={getCertificateImageUrl(previewCertId) + '?download=true'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[13px] rounded-xl shadow-md transition-all"
-          >
-            <Download size={16} />
-            Yuklab olish
-          </a>
+          
+          <div className="flex gap-2 w-full pt-3 border-t border-gray-200/50 dark:border-white/10">
+            <button
+              onClick={() => setIsPreviewOpen(false)}
+              className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+            >
+              Yopish
+            </button>
+            <a
+              href={getCertificateImageUrl(previewCertId) + '?download=true'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 py-2 text-[13px] font-medium bg-[#34c759] hover:bg-[#30b350] text-white rounded-md shadow-sm text-center transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Download size={14} />
+              Yuklab olish
+            </a>
+          </div>
         </div>
       </Modal>
     </div>
