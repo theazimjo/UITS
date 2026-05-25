@@ -2,6 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { StaffService } from './staff.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Staff } from './entities/staff.entity';
+import { StaffPayment } from './entities/staff-payment.entity';
+import { MonthlyReport } from './entities/monthly-report.entity';
+import { ReportDate } from './entities/report-date.entity';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('StaffService', () => {
@@ -11,7 +16,7 @@ describe('StaffService', () => {
   const mockStaff = {
     id: 1,
     name: 'Test Teacher',
-    salaryType: 'KPI',
+    salaryType: 'MIXED',
     fixedAmount: 1000000,
     kpiPercentage: 50,
     groups: [
@@ -23,6 +28,13 @@ describe('StaffService', () => {
           { status: 'ACTIVE' },
           { status: 'ACTIVE' },
           { status: 'DROPPED' }
+        ],
+        payments: [
+          {
+            amount: 400000,
+            month: '2026-03',
+            teacher: { id: 1 }
+          }
         ],
         phases: [
           {
@@ -46,6 +58,50 @@ describe('StaffService', () => {
             findOne: jest.fn().mockResolvedValue(mockStaff),
             save: jest.fn(),
             delete: jest.fn(),
+            manager: {
+              find: jest.fn().mockResolvedValue(mockStaff.groups)
+            }
+          },
+        },
+        {
+          provide: getRepositoryToken(StaffPayment),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            save: jest.fn(),
+            create: jest.fn(),
+            delete: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(MonthlyReport),
+          useValue: {
+            findOne: jest.fn(),
+            save: jest.fn(),
+            create: jest.fn(),
+            delete: jest.fn(),
+            remove: jest.fn(),
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(ReportDate),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: ActivityLogService,
+          useValue: {
+            logAction: jest.fn().mockResolvedValue({}),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            sendToStaff: jest.fn().mockResolvedValue({}),
           },
         },
       ],
@@ -58,20 +114,18 @@ describe('StaffService', () => {
   it('should calculate KPI salary correctly', async () => {
     const result = await service.calculateSalary(1, '2026-03');
     
-    // 2 active students * (200,000 * 50 / 100) = 200,000
-    // KPI type doesn't include fixedAmount by default in this implementation?
-    // Wait, let's check the service code logic. 
-    // In service: let totalSalary = Number(staff.fixedAmount) || 0; 
-    // then if KPI: totalSalary += kpiSalary.
-    
-    expect(result.totalSalary).toBe(1200000); // 1,000,000 + 200,000
-    expect(result.groupBreakdown[0].students).toBe(2);
+    // 400,000 payment * 50% KPI = 200,000 KPI
+    // MIXED salary type includes fixedAmount (1,000,000) + KPI (200,000) = 1,200,000
+    expect(result.total).toBe(1200000);
+    expect(result.breakdown[0].studentCount).toBe(2);
   });
 
   it('should handle staff with no groups', async () => {
     repo.findOne.mockResolvedValueOnce({ ...mockStaff, groups: [] });
+    repo.manager.find.mockResolvedValueOnce([]);
+    // When there are no groups, salary is just fixedAmount (1,000,000)
     const result = await service.calculateSalary(1, '2026-03');
-    expect(result.totalSalary).toBe(1000000);
+    expect(result.total).toBe(1000000);
   });
 
   it('should throw NotFoundException if staff missing', async () => {

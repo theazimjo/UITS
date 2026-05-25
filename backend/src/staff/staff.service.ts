@@ -85,11 +85,6 @@ export class StaffService {
       const uniqueGroups = Array.from(new Map(staff.groups.map(g => [g.id, g])).values());
 
       for (const group of uniqueGroups) {
-        // Calculate Revenue from payments MADE BY THIS TEACHER THIS MONTH for THIS GROUP
-        const groupRevenue = (group.payments || [])
-          .filter(p => p.month === month && p.teacher?.id === id)
-          .reduce((sum, p) => sum + Number(p.amount || 0), 0);
-
         // Check if this staff was teaching in this month (Phases)
         const isStaffTeaching = group.phases?.some(p => {
           if (p.teacher?.id !== staff.id) return false;
@@ -97,6 +92,17 @@ export class StaffService {
           const pEnd = p.endDate ? new Date(p.endDate) : new Date(8640000000000000);
           return pStart <= endDate && pEnd >= startDate;
         }) || (group.teacher?.id === staff.id && (new Date(group.startDate) <= endDate));
+
+        // Calculate Revenue from payments MADE BY THIS TEACHER THIS MONTH for THIS GROUP
+        const groupRevenue = (group.payments || [])
+          .filter(p => {
+            if (p.month !== month) return false;
+            if (p.teacher) {
+              return p.teacher.id === id;
+            }
+            return isStaffTeaching;
+          })
+          .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
         if (groupRevenue > 0 || isStaffTeaching) {
           const kpiPercentage = Number(staff.kpiPercentage) || 0;
