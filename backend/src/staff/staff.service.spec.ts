@@ -39,6 +39,7 @@ describe('StaffService', () => {
         phases: [
           {
             teacherId: 1,
+            teacher: { id: 1 },
             startDate: '2026-03-01',
             endDate: null
           }
@@ -114,9 +115,11 @@ describe('StaffService', () => {
   it('should calculate KPI salary correctly', async () => {
     const result = await service.calculateSalary(1, '2026-03');
     
-    // 400,000 payment * 50% KPI = 200,000 KPI
-    // MIXED salary type includes fixedAmount (1,000,000) + KPI (200,000) = 1,200,000
+    // Group has payment of 400,000 in 2026-03 and teacher is teaching (isStaffTeaching=true)
+    // ALL payments for the group are counted: 400,000
+    // MIXED salary: fixedAmount (1,000,000) + KPI (400,000 * 50% = 200,000) = 1,200,000
     expect(result.total).toBe(1200000);
+    expect(result.revenue).toBe(400000);
     expect(result.breakdown[0].studentCount).toBe(2);
   });
 
@@ -126,6 +129,7 @@ describe('StaffService', () => {
     // When there are no groups, salary is just fixedAmount (1,000,000)
     const result = await service.calculateSalary(1, '2026-03');
     expect(result.total).toBe(1000000);
+    expect(result.revenue).toBe(0);
   });
 
   it('should throw NotFoundException if staff missing', async () => {

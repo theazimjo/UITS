@@ -85,7 +85,7 @@ export class StaffService {
       const uniqueGroups = Array.from(new Map(staff.groups.map(g => [g.id, g])).values());
 
       for (const group of uniqueGroups) {
-        // Check if this staff was teaching in this month (Phases)
+        // Check if this staff was teaching in this month (via phases or current assignment)
         const isStaffTeaching = group.phases?.some(p => {
           if (p.teacher?.id !== staff.id) return false;
           const pStart = new Date(p.startDate);
@@ -93,15 +93,13 @@ export class StaffService {
           return pStart <= endDate && pEnd >= startDate;
         }) || (group.teacher?.id === staff.id && (new Date(group.startDate) <= endDate));
 
-        // Calculate Revenue from payments MADE BY THIS TEACHER THIS MONTH for THIS GROUP
+        // Skip groups where this teacher was NOT teaching during the selected month
+        if (!isStaffTeaching) continue;
+
+        // Count ALL payments for this group in this month (regardless of payment.teacher field)
+        // This matches the logic in /teacher/my-finance endpoint for consistency
         const groupRevenue = (group.payments || [])
-          .filter(p => {
-            if (p.month !== month) return false;
-            if (p.teacher) {
-              return p.teacher.id === id;
-            }
-            return isStaffTeaching;
-          })
+          .filter(p => p.month === month)
           .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
         if (groupRevenue > 0 || isStaffTeaching) {
