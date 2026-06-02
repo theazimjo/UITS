@@ -48,10 +48,7 @@ const CertificatesPage = () => {
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'requests'
   const [requests, setRequests] = useState([]);
   const [reqLoading, setReqLoading] = useState(false);
-  const [isProcessOpen, setIsProcessOpen] = useState(false);
-  const [processingReq, setProcessingReq] = useState(null);
-  const [processForm, setProcessForm] = useState({ startId: '', date: '', template: '', studentIds: [] });
-  const [processing, setProcessing] = useState(false);
+  const [processingReqId, setProcessingReqId] = useState(null);
 
   // Filtering states
   const [selectedCourse, setSelectedCourse] = useState('all');
@@ -152,62 +149,37 @@ const CertificatesPage = () => {
     }
   };
 
-  const openProcessModal = async (req) => {
-    setProcessingReq(req);
-    const todayStr = new Date().toLocaleDateString('ru-RU');
-    setProcessForm({
-      startId: '',
-      date: todayStr,
-      template: req.template || '',
-      studentIds: req.students.map(s => s.id)
-    });
-    setIsProcessOpen(true);
-    
+  const handleProcessGenerateDirect = async (req) => {
+    if (processingReqId) return;
+    setProcessingReqId(req.id);
     try {
-      const res = await getNextCertificateId();
-      if (res.data?.nextId) {
-        setProcessForm(p => ({ ...p, startId: res.data.nextId }));
+      const resId = await getNextCertificateId();
+      let currentId = resId.data?.nextId;
+      if (!currentId) {
+        toast.error('Keyingi Sertifikat ID sini aniqlab bo\'lmadi');
+        setProcessingReqId(null);
+        return;
       }
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
-  const handleProcessGenerate = async () => {
-    if (!processForm.startId || !processForm.date || !processForm.template) {
-      toast.error('Barcha maydonlarni to\'ldiring');
-      return;
-    }
-    if (processForm.studentIds.length === 0) {
-      toast.error('Kamida bitta o\'quvchini tanlang');
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      const studentsToGenerate = processingReq.students.filter(s => processForm.studentIds.includes(s.id));
-      
-      let currentId = processForm.startId;
-      for (const student of studentsToGenerate) {
+      for (const student of req.students) {
         await createCertificate({
           fullName: student.name,
           certId: currentId,
-          date: processForm.date,
-          template: processForm.template
+          date: req.issueDate || new Date().toLocaleDateString('ru-RU'),
+          template: req.template
         });
         currentId = incrementCertId(currentId);
       }
 
-      await updateCertificateRequestStatus(processingReq.id, 'APPROVED');
+      await updateCertificateRequestStatus(req.id, 'APPROVED');
       toast.success('Sertifikatlar muvaffaqiyatli yaratildi va tasdiqlandi!');
-      setIsProcessOpen(false);
       fetchAll();
     } catch (e) {
       console.error('Bulk generation error:', e);
       const msg = e.response?.data?.error || 'Sertifikat yaratishda xatolik yuz berdi';
       toast.error(msg);
     } finally {
-      setProcessing(false);
+      setProcessingReqId(null);
     }
   };
 
@@ -732,11 +704,12 @@ const CertificatesPage = () => {
                           </span>
                         </div>
 
-                        <div className="text-[12px] text-gray-550 dark:text-gray-400 space-y-1 mb-4 border-t border-b border-gray-150/40 dark:border-white/5 py-2.5">
+                        <div className="text-[12px] text-gray-555 dark:text-gray-400 space-y-1 mb-4 border-t border-b border-gray-150/40 dark:border-white/5 py-2.5">
                           <p>Yuboruvchi: <span className="font-semibold text-[#1d1d1f] dark:text-white">{req.teacherName}</span></p>
-                          <p>Sana: <span>{new Date(req.createdAt).toLocaleString('uz-UZ')}</span></p>
+                          <p>Yuborilgan sana: <span>{new Date(req.createdAt).toLocaleDateString('uz-UZ')}</span></p>
+                          <p>Sertifikat sanasi: <span className="font-bold text-[#007aff] dark:text-[#30a2ff]">{req.issueDate || 'Kiritilmagan'}</span></p>
                           {req.message && (
-                            <p className="italic text-gray-550 dark:text-gray-400 mt-1.5 flex gap-1 bg-gray-50 dark:bg-white/5 p-2 rounded-lg">
+                            <p className="italic text-gray-555 dark:text-gray-400 mt-1.5 flex gap-1 bg-gray-50 dark:bg-white/5 p-2 rounded-lg">
                               <MessageSquare size={12} className="shrink-0 mt-0.5" />
                               <span>"{req.message}"</span>
                             </p>
@@ -765,16 +738,24 @@ const CertificatesPage = () => {
                           <>
                             <button
                               onClick={() => handleRejectRequest(req.id)}
-                              className="flex-1 py-2 text-[12px] font-bold text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition-all"
+                              disabled={processingReqId !== null}
+                              className="flex-1 py-2 text-[12px] font-bold text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition-all disabled:opacity-50"
                             >
                               Rad etish
                             </button>
                             <button
-                              onClick={() => openProcessModal(req)}
-                              className="flex-[2] py-2 text-[12px] font-bold bg-[#007aff] hover:bg-[#0062cc] text-white rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
+                              onClick={() => handleProcessGenerateDirect(req)}
+                              disabled={processingReqId !== null}
+                              className="flex-[2] py-2 text-[12px] font-bold bg-[#007aff] hover:bg-[#0062cc] text-white rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                             >
-                              <Award size={14} />
-                              Sertifikat yasash
+                              {processingReqId === req.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <>
+                                  <Award size={14} />
+                                  Sertifikat yasash
+                                </>
+                              )}
                             </button>
                           </>
                         )}
@@ -897,103 +878,7 @@ const CertificatesPage = () => {
         </div>
       </Modal>
 
-      {/* PROCESS CERTIFICATE REQUEST MODAL */}
-      <Modal isOpen={isProcessOpen} onClose={() => setIsProcessOpen(false)} title="Sertifikatlarni yaratish">
-        <div className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] px-1 bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">
-          {processingReq && (
-            <>
-              <div className="bg-gray-50 dark:bg-white/5 p-3.5 rounded-2xl border border-gray-150/50 dark:border-white/5 text-[12px] space-y-1 text-gray-550 dark:text-gray-400">
-                <p>Guruh: <span className="font-bold text-[#1d1d1f] dark:text-white">{processingReq.groupName}</span></p>
-                <p>Kurs nomi: <span className="font-semibold text-gray-700 dark:text-gray-300">{processingReq.courseName}</span></p>
-                <p>O'qituvchi: <span className="font-semibold text-gray-750 dark:text-gray-250">{processingReq.teacherName}</span></p>
-              </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Boshlang'ich Sertifikat ID</label>
-                <input
-                  type="text"
-                  value={processForm.startId}
-                  onChange={(e) => setProcessForm(p => ({ ...p, startId: e.target.value }))}
-                  placeholder="ID-001001"
-                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Berilgan sana</label>
-                  <input
-                    type="text"
-                    value={processForm.date}
-                    onChange={(e) => setProcessForm(p => ({ ...p, date: e.target.value }))}
-                    placeholder="01.01.2026"
-                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Shablon</label>
-                  <select
-                    value={processForm.template}
-                    onChange={(e) => setProcessForm(p => ({ ...p, template: e.target.value }))}
-                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
-                  >
-                    <option value="">Tanlang...</option>
-                    {courses.map(c => (
-                      <option key={c.key} value={c.template}>{courseDisplayNames[c.key] || c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Checklist of students */}
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                  O'quvchilarni tanlang ({processForm.studentIds.length} ta)
-                </label>
-                <div className="max-h-[160px] overflow-y-auto space-y-1.5 p-2 bg-gray-50/50 dark:bg-black/20 rounded-xl border border-gray-150/40 dark:border-white/5 scrollbar-premium">
-                  {processingReq.students.map((student) => (
-                    <label
-                      key={student.id}
-                      className="flex items-center gap-2.5 p-2 bg-white dark:bg-white/5 rounded-lg border border-gray-200/50 dark:border-white/5 cursor-pointer text-[12px] font-medium"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={processForm.studentIds.includes(student.id)}
-                        onChange={() => {
-                          if (processForm.studentIds.includes(student.id)) {
-                            setProcessForm(p => ({ ...p, studentIds: p.studentIds.filter(id => id !== student.id) }));
-                          } else {
-                            setProcessForm(p => ({ ...p, studentIds: [...p.studentIds, student.id] }));
-                          }
-                        }}
-                        className="w-4 h-4 text-[#007aff] border-gray-300 rounded focus:ring-[#007aff]/50 cursor-pointer"
-                      />
-                      <span className="text-gray-800 dark:text-gray-200 truncate">{student.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
-                <button
-                  onClick={() => setIsProcessOpen(false)}
-                  disabled={processing}
-                  className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  onClick={handleProcessGenerate}
-                  disabled={processing}
-                  className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors flex items-center justify-center gap-1.5"
-                >
-                  {processing ? <Loader2 size={14} className="animate-spin" /> : 'Sertifikatlarni yaratish'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
     </div>
   );
 };

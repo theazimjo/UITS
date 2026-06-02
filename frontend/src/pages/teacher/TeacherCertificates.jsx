@@ -33,6 +33,7 @@ const TeacherCertificates = () => {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [message, setMessage] = useState('');
+  const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('ru-RU'));
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -112,7 +113,8 @@ const TeacherCertificates = () => {
         groupId: parseInt(selectedGroupId),
         students: studentsPayload,
         template: selectedTemplate,
-        message: message || null
+        message: message || null,
+        issueDate: issueDate || new Date().toLocaleDateString('ru-RU')
       });
 
       toast.success('Sertifikat so\'rovi adminga yuborildi!');
@@ -120,6 +122,7 @@ const TeacherCertificates = () => {
       setSelectedStudents([]);
       setSelectedTemplate('');
       setMessage('');
+      setIssueDate(new Date().toLocaleDateString('ru-RU'));
       fetchRequests();
     } catch (e) {
       console.error('Submit certificate request error:', e);
@@ -246,6 +249,18 @@ const TeacherCertificates = () => {
                     <option key={c.key} value={c.template}>{courseDisplayNames[c.key] || c.name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Issue Date */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">Berilgan sana</label>
+                <input
+                  type="text"
+                  value={issueDate}
+                  onChange={(e) => setIssueDate(e.target.value)}
+                  placeholder="Kun.Oy.Yil (masalan: 02.06.2026)"
+                  className="w-full px-4 py-3 bg-white/80 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 rounded-2xl text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all shadow-sm"
+                />
               </div>
 
               {/* Message */}
@@ -392,16 +407,13 @@ const TeacherCertificates = () => {
                       </div>
                     )}
 
-                    <div className="mt-3 flex items-center justify-between text-[10px] font-bold text-gray-400">
-                      <div className="flex items-center gap-1">
+                    <div className="mt-3 flex items-center justify-between text-[10px] font-bold text-gray-450 dark:text-gray-400 gap-2">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Clock size={11} />
-                        {new Date(req.createdAt).toLocaleString('uz-UZ', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        Sertifikat sanasi: {req.issueDate || 'Kiritilmagan'}
+                      </div>
+                      <div className="truncate text-right">
+                        Yuborilgan: {new Date(req.createdAt).toLocaleDateString('uz-UZ')}
                       </div>
                     </div>
                   </div>

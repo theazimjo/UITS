@@ -864,7 +864,7 @@ export class TeacherController {
   @Post('certificate-request')
   async createCertificateRequest(
     @Req() req: any,
-    @Body() body: { groupId: number; students: { id: number; name: string }[]; template?: string; message?: string },
+    @Body() body: { groupId: number; students: { id: number; name: string }[]; template?: string; message?: string; issueDate?: string },
   ) {
     const teacherId = req.user.userId;
     const group = await this.groupRepo.findOne({
@@ -889,6 +889,7 @@ export class TeacherController {
       students: body.students,
       template: body.template || null,
       message: body.message || null,
+      issueDate: body.issueDate || null,
       status: 'PENDING',
     } as any);
 

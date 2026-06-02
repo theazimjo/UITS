@@ -47,6 +47,9 @@ export class CertificateRequest {
   @Column({ type: 'text', nullable: true })
   message: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  issueDate: string; // Sana (o'qituvchi tomonidan kiritilgan)
+
   @Column({ type: 'varchar', length: 20, default: 'PENDING' })
   status: string; // PENDING, APPROVED, REJECTED
 
