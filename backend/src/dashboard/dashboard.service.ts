@@ -126,6 +126,9 @@ export class DashboardService {
       relations: ['student', 'group']
     });
 
+    const totalDiscountMonth = monthPayments.reduce((sum, p) => sum + (Number(p.discount) || 0), 0);
+    totalExpectedMonth = Math.max(0, totalExpectedMonth - totalDiscountMonth);
+
     const totalActualMonth = monthPayments.reduce((acc, p) => {
       const amt = Number(p.amount) || 0;
       const disc = Number(p.discount) || 0;
@@ -307,6 +310,9 @@ export class DashboardService {
       .getMany();
     const totalMonthRevenue = monthPayments.reduce((acc, p) =>
       acc + (parseSafe(p.amount) - parseSafe(p.discount) + parseSafe(p.penalty)), 0);
+
+    const totalDiscountMonth = monthPayments.reduce((sum, p) => sum + parseSafe(p.discount), 0);
+    expectedMonthlyRevenue = Math.max(0, expectedMonthlyRevenue - totalDiscountMonth);
 
     return {
       expected: totalExpected,

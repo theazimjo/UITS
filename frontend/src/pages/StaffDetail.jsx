@@ -364,6 +364,7 @@ const StaffDetail = () => {
         const isPaid = totalPaid >= totalExpected;
         const isPaidDirectly = paidThisMonth >= fullPrice;
         const startDay = joinD.getDate();
+        const monthlyDiscounts = monthlyPayments.reduce((sum, p) => sum + parseFloat(p.discount || 0), 0) || 0;
 
         return {
           isPaid: paidThisMonth > 0,
@@ -371,7 +372,8 @@ const StaffDetail = () => {
           statusLabel: paidThisMonth > 0
             ? `To'langan (${paidThisMonth.toLocaleString()} UZS)`
             : "To'lanmagan",
-          startInfo: startDay !== 1 ? `${startDay}-sanada boshlagan` : ""
+          startInfo: startDay !== 1 ? `${startDay}-sanada boshlagan` : "",
+          discountThisMonth: monthlyDiscounts
         };
       })(),
       lastPayment: (group.payments || []).filter(p => p.student?.id === enrollment.student?.id)
@@ -387,7 +389,7 @@ const StaffDetail = () => {
   const activeStudentsCount = allStudents.length;
 
   const totalExpectedRevenue = allStudents.reduce((acc, student) => {
-    return acc + parseFloat(student.groupPrice || 0);
+    return acc + parseFloat(student.groupPrice || 0) - parseFloat(student.discountThisMonth || 0);
   }, 0);
 
   // ===============================================

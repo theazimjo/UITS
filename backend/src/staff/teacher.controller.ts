@@ -113,6 +113,7 @@ export class TeacherController {
     // Monthly payments (Calculating from ALL groups assigned to this teacher)
     const allGroupIds = groups.map((g) => g.id);
     let monthlyIncome = 0;
+    let totalDiscount = 0;
     if (allGroupIds.length > 0) {
       const payments = await this.paymentRepo
         .createQueryBuilder('p')
@@ -120,10 +121,11 @@ export class TeacherController {
         .andWhere('p.month = :month', { month: targetMonth })
         .getMany();
       monthlyIncome = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+      totalDiscount = payments.reduce((sum, p) => sum + Number(p.discount || 0), 0);
     }
 
     // Expected Income (Only for CURRENTLY active groups in the selected month)
-    const expectedIncome = activeGroups.reduce((sum, g) => {
+    let expectedIncome = activeGroups.reduce((sum, g) => {
       const activeCount = g.enrollments?.filter((e) => {
         if (e.status !== EnrollmentStatus.ACTIVE) return false;
         if (e.joinedDate) {
@@ -137,6 +139,8 @@ export class TeacherController {
       }).length || 0;
       return sum + (activeCount * Number(g.monthlyPrice || 0));
     }, 0);
+
+    expectedIncome = Math.max(0, expectedIncome - totalDiscount);
 
     // Financial Trend (Based on target month)
     const [targetY, targetM] = targetMonth.split('-').map(Number);
