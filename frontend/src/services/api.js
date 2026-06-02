@@ -176,4 +176,14 @@ export const getProjectTasks = () => api.get('/project-items');
 export const createProjectTask = (data) => api.post('/project-items', data);
 export const updateProjectTask = (id, data) => api.patch(`/project-items/${id}`, data);
 
+// Teacher — Certificate Requests
+export const createCertificateRequest = (data) => api.post('/teacher/certificate-request', data);
+export const getTeacherCertificateRequests = () => api.get('/teacher/certificate-requests');
+export const deleteTeacherCertificateRequest = (id) => api.delete(`/teacher/certificate-requests/${id}`);
+
+// Admin — Certificate Requests
+export const getAllCertificateRequests = () => api.get('/staff/certificate-requests');
+export const updateCertificateRequestStatus = (id, status) => api.patch(`/staff/certificate-requests/${id}/status`, { status });
+export const deleteCertificateRequest = (id) => api.delete(`/staff/certificate-requests/${id}`);
+
 export default api;

@@ -29,6 +29,7 @@ import TeacherGroups from './pages/teacher/TeacherGroups';
 import TeacherFinance from './pages/teacher/TeacherFinance';
 import TeacherSettings from './pages/teacher/TeacherSettings';
 import TeacherReport from './pages/teacher/TeacherReport';
+import TeacherCertificates from './pages/teacher/TeacherCertificates';
 
 // Parent Pages
 import ParentDashboard from './pages/parent/ParentDashboard';
@@ -147,6 +148,7 @@ function App() {
           <Route path="groups" element={<TeacherGroups />} />
           <Route path="finance" element={<TeacherFinance />} />
           <Route path="report" element={<TeacherReport />} />
+          <Route path="certificates" element={<TeacherCertificates />} />
           <Route path="settings" element={<TeacherSettings />} />
         </Route>
 

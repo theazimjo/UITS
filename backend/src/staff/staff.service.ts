@@ -7,6 +7,7 @@ import { StaffPayment, StaffPaymentType } from './entities/staff-payment.entity'
 import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
+import { CertificateRequest } from './entities/certificate-request.entity';
 import * as bcrypt from 'bcrypt';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -22,6 +23,8 @@ export class StaffService {
     private readonly monthlyReportRepo: Repository<MonthlyReport>,
     @InjectRepository(ReportDate)
     private readonly reportDateRepo: Repository<ReportDate>,
+    @InjectRepository(CertificateRequest)
+    private readonly certificateRequestRepo: Repository<CertificateRequest>,
     private readonly activityLogService: ActivityLogService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -339,4 +342,24 @@ export class StaffService {
 
   // --- Report Dates (Calendar) ---
   // Report dates logic removed in favor of static periods
+
+  // --- Certificate Requests ---
+  async getAllCertificateRequests(): Promise<CertificateRequest[]> {
+    return this.certificateRequestRepo.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async updateCertificateRequestStatus(id: number, status: string): Promise<CertificateRequest> {
+    const request = await this.certificateRequestRepo.findOne({ where: { id } });
+    if (!request) throw new NotFoundException('Certificate request not found');
+    request.status = status;
+    return this.certificateRequestRepo.save(request);
+  }
+
+  async deleteCertificateRequest(id: number): Promise<void> {
+    const request = await this.certificateRequestRepo.findOne({ where: { id } });
+    if (!request) throw new NotFoundException('Certificate request not found');
+    await this.certificateRequestRepo.remove(request);
+  }
 }

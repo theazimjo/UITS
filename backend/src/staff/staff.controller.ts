@@ -32,6 +32,24 @@ export class StaffController {
   }
 
   @Roles('admin')
+  @Get('certificate-requests')
+  getAllCertificateRequests() {
+    return this.staffService.getAllCertificateRequests();
+  }
+
+  @Roles('admin')
+  @Patch('certificate-requests/:id/status')
+  updateCertificateRequestStatus(@Param('id') id: string, @Body('status') status: string) {
+    return this.staffService.updateCertificateRequestStatus(+id, status);
+  }
+
+  @Roles('admin')
+  @Delete('certificate-requests/:id')
+  deleteCertificateRequest(@Param('id') id: string) {
+    return this.staffService.deleteCertificateRequest(+id);
+  }
+
+  @Roles('admin')
   @Patch('payments/:paymentId')
   updatePayment(@Param('paymentId') paymentId: string, @Body() data: any) {
     if (isNaN(+paymentId)) throw new NotFoundException('Invalid Payment ID');

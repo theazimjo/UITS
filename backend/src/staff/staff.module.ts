@@ -18,6 +18,7 @@ import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
 import { Exam } from './entities/exam.entity';
+import { CertificateRequest } from './entities/certificate-request.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       MonthlyReportItem,
       ReportDate,
       Exam,
+      CertificateRequest,
     ]),
     ActivityLogModule,
     NotificationsModule,

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   getCertificateCourses, getCertificates, getCertificateStats,
   getCertificateImageUrl, createCertificate, deleteCertificate, generateCertificates,
-  getNextCertificateId
+  getNextCertificateId, getAllCertificateRequests, updateCertificateRequestStatus,
+  deleteCertificateRequest
 } from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -23,6 +24,18 @@ const getMonthNameUz = (m) => {
   return names[m - 1] || 'Noma\'lum';
 };
 
+const incrementCertId = (certId) => {
+  const match = certId.match(/^(.*?)(\d+)$/);
+  if (!match) {
+    return certId + '1';
+  }
+  const prefix = match[1];
+  const numStr = match[2];
+  const nextNum = parseInt(numStr, 10) + 1;
+  const nextNumStr = String(nextNum).padStart(numStr.length, '0');
+  return prefix + nextNumStr;
+};
+
 const CertificatesPage = () => {
   const [certificates, setCertificates] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -30,6 +43,15 @@ const CertificatesPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
+
+  // Request States
+  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'requests'
+  const [requests, setRequests] = useState([]);
+  const [reqLoading, setReqLoading] = useState(false);
+  const [isProcessOpen, setIsProcessOpen] = useState(false);
+  const [processingReq, setProcessingReq] = useState(null);
+  const [processForm, setProcessForm] = useState({ startId: '', date: '', template: '', studentIds: [] });
+  const [processing, setProcessing] = useState(false);
 
   // Filtering states
   const [selectedCourse, setSelectedCourse] = useState('all');
@@ -75,14 +97,16 @@ const CertificatesPage = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [coursesRes, certsRes, statsRes] = await Promise.all([
+      const [coursesRes, certsRes, statsRes, reqsRes] = await Promise.all([
         getCertificateCourses(),
         getCertificates(),
-        getCertificateStats()
+        getCertificateStats(),
+        getAllCertificateRequests()
       ]);
       setCourses(coursesRes.data.courses || []);
       setCertificates(certsRes.data.certificates || []);
       setStats(statsRes.data || { total: 0, byCourse: {} });
+      setRequests(reqsRes.data || []);
     } catch (e) {
       console.error('Certificate fetch error:', e);
       toast.error('Sertifikat ma\'lumotlarini yuklashda xatolik');
@@ -125,6 +149,89 @@ const CertificatesPage = () => {
       fetchAll();
     } catch (e) {
       toast.error('O\'chirishda xatolik');
+    }
+  };
+
+  const openProcessModal = async (req) => {
+    setProcessingReq(req);
+    const todayStr = new Date().toLocaleDateString('ru-RU');
+    setProcessForm({
+      startId: '',
+      date: todayStr,
+      template: req.template || '',
+      studentIds: req.students.map(s => s.id)
+    });
+    setIsProcessOpen(true);
+    
+    try {
+      const res = await getNextCertificateId();
+      if (res.data?.nextId) {
+        setProcessForm(p => ({ ...p, startId: res.data.nextId }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleProcessGenerate = async () => {
+    if (!processForm.startId || !processForm.date || !processForm.template) {
+      toast.error('Barcha maydonlarni to\'ldiring');
+      return;
+    }
+    if (processForm.studentIds.length === 0) {
+      toast.error('Kamida bitta o\'quvchini tanlang');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const studentsToGenerate = processingReq.students.filter(s => processForm.studentIds.includes(s.id));
+      
+      let currentId = processForm.startId;
+      for (const student of studentsToGenerate) {
+        await createCertificate({
+          fullName: student.name,
+          certId: currentId,
+          date: processForm.date,
+          template: processForm.template
+        });
+        currentId = incrementCertId(currentId);
+      }
+
+      await updateCertificateRequestStatus(processingReq.id, 'APPROVED');
+      toast.success('Sertifikatlar muvaffaqiyatli yaratildi va tasdiqlandi!');
+      setIsProcessOpen(false);
+      fetchAll();
+    } catch (e) {
+      console.error('Bulk generation error:', e);
+      const msg = e.response?.data?.error || 'Sertifikat yaratishda xatolik yuz berdi';
+      toast.error(msg);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRejectRequest = async (id) => {
+    if (!confirm('Ushbu so\'rovni rad etmoqchimisiz?')) return;
+    try {
+      await updateCertificateRequestStatus(id, 'REJECTED');
+      toast.success('So\'rov rad etildi');
+      fetchAll();
+    } catch (e) {
+      console.error(e);
+      toast.error('Xatolik yuz berdi');
+    }
+  };
+
+  const handleDeleteRequest = async (id) => {
+    if (!confirm('Ushbu so\'rovni o\'chirmoqchimisiz?')) return;
+    try {
+      await deleteCertificateRequest(id);
+      toast.success('So\'rov o\'chirildi');
+      fetchAll();
+    } catch (e) {
+      console.error(e);
+      toast.error('Xatolik yuz berdi');
     }
   };
 
@@ -405,158 +512,288 @@ const CertificatesPage = () => {
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 p-6">
         <div className="max-w-[1200px] mx-auto space-y-6 flex flex-col h-full">
 
-          {/* Segmented Control for Course Directions */}
-          <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner overflow-x-auto scrollbar-hide shrink-0">
+          {/* Main Tab Switcher */}
+          <div className="flex border-b border-gray-200 dark:border-white/10 shrink-0 gap-6">
             <button
-              onClick={() => setSelectedCourse('all')}
-              className={`px-4 py-1.5 text-[12px] font-medium rounded-md transition-all whitespace-nowrap ${
-                selectedCourse === 'all'
-                  ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
-              }`}
+              onClick={() => setActiveTab('list')}
+              className={`pb-3 text-[13px] font-bold transition-all relative ${activeTab === 'list' ? 'text-[#007aff]' : 'text-gray-500 hover:text-[#1d1d1f] dark:hover:text-white'}`}
             >
-              Barchasi ({getCourseCertCount('all')})
+              Sertifikatlar ro'yxati
+              {activeTab === 'list' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007aff] rounded-full" />
+              )}
             </button>
-            {courses.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => setSelectedCourse(c.template)}
-                className={`px-4 py-1.5 text-[12px] font-medium rounded-md transition-all whitespace-nowrap ${
-                  selectedCourse === c.template
-                    ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
-                }`}
-              >
-                {courseDisplayNames[c.key] || c.name} ({getCourseCertCount(c.template)})
-              </button>
-            ))}
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`pb-3 text-[13px] font-bold transition-all relative flex items-center gap-2 ${activeTab === 'requests' ? 'text-[#007aff]' : 'text-gray-500 hover:text-[#1d1d1f] dark:hover:text-white'}`}
+            >
+              O'qituvchilar so'rovlari
+              {requests.filter(r => r.status === 'PENDING').length > 0 && (
+                <span className="px-2 py-0.5 text-[9px] font-black bg-[#ff3b30] text-white rounded-full leading-none">
+                  {requests.filter(r => r.status === 'PENDING').length}
+                </span>
+              )}
+              {activeTab === 'requests' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007aff] rounded-full" />
+              )}
+            </button>
           </div>
 
-          {/* Stats Cards Section */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
-            {statsList.map((stat, i) => (
-              <div
-                key={i}
-                className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col justify-between group hover:-translate-y-0.5 transition-all duration-300"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
-                    {stat.icon}
+          {activeTab === 'list' ? (
+            <>
+              {/* Segmented Control for Course Directions */}
+              <div className="flex items-center bg-gray-200/80 dark:bg-black/40 p-[3px] rounded-lg border border-black/5 dark:border-white/10 shadow-inner overflow-x-auto scrollbar-hide shrink-0">
+                <button
+                  onClick={() => setSelectedCourse('all')}
+                  className={`px-4 py-1.5 text-[12px] font-medium rounded-md transition-all whitespace-nowrap ${
+                    selectedCourse === 'all'
+                      ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                  }`}
+                >
+                  Barchasi ({getCourseCertCount('all')})
+                </button>
+                {courses.map((c) => (
+                  <button
+                    key={c.key}
+                    onClick={() => setSelectedCourse(c.template)}
+                    className={`px-4 py-1.5 text-[12px] font-medium rounded-md transition-all whitespace-nowrap ${
+                      selectedCourse === c.template
+                        ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                    }`}
+                  >
+                    {courseDisplayNames[c.key] || c.name} ({getCourseCertCount(c.template)})
+                  </button>
+                ))}
+              </div>
+
+              {/* Stats Cards Section */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+                {statsList.map((stat, i) => (
+                  <div
+                    key={i}
+                    className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col justify-between group hover:-translate-y-0.5 transition-all duration-300"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
+                        {stat.icon}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-555 dark:text-gray-400 uppercase tracking-tight truncate">{stat.label}</p>
+                      <h3 className="text-xl font-bold text-[#1d1d1f] dark:text-white tracking-tight mt-0.5">{stat.value}</h3>
+                      <p className="text-[9px] text-gray-400 mt-1 line-clamp-1">{stat.sub}</p>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight truncate">{stat.label}</p>
-                  <h3 className="text-xl font-bold text-[#1d1d1f] dark:text-white tracking-tight mt-0.5">{stat.value}</h3>
-                  <p className="text-[9px] text-gray-400 mt-1 line-clamp-1">{stat.sub}</p>
+                ))}
+              </div>
+
+              {/* macOS Finder-style Table Container */}
+              <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0 flex-1">
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full text-left text-[13px]">
+                    <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
+                      <tr>
+                        <th className="px-5 py-2.5 font-medium">Talaba ma'lumotlari</th>
+                        <th className="px-5 py-2.5 font-medium">Sertifikat ID</th>
+                        <th className="px-5 py-2.5 font-medium">Berilgan sana</th>
+                        <th className="px-5 py-2.5 font-medium text-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
+                      {loading ? (
+                        Array(6).fill(0).map((_, i) => (
+                          <tr key={i}>
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-3">
+                                <Skeleton variant="circle" width="36px" height="36px" />
+                                <div className="space-y-2 flex-1">
+                                  <Skeleton width="140px" height="14px" />
+                                  <Skeleton width="90px" height="10px" />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3"><Skeleton width="100px" height="14px" /></td>
+                            <td className="px-5 py-3"><Skeleton width="80px" height="14px" /></td>
+                            <td className="px-5 py-3"></td>
+                          </tr>
+                        ))
+                      ) : filteredCertificates.length > 0 ? (
+                        filteredCertificates.map((cert) => (
+                          <tr
+                            key={cert.id}
+                            className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group"
+                          >
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-[12px] shadow-sm shrink-0">
+                                  {(cert.fullName || 'S').substring(0, 1).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7] group-hover:text-[#007aff] transition-colors">
+                                    {cert.fullName}
+                                  </p>
+                                  <p className="text-[11px] text-gray-505 dark:text-gray-400 mt-0.5">
+                                    {getCourseName(cert.template)}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                              {cert.certId}
+                            </td>
+                            <td className="px-5 py-3 text-gray-600 dark:text-gray-450 font-medium text-[12px]">
+                              {cert.date}
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => openPreview(cert.certId)}
+                                  className="p-1 text-gray-450 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded transition-all cursor-pointer"
+                                  title="Ko'rish"
+                                >
+                                  <Eye size={15} />
+                                </button>
+                                <a
+                                  href={getCertificateImageUrl(cert.certId) + '?download=true'}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 text-gray-450 hover:text-[#34c759] hover:bg-[#34c759]/10 rounded transition-all cursor-pointer"
+                                  title="Yuklab olish"
+                                >
+                                  <Download size={15} />
+                                </a>
+                                <button
+                                  onClick={() => handleDelete(cert.id, cert.fullName)}
+                                  className="p-1 text-gray-450 hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded transition-all cursor-pointer"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="px-5 py-20 text-center">
+                            <div className="flex flex-col items-center justify-center">
+                              <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-3">
+                                <Award size={24} className="text-gray-400" />
+                              </div>
+                              <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1">Sertifikatlar topilmadi</p>
+                              <p className="text-[12px] text-gray-500 dark:text-gray-400">Tanlangan saralash bo'yicha ma'lumot yo'q.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* macOS Finder-style Table Container */}
-          <div className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0 flex-1">
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left text-[13px]">
-                <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
-                  <tr>
-                    <th className="px-5 py-2.5 font-medium">Talaba ma'lumotlari</th>
-                    <th className="px-5 py-2.5 font-medium">Sertifikat ID</th>
-                    <th className="px-5 py-2.5 font-medium">Berilgan sana</th>
-                    <th className="px-5 py-2.5 font-medium text-right"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
-                  {loading ? (
-                    Array(6).fill(0).map((_, i) => (
-                      <tr key={i}>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <Skeleton variant="circle" width="36px" height="36px" />
-                            <div className="space-y-2 flex-1">
-                              <Skeleton width="140px" height="14px" />
-                              <Skeleton width="90px" height="10px" />
-                            </div>
+            </>
+          ) : (
+            <div className="space-y-4">
+              {reqLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <Loader2 className="w-8 h-8 text-[#007aff] animate-spin" />
+                  <p className="text-[12px] text-gray-400 font-medium">So'rovlar yuklanmoqda...</p>
+                </div>
+              ) : requests.length === 0 ? (
+                <div className="text-center py-20 bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-xl border border-gray-200/50 dark:border-white/10 p-6 shadow-sm">
+                  <Award size={36} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                  <p className="text-[14px] font-bold text-[#1d1d1f] dark:text-white">So'rovlar mavjud emas</p>
+                  <p className="text-[12px] text-gray-500 mt-1">Hozircha o'qituvchilar tomonidan yuborilgan sertifikat so'rovlari yo'q.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {requests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[24px] border border-gray-200/50 dark:border-white/10 shadow-sm p-6 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start mb-3 gap-2">
+                          <div>
+                            <h4 className="text-[15px] font-bold text-[#1d1d1f] dark:text-white leading-tight">
+                              {req.groupName}
+                            </h4>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                              Kurs: <span className="font-semibold text-gray-700 dark:text-gray-300">{req.courseName}</span>
+                            </p>
                           </div>
-                        </td>
-                        <td className="px-5 py-3"><Skeleton width="100px" height="14px" /></td>
-                        <td className="px-5 py-3"><Skeleton width="80px" height="14px" /></td>
-                        <td className="px-5 py-3"></td>
-                      </tr>
-                    ))
-                  ) : filteredCertificates.length > 0 ? (
-                    filteredCertificates.map((cert) => (
-                      <tr
-                        key={cert.id}
-                        className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group"
-                      >
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-[12px] shadow-sm shrink-0">
-                              {(cert.fullName || 'S').substring(0, 1).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7] group-hover:text-[#007aff] transition-colors">
-                                {cert.fullName}
-                              </p>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                {getCourseName(cert.template)}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                          {cert.certId}
-                        </td>
-                        <td className="px-5 py-3 text-gray-600 dark:text-gray-450 font-medium text-[12px]">
-                          {cert.date}
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openPreview(cert.certId)}
-                              className="p-1 text-gray-450 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded transition-all cursor-pointer"
-                              title="Ko'rish"
-                            >
-                              <Eye size={15} />
-                            </button>
-                            <a
-                              href={getCertificateImageUrl(cert.certId) + '?download=true'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 text-gray-450 hover:text-[#34c759] hover:bg-[#34c759]/10 rounded transition-all cursor-pointer"
-                              title="Yuklab olish"
-                            >
-                              <Download size={15} />
-                            </a>
-                            <button
-                              onClick={() => handleDelete(cert.id, cert.fullName)}
-                              className="p-1 text-gray-450 hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded transition-all cursor-pointer"
-                              title="O'chirish"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="px-5 py-20 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-3">
-                            <Award size={24} className="text-gray-400" />
-                          </div>
-                          <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1">Sertifikatlar topilmadi</p>
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400">Tanlangan saralash bo'yicha ma'lumot yo'q.</p>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase ${
+                            req.status === 'PENDING' ? 'bg-amber-500/10 text-amber-600' :
+                            req.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
+                            'bg-rose-500/10 text-rose-600'
+                          }`}>
+                            {req.status === 'PENDING' ? 'Kutilmoqda' : req.status === 'APPROVED' ? 'Tasdiqlangan' : 'Rad etilgan'}
+                          </span>
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
+                        <div className="text-[12px] text-gray-550 dark:text-gray-400 space-y-1 mb-4 border-t border-b border-gray-150/40 dark:border-white/5 py-2.5">
+                          <p>Yuboruvchi: <span className="font-semibold text-[#1d1d1f] dark:text-white">{req.teacherName}</span></p>
+                          <p>Sana: <span>{new Date(req.createdAt).toLocaleString('uz-UZ')}</span></p>
+                          {req.message && (
+                            <p className="italic text-gray-550 dark:text-gray-400 mt-1.5 flex gap-1 bg-gray-50 dark:bg-white/5 p-2 rounded-lg">
+                              <MessageSquare size={12} className="shrink-0 mt-0.5" />
+                              <span>"{req.message}"</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5 mb-5">
+                          <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
+                            O'quvchilar ({req.students?.length})
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto p-1 bg-gray-50/50 dark:bg-black/10 rounded-xl">
+                            {req.students?.map((s, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2.5 py-1 bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 text-[11px] font-semibold rounded-lg border border-gray-200/50 dark:border-white/5"
+                              >
+                                {s.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-3 border-t border-gray-150/40 dark:border-white/5 mt-auto">
+                        {req.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleRejectRequest(req.id)}
+                              className="flex-1 py-2 text-[12px] font-bold text-rose-600 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition-all"
+                            >
+                              Rad etish
+                            </button>
+                            <button
+                              onClick={() => openProcessModal(req)}
+                              className="flex-[2] py-2 text-[12px] font-bold bg-[#007aff] hover:bg-[#0062cc] text-white rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <Award size={14} />
+                              Sertifikat yasash
+                            </button>
+                          </>
+                        )}
+                        {req.status !== 'PENDING' && (
+                          <button
+                            onClick={() => handleDeleteRequest(req.id)}
+                            className="w-full py-2 text-[12px] font-bold text-gray-550 dark:text-gray-400 hover:text-rose-600 bg-gray-100 dark:bg-white/5 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center gap-1"
+                          >
+                            <Trash2 size={13} />
+                            So'rovni o'chirish
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -657,6 +894,104 @@ const CertificatesPage = () => {
               Yuklab olish
             </a>
           </div>
+        </div>
+      </Modal>
+
+      {/* PROCESS CERTIFICATE REQUEST MODAL */}
+      <Modal isOpen={isProcessOpen} onClose={() => setIsProcessOpen(false)} title="Sertifikatlarni yaratish">
+        <div className="space-y-4 font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] px-1 bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">
+          {processingReq && (
+            <>
+              <div className="bg-gray-50 dark:bg-white/5 p-3.5 rounded-2xl border border-gray-150/50 dark:border-white/5 text-[12px] space-y-1 text-gray-550 dark:text-gray-400">
+                <p>Guruh: <span className="font-bold text-[#1d1d1f] dark:text-white">{processingReq.groupName}</span></p>
+                <p>Kurs nomi: <span className="font-semibold text-gray-700 dark:text-gray-300">{processingReq.courseName}</span></p>
+                <p>O'qituvchi: <span className="font-semibold text-gray-750 dark:text-gray-250">{processingReq.teacherName}</span></p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Boshlang'ich Sertifikat ID</label>
+                <input
+                  type="text"
+                  value={processForm.startId}
+                  onChange={(e) => setProcessForm(p => ({ ...p, startId: e.target.value }))}
+                  placeholder="ID-001001"
+                  className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Berilgan sana</label>
+                  <input
+                    type="text"
+                    value={processForm.date}
+                    onChange={(e) => setProcessForm(p => ({ ...p, date: e.target.value }))}
+                    placeholder="01.01.2026"
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Shablon</label>
+                  <select
+                    value={processForm.template}
+                    onChange={(e) => setProcessForm(p => ({ ...p, template: e.target.value }))}
+                    className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all shadow-inner"
+                  >
+                    <option value="">Tanlang...</option>
+                    {courses.map(c => (
+                      <option key={c.key} value={c.template}>{courseDisplayNames[c.key] || c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Checklist of students */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                  O'quvchilarni tanlang ({processForm.studentIds.length} ta)
+                </label>
+                <div className="max-h-[160px] overflow-y-auto space-y-1.5 p-2 bg-gray-50/50 dark:bg-black/20 rounded-xl border border-gray-150/40 dark:border-white/5 scrollbar-premium">
+                  {processingReq.students.map((student) => (
+                    <label
+                      key={student.id}
+                      className="flex items-center gap-2.5 p-2 bg-white dark:bg-white/5 rounded-lg border border-gray-200/50 dark:border-white/5 cursor-pointer text-[12px] font-medium"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={processForm.studentIds.includes(student.id)}
+                        onChange={() => {
+                          if (processForm.studentIds.includes(student.id)) {
+                            setProcessForm(p => ({ ...p, studentIds: p.studentIds.filter(id => id !== student.id) }));
+                          } else {
+                            setProcessForm(p => ({ ...p, studentIds: [...p.studentIds, student.id] }));
+                          }
+                        }}
+                        className="w-4 h-4 text-[#007aff] border-gray-300 rounded focus:ring-[#007aff]/50 cursor-pointer"
+                      />
+                      <span className="text-gray-800 dark:text-gray-200 truncate">{student.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3 mt-4 border-t border-gray-200/50 dark:border-white/10">
+                <button
+                  onClick={() => setIsProcessOpen(false)}
+                  disabled={processing}
+                  className="flex-1 py-2 text-[13px] font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white rounded-md transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={handleProcessGenerate}
+                  disabled={processing}
+                  className="flex-1 py-2 text-[13px] font-medium bg-[#007aff] hover:bg-[#0062cc] text-white rounded-md shadow-sm border border-[#005bb5] transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {processing ? <Loader2 size={14} className="animate-spin" /> : 'Sertifikatlarni yaratish'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

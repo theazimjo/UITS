@@ -26,6 +26,7 @@ import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
 import { Exam } from './entities/exam.entity';
+import { CertificateRequest } from './entities/certificate-request.entity';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -58,6 +59,8 @@ export class TeacherController {
     private readonly reportDateRepo: Repository<ReportDate>,
     @InjectRepository(Exam)
     private readonly examRepo: Repository<Exam>,
+    @InjectRepository(CertificateRequest)
+    private readonly certificateRequestRepo: Repository<CertificateRequest>,
   ) { }
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -855,5 +858,66 @@ export class TeacherController {
     const report = await this.monthlyReportRepo.findOne({ where: { id, teacherId } });
     if (!report) throw new ForbiddenException('Report not found or access denied');
     return this.monthlyReportRepo.remove(report);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('certificate-request')
+  async createCertificateRequest(
+    @Req() req: any,
+    @Body() body: { groupId: number; students: { id: number; name: string }[]; template?: string; message?: string },
+  ) {
+    const teacherId = req.user.userId;
+    const group = await this.groupRepo.findOne({
+      where: { id: body.groupId, teacherId },
+      relations: ['course'],
+    });
+    if (!group) {
+      throw new ForbiddenException('Group not found or access denied');
+    }
+
+    const teacher = await this.staffRepo.findOne({ where: { id: teacherId } });
+    if (!teacher) {
+      throw new ForbiddenException('Teacher profile not found');
+    }
+
+    const newRequest = this.certificateRequestRepo.create({
+      teacherId,
+      groupId: body.groupId,
+      teacherName: teacher.name,
+      groupName: group.name,
+      courseName: group.course?.name || 'Noma\'lum',
+      students: body.students,
+      template: body.template || null,
+      message: body.message || null,
+      status: 'PENDING',
+    } as any);
+
+    return this.certificateRequestRepo.save(newRequest);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('certificate-requests')
+  async getCertificateRequests(@Req() req: any) {
+    const teacherId = req.user.userId;
+    return this.certificateRequestRepo.find({
+      where: { teacherId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('certificate-requests/:id')
+  async deleteCertificateRequest(@Req() req: any, @Param('id') id: number) {
+    const teacherId = req.user.userId;
+    const request = await this.certificateRequestRepo.findOne({
+      where: { id, teacherId },
+    });
+    if (!request) {
+      throw new ForbiddenException('Request not found or access denied');
+    }
+    if (request.status !== 'PENDING') {
+      throw new ForbiddenException('Only PENDING requests can be deleted');
+    }
+    return this.certificateRequestRepo.remove(request);
   }
 }
