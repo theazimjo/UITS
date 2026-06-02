@@ -151,18 +151,20 @@ def api_certificate_image(request, cert_id):
     if x_offset >= 0 and y_offset >= 0:
         template[y_offset:y_offset+qr_img.shape[0], x_offset:x_offset+qr_img.shape[1]] = qr_img
     
-    # Resize for preview
-    resized = cv2.resize(template, (0, 0), fx=0.3, fy=0.3)
-    
-    is_success, buffer = cv2.imencode(".jpg", resized, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    if not is_success:
-        return HttpResponse("Sertifikat yaratishda xatolik", status=500)
-    
-    response = HttpResponse(buffer.tobytes(), content_type="image/jpeg")
-    
-    # If download requested
+    # Check if download is requested
     if request.GET.get('download') == 'true':
+        is_success, buffer = cv2.imencode(".jpg", template, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        if not is_success:
+            return HttpResponse("Sertifikat yaratishda xatolik", status=500)
+        response = HttpResponse(buffer.tobytes(), content_type="image/jpeg")
         response["Content-Disposition"] = f'attachment; filename="{cert.cert_id}.jpg"'
+    else:
+        # Resize for preview
+        resized = cv2.resize(template, (0, 0), fx=0.3, fy=0.3)
+        is_success, buffer = cv2.imencode(".jpg", resized, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if not is_success:
+            return HttpResponse("Sertifikat yaratishda xatolik", status=500)
+        response = HttpResponse(buffer.tobytes(), content_type="image/jpeg")
     
     return response
 

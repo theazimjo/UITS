@@ -1,4 +1,5 @@
 from django.http import HttpResponse, FileResponse, Http404, StreamingHttpResponse
+from django.shortcuts import render
 import os
 import cv2
 import zipfile
@@ -9,6 +10,38 @@ from .models import Certificate
 from .sheets import get_data_by_key
 from .constants import PATH
 from wsgiref.util import FileWrapper
+
+
+def get_uzbek_course_name(template_path):
+    if not template_path:
+        return "Maxsus Kurs"
+    tp = template_path.lower()
+    if 'computer_science' in tp or 'ks' in tp:
+        return "Kompyuter Savodxonligi"
+    elif 'grafik_design' in tp or 'photo' in tp:
+        return "Grafik Dizayn"
+    elif 'admin' in tp:
+        return "Zamonaviy Ofis Menejeri"
+    elif 'web_design' in tp or 'webdes' in tp:
+        return "Veb Dizayn (UI/UX)"
+    elif 'front_end' in tp or 'web_react' in tp or 'webprogram' in tp:
+        return "Frontend Dasturlash"
+    elif 'python' in tp or 'py' in tp:
+        return "Python Backend Dasturlash"
+    elif 'max3d_int' in tp:
+        return "3D Max Interior Design"
+    elif 'max3d_ext' in tp:
+        return "3D Max Exterior Design"
+    elif 'max3d_mod' in tp:
+        return "3D Max Modeling"
+    elif '3dmax' in tp:
+        return "3D Max"
+    elif 'ms_word' in tp or 'word' in tp:
+        return "MS Word"
+    elif 'doctor' in tp:
+        return "Tibbiyot Malaka Oshirish Kursi"
+    return "Professional O'quv Kursi"
+
 
 
 def get_hosts(request):
@@ -33,10 +66,41 @@ def verify_certificate(request, cert_id):
     except Certificate.DoesNotExist:
         raise Http404("Sertifikat topilmadi")
 
-    host_url, host2_url = get_hosts(request)
+    course_name = get_uzbek_course_name(cert.template)
+    image_url = f"/sertifikat/verify-certificate/{cert_id}/image/"
+    download_url = f"/sertifikat/verify-certificate/{cert_id}/image/?download=true"
 
-    # Template sertifikat rasmi
-    template = cv2.imread(f"{cert.template}")
+    context = {
+        'cert': cert,
+        'course_name': course_name,
+        'image_url': image_url,
+        'download_url': download_url,
+        'is_doctor': False
+    }
+    return render(request, 'verify.html', context)
+
+
+def verify_certificate_image(request, cert_id):
+    try:
+        cert = Certificate.objects.get(cert_id=cert_id)
+    except Certificate.DoesNotExist:
+        raise Http404("Sertifikat topilmadi")
+
+    host_url, host2_url = get_hosts(request)
+    base_path = getattr(settings, 'CERTIFICATE_BASE_PATH', '')
+    template_path = cert.template or ''
+    
+    if 'new_templates/' in template_path:
+        relative = 'new_templates/' + template_path.split('new_templates/')[-1]
+        template_path = os.path.join(base_path, relative)
+    elif template_path and not os.path.isabs(template_path):
+        template_path = os.path.join(base_path, template_path)
+    elif not template_path:
+        template_path = os.path.join(base_path, 'new_templates', 'computer_science.jpg')
+
+    template = cv2.imread(template_path)
+    if template is None:
+        return HttpResponse("Shablon fayl topilmadi", status=500)
 
     # Matnlar
     cv2.putText(template, cert.full_name.strip(), (700, 4100), cv2.FONT_HERSHEY_COMPLEX, 14, (0, 0, 0), 10, cv2.LINE_8)
@@ -47,20 +111,21 @@ def verify_certificate(request, cert_id):
     clean_cert_id = cert_id.strip().replace(':', '-')
     qr_data = f"{host_url}{clean_cert_id}/"
     qr_img = generate_qr_code(qr_data, size=900)
-    # x_offset = template.shape[1] - qr_img.shape[1] - 100
-    # y_offset = template.shape[0] - qr_img.shape[0] - 100
     x_offset = template.shape[1] - qr_img.shape[1] - 4500
     y_offset = template.shape[0] - qr_img.shape[0] - 800
 
-    template[y_offset:y_offset+qr_img.shape[0], x_offset:x_offset+qr_img.shape[1]] = qr_img
+    if x_offset >= 0 and y_offset >= 0:
+        template[y_offset:y_offset+qr_img.shape[0], x_offset:x_offset+qr_img.shape[1]] = qr_img
 
-    # Sertifikatni JPG formatga kodlash va yuborish
     is_success, buffer = cv2.imencode(".jpg", template)
     if not is_success:
         return HttpResponse("Sertifikat yaratishda xatolik", status=500)
 
     response = HttpResponse(buffer.tobytes(), content_type="image/jpeg")
-    response["Content-Disposition"] = f"attachment; filename={cert.cert_id}.jpg"
+    if request.GET.get('download') == 'true':
+        response["Content-Disposition"] = f"attachment; filename={cert.cert_id}.jpg"
+    else:
+        response["Content-Disposition"] = f"inline; filename={cert.cert_id}.jpg"
     return response
 
 
@@ -70,16 +135,35 @@ def verify_certificate_doctors(request, cert_id):
     except Certificate.DoesNotExist:
         raise Http404("Sertifikat topilmadi")
 
-    host_url, host2_url = get_hosts(request)
+    course_name = get_uzbek_course_name("doctor")
+    image_url = f"/sertifikat/doctors/verify-certificate/{cert_id}/image/"
+    download_url = f"/sertifikat/doctors/verify-certificate/{cert_id}/image/?download=true"
 
-    # Sertifikat shablonini yuklash
-    # template_path = str(cert.template)  # Ehtimol, ImageField bo'lishi mumkin
-    template = cv2.imread(f"{PATH}new_templates/doctor.png")
+    context = {
+        'cert': cert,
+        'course_name': course_name,
+        'image_url': image_url,
+        'download_url': download_url,
+        'is_doctor': True
+    }
+    return render(request, 'verify.html', context)
+
+
+def verify_certificate_doctors_image(request, cert_id):
+    try:
+        cert = Certificate.objects.get(cert_id=cert_id)
+    except Certificate.DoesNotExist:
+        raise Http404("Sertifikat topilmadi")
+
+    host_url, host2_url = get_hosts(request)
+    base_path = getattr(settings, 'CERTIFICATE_BASE_PATH', '')
+    template_path = os.path.join(base_path, "new_templates/doctor.png")
+    template = cv2.imread(template_path)
 
     if template is None:
         return HttpResponse("Shablon fayl topilmadi yoki yaroqsiz", status=500)
 
-    # Matnlarni joylashtirish (koordinatalarni o'zingizga moslang)
+    # Matnlarni joylashtirish
     cv2.putText(template, cert.full_name.strip(), (700, 1205), cv2.FONT_HERSHEY_COMPLEX, 6, (0, 0, 0), 4, cv2.LINE_8)
     cv2.putText(template, cert.cert_id.strip(), (2030, 2125), cv2.FONT_HERSHEY_TRIPLEX, 3, (0, 0, 0), 2, cv2.LINE_AA)
     cv2.putText(template, cert.date.strip(), (1340, 1650), cv2.FONT_HERSHEY_TRIPLEX, 2, (0, 0, 0), 2, cv2.LINE_AA)
@@ -96,19 +180,21 @@ def verify_certificate_doctors(request, cert_id):
 
     template[y_offset:y_offset+qr_img.shape[0], x_offset:x_offset+qr_img.shape[1]] = qr_img
 
-    # Sertifikatni JPG formatga kodlash
     is_success, buffer = cv2.imencode(".jpg", template)
     if not is_success:
         return HttpResponse("Sertifikat yaratishda xatolik", status=500)
 
-    # JPG faylni yuborish
     response = HttpResponse(buffer.tobytes(), content_type="image/jpeg")
-    response["Content-Disposition"] = f"inline; filename={cert.cert_id}.jpg"
+    if request.GET.get('download') == 'true':
+        response["Content-Disposition"] = f"attachment; filename={cert.cert_id}.jpg"
+    else:
+        response["Content-Disposition"] = f"inline; filename={cert.cert_id}.jpg"
     return response
 
 
 
 def generate_certificates_view(request, data_func, template_file, zip_filename, temp_folder_name):
+    host_url, host2_url = get_hosts(request)
     temp_folder = os.path.join(settings.MEDIA_ROOT, temp_folder_name)
     os.makedirs(temp_folder, exist_ok=True)
 
@@ -137,7 +223,7 @@ def generate_certificates_view(request, data_func, template_file, zip_filename, 
         cv2.putText(img, index, (7700, 5850), cv2.FONT_HERSHEY_TRIPLEX, 6, (0, 0, 0), 5, cv2.LINE_AA)
         cv2.putText(img, date.strip(), (7700, 6450), cv2.FONT_HERSHEY_TRIPLEX, 6, (0, 0, 0), 5, cv2.LINE_AA)
 
-        qr_data = f"{HOST}{index}/"
+        qr_data = f"{host_url}{index}/"
         qr_img = generate_qr_code(qr_data, size=900)
         x_offset = img.shape[1] - qr_img.shape[1] - 4500
         y_offset = img.shape[0] - qr_img.shape[0] - 800
@@ -179,6 +265,7 @@ def generate_certificates_view(request, data_func, template_file, zip_filename, 
 
 
 def generate_certificates_view2(request, data_func, template_file, zip_filename, temp_folder_name):
+    host_url, host2_url = get_hosts(request)
     temp_folder = os.path.join(settings.MEDIA_ROOT, temp_folder_name)
     os.makedirs(temp_folder, exist_ok=True)
 
@@ -207,7 +294,7 @@ def generate_certificates_view2(request, data_func, template_file, zip_filename,
         cv2.putText(img, index, (2090, 2125), cv2.FONT_HERSHEY_TRIPLEX, 2, (0, 0, 0), 2, cv2.LINE_AA)
         cv2.putText(img, date.strip(), (1340, 1650), cv2.FONT_HERSHEY_TRIPLEX, 2, (0, 0, 0), 2, cv2.LINE_AA)
 
-        qr_data = f"{HOST2}{index}/"
+        qr_data = f"{host2_url}{index}/"
         qr_img = generate_qr_code(qr_data, size=400)
         x_offset = img.shape[1] - qr_img.shape[1] - 200
         y_offset = img.shape[0] - qr_img.shape[0] - 2000

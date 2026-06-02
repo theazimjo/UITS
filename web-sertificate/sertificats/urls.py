@@ -18,7 +18,9 @@ urlpatterns = [
     path('py/', views_new.pyhton_backend_view, name='py'),
     path('doctor/', views_new.doctor_view, name='doctor'),
     path('verify-certificate/<str:cert_id>/', views_new.verify_certificate, name='verify_certificate'),
+    path('verify-certificate/<str:cert_id>/image/', views_new.verify_certificate_image, name='verify_certificate_image'),
     path('doctors/verify-certificate/<str:cert_id>/', views_new.verify_certificate_doctors, name='verify_certificate_doctors'),
+    path('doctors/verify-certificate/<str:cert_id>/image/', views_new.verify_certificate_doctors_image, name='verify_certificate_doctors_image'),
 
     # JSON API endpoints for UITS admin panel
     path('api/courses/', api_views.api_courses, name='api_courses'),
