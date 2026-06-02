@@ -10,7 +10,7 @@ import {
   Award, Search, Plus, Trash2, Download, Eye, RefreshCw,
   FileText, ChevronRight, X, BookOpen, Users, LayoutDashboard,
   ExternalLink, Calendar, Hash, User, Filter, FilterX, HelpCircle,
-  GraduationCap, ChevronDown, Check, Phone
+  GraduationCap, ChevronDown, Check, Phone, MessageSquare, Loader2
 } from 'lucide-react';
 import Modal from '../components/common/Modal';
 import Skeleton from '../components/common/Skeleton';
