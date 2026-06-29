@@ -93,11 +93,14 @@ data class AttendanceResponse(
 @Serializable
 data class ExamResponse(
     val id: Int,
-    val score: String,
-    val date: String,
-    val month: String? = null,
-    val year: Int? = null,
-    val type: String? = null,
+    val month: String,
+    val currentAverage: Double? = 0.0,
+    val theoryScore: Double? = 0.0,
+    val practiceScore: Double? = 0.0,
+    val totalScore: Double? = 0.0,
+    val percentage: Double? = 0.0,
+    val note: String? = null,
+    val status: String? = null,
     val group: GroupResponse? = null,
     val teacher: StaffResponse? = null
 )
@@ -105,9 +108,10 @@ data class ExamResponse(
 @Serializable
 data class PaymentResponse(
     val id: Int,
-    val amount: Int,
-    val date: String,
-    val method: String? = null,
+    val amount: Double,
+    val paymentDate: String,
+    val month: String? = null,
+    val paymentType: String? = null,
     val status: String? = null
 )
 

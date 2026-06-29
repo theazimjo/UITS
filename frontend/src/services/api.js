@@ -12,6 +12,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 503) {
+      window.dispatchEvent(new Event('backend-maintenance'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const login = (credentials) => api.post('/auth/login', credentials);
 
 // Student services
@@ -160,6 +170,16 @@ export const importData = (data) => api.post('/data/import', data);
 const certApi = axios.create({
   baseURL: import.meta.env.VITE_CERT_API_URL || '/sertifikat',
 });
+
+certApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 503) {
+      window.dispatchEvent(new Event('backend-maintenance'));
+    }
+    return Promise.reject(error);
+  }
+);
 export const getCertificateCourses = () => certApi.get('/api/courses/');
 export const getCertificates = (search = '') => certApi.get(`/api/certificates/?search=${search}`);
 export const getCertificateStats = () => certApi.get('/api/certificates/stats/');

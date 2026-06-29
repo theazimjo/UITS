@@ -143,10 +143,10 @@ fun ParentDashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val tabs = listOf(
-                    NavigationTabInfo(0, Icons.Rounded.Home, "Home"),
-                    NavigationTabInfo(1, Icons.Rounded.CheckCircleOutline, "Attendance"),
-                    NavigationTabInfo(2, Icons.Rounded.Newspaper, "News"),
-                    NavigationTabInfo(3, Icons.Rounded.Person, "Profile")
+                    NavigationTabInfo(0, Icons.Rounded.Home, "Asosiy"),
+                    NavigationTabInfo(1, Icons.Rounded.CheckCircleOutline, "Davomat"),
+                    NavigationTabInfo(2, Icons.Rounded.Newspaper, "Yangiliklar"),
+                    NavigationTabInfo(3, Icons.Rounded.Person, "Profil")
                 )
 
                 tabs.forEach { tab ->
@@ -208,13 +208,13 @@ fun HomeMockupTab(
     calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
     val weekDays = List(7) {
         val dayName = when (calendar.get(Calendar.DAY_OF_WEEK)) {
-            Calendar.SUNDAY -> "Sun"
-            Calendar.MONDAY -> "Mon"
-            Calendar.TUESDAY -> "Tue"
-            Calendar.WEDNESDAY -> "Wed"
-            Calendar.THURSDAY -> "Thu"
-            Calendar.FRIDAY -> "Fri"
-            else -> "Sat"
+            Calendar.SUNDAY -> "Yak"
+            Calendar.MONDAY -> "Du"
+            Calendar.TUESDAY -> "Se"
+            Calendar.WEDNESDAY -> "Chor"
+            Calendar.THURSDAY -> "Pay"
+            Calendar.FRIDAY -> "Ju"
+            else -> "Shan"
         }
         val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH).toString()
         calendar.add(Calendar.DAY_OF_YEAR, 1)
@@ -449,7 +449,7 @@ fun HomeMockupTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Today's Schedule",
+                            text = "Bugungi dars jadvali",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
@@ -548,7 +548,7 @@ fun HomeMockupTab(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Today's Attendance",
+                        text = "Bugungi Davomat",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
@@ -561,21 +561,21 @@ fun HomeMockupTab(
                     ) {
                         // Check In
                         AttendanceStatItem(
-                            label = "Check In",
+                            label = "Kirish vaqti",
                             value = todayRecord?.arrived_at ?: "- : -",
                             icon = Icons.Rounded.Login,
                             color = Color(0xFF0056C6)
                         )
                         // Check out
                         AttendanceStatItem(
-                            label = "Check out",
+                            label = "Chiqish vaqti",
                             value = todayRecord?.left_at ?: "- : -",
                             icon = Icons.Rounded.Logout,
                             color = Color(0xFF5856D6)
                         )
                         // Total hrs
                         AttendanceStatItem(
-                            label = "Total hrs",
+                            label = "Jami soat",
                             value = calculateTotalHours(todayRecord?.arrived_at, todayRecord?.left_at),
                             icon = Icons.Rounded.CheckCircleOutline,
                             color = Color(0xFF007AFF)
@@ -652,7 +652,7 @@ fun HomeMockupTab(
                                         val formatter = java.text.DecimalFormat("#,###")
                                         val amountStr = formatter.format(p.amount).replace(",", " ")
                                         Text("$amountStr UZS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text(p.date, color = Color(0xFF8E8E93), fontSize = 11.sp)
+                                        Text(p.paymentDate, color = Color(0xFF8E8E93), fontSize = 11.sp)
                                     }
                                     Text("To'landi", color = Color(0xFF34C759), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
@@ -740,13 +740,13 @@ fun HomeMockupTab(
                                             fontSize = 14.sp
                                         )
                                         Text(
-                                            text = "${exam.date} • ${exam.type ?: "Oraliq"}",
+                                            text = "${exam.month} • ${exam.status ?: "Oraliq"}",
                                             color = Color(0xFF8E8E93),
                                             fontSize = 11.sp
                                         )
                                     }
                                     Text(
-                                        text = exam.score,
+                                        text = "${exam.totalScore ?: 0.0} (${exam.percentage?.toInt() ?: 0}%)",
                                         fontWeight = FontWeight.Black,
                                         color = Color(0xFF0056C6),
                                         fontSize = 15.sp
@@ -964,11 +964,11 @@ fun ScheduleTab(
     var selectedDayIndex by rememberSaveable { mutableIntStateOf(1) } // Default Tue (1) active
 
     val weekDays = listOf(
-        Pair("Mon", "18"),
-        Pair("Tue", "19"),
-        Pair("Wed", "20"),
-        Pair("Thu", "21"),
-        Pair("Fri", "22")
+        Pair("Du", "18"),
+        Pair("Se", "19"),
+        Pair("Chor", "20"),
+        Pair("Pay", "21"),
+        Pair("Ju", "22")
     )
 
     LazyColumn(
@@ -989,7 +989,7 @@ fun ScheduleTab(
             ) {
                 Column {
                     Text(
-                        text = "My schedule",
+                        text = "Dars jadvalim",
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.Black
@@ -1503,7 +1503,7 @@ fun ProfileTab(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Til / Language", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text("Til", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             Text("O'zbek tili", color = Color(0xFF8E8E93), fontSize = 11.sp)
                         }
                     }
@@ -1906,19 +1906,19 @@ fun InteractiveAttendanceCalendar(recentAttendance: List<AttendanceRecord>) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 AttendanceStatItem(
-                    label = "Check In",
+                    label = "Kirish vaqti",
                     value = selectedRecord?.arrived_at ?: "- : -",
                     icon = Icons.Rounded.Login,
                     color = Color(0xFF0056C6)
                 )
                 AttendanceStatItem(
-                    label = "Check out",
+                    label = "Chiqish vaqti",
                     value = selectedRecord?.left_at ?: "- : -",
                     icon = Icons.Rounded.Logout,
                     color = Color(0xFF5856D6)
                 )
                 AttendanceStatItem(
-                    label = "Total hrs",
+                    label = "Jami soat",
                     value = calculateTotalHours(selectedRecord?.arrived_at, selectedRecord?.left_at),
                     icon = Icons.Rounded.CheckCircleOutline,
                     color = Color(0xFF007AFF)
