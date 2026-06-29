@@ -36,7 +36,8 @@ data class GroupResponse(
     val startDate: String? = null,
     val groupStatus: String? = null,
     val startTime: String? = null,
-    val endTime: String? = null
+    val endTime: String? = null,
+    val teacher: StaffResponse? = null
 )
 
 @Serializable
@@ -63,6 +64,9 @@ data class StudentResponse(
     val photo: String? = null,
     val parentName: String? = null,
     val status: String? = null,
+    val phone: String? = null,
+    val parentPhone: String? = null,
+    val createdAt: String? = null,
     val enrollments: List<EnrollmentResponse> = emptyList()
 )
 

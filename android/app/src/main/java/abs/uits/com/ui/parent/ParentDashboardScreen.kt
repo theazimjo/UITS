@@ -78,102 +78,116 @@ fun ParentDashboardScreen(
     // Bottom Navigation Tab state matching mockup tabs:
     // 0: Home (Asosiy), 1: Attendance (Davomat), 2: Schedule (Dars jadvali), 3: Requests/Payments (To'lovlar)
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var showGeneralReport by rememberSaveable { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF9FAFC))
-    ) {
-        // Tab Content
+    if (showGeneralReport && selectedChild != null) {
+        androidx.activity.compose.BackHandler {
+            showGeneralReport = false
+        }
+        StudentGeneralReportScreen(
+            child = selectedChild,
+            attendance = attendance,
+            payments = payments,
+            exams = exams,
+            onBack = { showGeneralReport = false }
+        )
+    } else {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 84.dp)
+                .background(Color(0xFFF9FAFC))
         ) {
-            when (selectedTab) {
-                0 -> HomeMockupTab(
-                    selectedChild = selectedChild,
-                    children = children,
-                    selectedChildId = selectedChildId,
-                    attendance = attendance,
-                    payments = payments,
-                    exams = exams,
-                    onChildSelected = { id -> viewModel.selectChild(id) }
-                )
-                1 -> AttendanceTab(
-                    selectedChild = selectedChild,
-                    children = children,
-                    selectedChildId = selectedChildId,
-                    attendance = attendance,
-                    onChildSelected = { id -> viewModel.selectChild(id) }
-                )
-                2 -> NewsTab(
-                    notifications = notifications,
-                    onMarkAsRead = { id -> viewModel.markAsRead(id) }
-                )
-                3 -> ProfileTab(
-                    selectedChild = selectedChild,
-                    onLogout = onLogout
-                )
-            }
-        }
-
-        // Flat White Bottom Navigation Bar matching mockup
-        Surface(
-            color = Color.White,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .drawBehind {
-                    // Top divider line
-                    drawLine(
-                        color = Color(0xFFE5E5EA),
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width, 0f),
-                        strokeWidth = 1.dp.toPx()
+            // Tab Content
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 84.dp)
+            ) {
+                when (selectedTab) {
+                    0 -> HomeMockupTab(
+                        selectedChild = selectedChild,
+                        children = children,
+                        selectedChildId = selectedChildId,
+                        attendance = attendance,
+                        payments = payments,
+                        onChildSelected = { id -> viewModel.selectChild(id) },
+                        onShowGeneralReport = { showGeneralReport = true }
+                    )
+                    1 -> AttendanceTab(
+                        selectedChild = selectedChild,
+                        children = children,
+                        selectedChildId = selectedChildId,
+                        attendance = attendance,
+                        onChildSelected = { id -> viewModel.selectChild(id) }
+                    )
+                    2 -> NewsTab(
+                        notifications = notifications,
+                        onMarkAsRead = { id -> viewModel.markAsRead(id) }
+                    )
+                    3 -> ProfileTab(
+                        selectedChild = selectedChild,
+                        onLogout = onLogout
                     )
                 }
-        ) {
-            Row(
+            }
+
+            // Flat White Bottom Navigation Bar matching mockup
+            Surface(
+                color = Color.White,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
+                    .align(Alignment.BottomCenter)
+                    .drawBehind {
+                        // Top divider line
+                        drawLine(
+                            color = Color(0xFFE5E5EA),
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, 0f),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
             ) {
-                val tabs = listOf(
-                    NavigationTabInfo(0, Icons.Rounded.Home, "Asosiy"),
-                    NavigationTabInfo(1, Icons.Rounded.CheckCircleOutline, "Davomat"),
-                    NavigationTabInfo(2, Icons.Rounded.Newspaper, "Yangiliklar"),
-                    NavigationTabInfo(3, Icons.Rounded.Person, "Profil")
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val tabs = listOf(
+                        NavigationTabInfo(0, Icons.Rounded.Home, "Asosiy"),
+                        NavigationTabInfo(1, Icons.Rounded.CheckCircleOutline, "Davomat"),
+                        NavigationTabInfo(2, Icons.Rounded.Newspaper, "Yangiliklar"),
+                        NavigationTabInfo(3, Icons.Rounded.Person, "Profil")
+                    )
 
-                tabs.forEach { tab ->
-                    val isSelected = selectedTab == tab.id
-                    val color = if (isSelected) Color(0xFF0056C6) else Color(0xFF8E8E93)
-                    val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    tabs.forEach { tab ->
+                        val isSelected = selectedTab == tab.id
+                        val color = if (isSelected) Color(0xFF0056C6) else Color(0xFF8E8E93)
+                        val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
 
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { selectedTab = tab.id }
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = tab.icon,
-                            contentDescription = tab.label,
-                            tint = color,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = tab.label,
-                            fontSize = 11.sp,
-                            fontWeight = fontWeight,
-                            color = color
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { selectedTab = tab.id }
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.label,
+                                tint = color,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = tab.label,
+                                fontSize = 11.sp,
+                                fontWeight = fontWeight,
+                                color = color
+                            )
+                        }
                     }
                 }
             }
@@ -190,6 +204,13 @@ data class NavigationTabInfo(
 // ==========================================
 // TAB 0: HOME TAB (Mockup Redesign)
 // ==========================================
+data class CalendarDay(
+    val dayName: String,
+    val dayOfMonth: String,
+    val dateStr: String,
+    val isToday: Boolean
+)
+
 @Composable
 fun HomeMockupTab(
     selectedChild: StudentResponse?,
@@ -197,28 +218,52 @@ fun HomeMockupTab(
     selectedChildId: Int?,
     attendance: AttendanceResponse,
     payments: List<PaymentResponse>,
-    exams: List<ExamResponse>,
-    onChildSelected: (Int) -> Unit
+    onChildSelected: (Int) -> Unit,
+    onShowGeneralReport: () -> Unit
 ) {
-    var selectedDayIndex by rememberSaveable { mutableIntStateOf(0) }
     var showChildDropdown by remember { mutableStateOf(false) }
 
-    // Generate Calendar Strip days for the current week starting Sunday
-    val calendar = Calendar.getInstance()
-    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-    val weekDays = List(7) {
-        val dayName = when (calendar.get(Calendar.DAY_OF_WEEK)) {
-            Calendar.SUNDAY -> "Yak"
-            Calendar.MONDAY -> "Du"
-            Calendar.TUESDAY -> "Se"
-            Calendar.WEDNESDAY -> "Chor"
-            Calendar.THURSDAY -> "Pay"
-            Calendar.FRIDAY -> "Ju"
-            else -> "Shan"
+    val sdf = remember { java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val todayDateStr = remember { sdf.format(Date()) }
+    var selectedDateStr by rememberSaveable(selectedChildId) { mutableStateOf(todayDateStr) }
+
+    // Generate Calendar Strip days for 15 days (5 days back, 9 days forward)
+    val weekDays = remember(selectedChildId) {
+        val list = mutableListOf<CalendarDay>()
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.DAY_OF_YEAR, -5)
+        val todayCal = Calendar.getInstance()
+        
+        repeat(15) {
+            val dayName = when (cal.get(Calendar.DAY_OF_WEEK)) {
+                Calendar.SUNDAY -> "Yak"
+                Calendar.MONDAY -> "Du"
+                Calendar.TUESDAY -> "Se"
+                Calendar.WEDNESDAY -> "Chor"
+                Calendar.THURSDAY -> "Pay"
+                Calendar.FRIDAY -> "Ju"
+                else -> "Shan"
+            }
+            val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH).toString()
+            val dateStr = sdf.format(cal.time)
+            
+            val isToday = cal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                    cal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
+                    
+            list.add(CalendarDay(dayName, dayOfMonth, dateStr, isToday))
+            cal.add(Calendar.DAY_OF_YEAR, 1)
         }
-        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH).toString()
-        calendar.add(Calendar.DAY_OF_YEAR, 1)
-        dayName to dayOfMonth
+        list
+    }
+
+    val isSundaySelected = remember(selectedDateStr) {
+        try {
+            val cal = Calendar.getInstance()
+            cal.time = sdf.parse(selectedDateStr) ?: Date()
+            cal.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY
+        } catch (e: Exception) {
+            false
+        }
     }
 
     LazyColumn(
@@ -300,7 +345,7 @@ fun HomeMockupTab(
                             )
                         }
                     }
-
+ 
                     // Dropdown menu definition
                     DropdownMenu(
                         expanded = showChildDropdown,
@@ -351,7 +396,7 @@ fun HomeMockupTab(
                         }
                     }
                 }
-
+ 
                 // Notification Bell
                 Box(
                     modifier = Modifier
@@ -369,60 +414,82 @@ fun HomeMockupTab(
                 }
             }
         }
-
-        // Weekly Day Calendar Strip
+ 
+        // Weekly Day Calendar Strip (Slidable LazyRow)
         item {
-            Row(
+            androidx.compose.foundation.lazy.LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                weekDays.forEachIndexed { index, day ->
-                    val isDayActive = selectedDayIndex == index
-                    val capsuleBg = if (isDayActive) Color(0xFF0056C6) else Color.Transparent
-                    val dayColor = if (isDayActive) Color.White else Color(0xFF8E8E93)
-                    val dateColor = if (isDayActive) Color.White else Color(0xFF1C1C1E)
+                items(weekDays) { day ->
+                    val isDaySelected = selectedDateStr == day.dateStr
+                    val capsuleBg = when {
+                        isDaySelected -> Color(0xFF0056C6)
+                        day.isToday -> Color(0xFF0056C6).copy(alpha = 0.08f)
+                        else -> Color.Transparent
+                    }
+                    val borderStroke = if (day.isToday && !isDaySelected) {
+                        BorderStroke(1.dp, Color(0xFF0056C6))
+                    } else {
+                        null
+                    }
+                    val dayColor = if (isDaySelected) Color.White else Color(0xFF8E8E93)
+                    val dateColor = if (isDaySelected) Color.White else Color(0xFF1C1C1E)
 
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
+                            .width(46.dp)
+                            .clip(RoundedCornerShape(18.dp))
                             .background(capsuleBg)
-                            .clickable { selectedDayIndex = index }
-                            .padding(horizontal = 10.dp, vertical = 12.dp),
+                            .then(if (borderStroke != null) Modifier.border(borderStroke, RoundedCornerShape(18.dp)) else Modifier)
+                            .clickable { selectedDateStr = day.dateStr }
+                            .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = day.first,
+                                text = day.dayName,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = dayColor
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = day.second,
+                                text = day.dayOfMonth,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Black,
                                 color = dateColor
                             )
+                            if (day.isToday) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isDaySelected) Color.White else Color(0xFF0056C6))
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-
+ 
         // Today's Schedule Card
         item {
             val activeEnrollment = selectedChild?.enrollments?.firstOrNull { it.status == "ACTIVE" }
-            val courseTitle = activeEnrollment?.group?.course?.name ?: "Kurs yo'nalishi"
-            val roomName = activeEnrollment?.group?.name ?: "Guruh nomi"
+            val courseTitle = if (isSundaySelected) "Dam olish kuni" else (activeEnrollment?.group?.course?.name ?: "Kurs yo'nalishi")
+            val roomName = if (isSundaySelected) "N/A" else (activeEnrollment?.group?.name ?: "Guruh nomi")
             val startTime = activeEnrollment?.group?.startTime
             val endTime = activeEnrollment?.group?.endTime
-            val timeSlot = if (!startTime.isNullOrBlank() && !endTime.isNullOrBlank()) {
+            val timeSlot = if (isSundaySelected) {
+                "Yakshanba - darslar mavjud emas"
+            } else if (!startTime.isNullOrBlank() && !endTime.isNullOrBlank()) {
                 "$startTime - $endTime"
             } else {
                 val groupHash = activeEnrollment?.group?.id ?: (selectedChild?.id ?: 0)
@@ -432,7 +499,7 @@ fun HomeMockupTab(
                     else -> "18:30 - 20:30"
                 }
             }
-
+ 
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -449,17 +516,17 @@ fun HomeMockupTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Bugungi dars jadvali",
+                            text = if (selectedDateStr == todayDateStr) "Bugungi dars jadvali" else "Dars jadvali ($selectedDateStr)",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
                         )
-                        // Green Dot
+                        // Green / Gray Dot
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF34C759))
+                                .background(if (isSundaySelected) Color(0xFF8E8E93) else Color(0xFF34C759))
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -488,17 +555,19 @@ fun HomeMockupTab(
                             color = Color.Black,
                             modifier = Modifier.weight(1f)
                         )
-                        Surface(
-                            color = Color(0xFFE8F0FE),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = roomName,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0056C6),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
+                        if (!isSundaySelected) {
+                            Surface(
+                                color = Color(0xFFE8F0FE),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = roomName,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0056C6),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
                         }
                     }
                     
@@ -531,12 +600,11 @@ fun HomeMockupTab(
                 }
             }
         }
-
-        // Today's Attendance Card
+ 
+        // Today's/Selected Attendance Card
         item {
-            val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            val todayRecord = attendance.recent_attendance.find { it.date == todayStr }
-
+            val selectedRecord = attendance.recent_attendance.find { it.date == selectedDateStr }
+ 
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -548,13 +616,13 @@ fun HomeMockupTab(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Bugungi Davomat",
+                        text = if (selectedDateStr == todayDateStr) "Bugungi Davomat" else "Davomat ($selectedDateStr)",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-
+ 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -562,21 +630,21 @@ fun HomeMockupTab(
                         // Check In
                         AttendanceStatItem(
                             label = "Kirish vaqti",
-                            value = todayRecord?.arrived_at ?: "- : -",
+                            value = selectedRecord?.arrived_at ?: "- : -",
                             icon = Icons.Rounded.Login,
                             color = Color(0xFF0056C6)
                         )
                         // Check out
                         AttendanceStatItem(
                             label = "Chiqish vaqti",
-                            value = todayRecord?.left_at ?: "- : -",
+                            value = selectedRecord?.left_at ?: "- : -",
                             icon = Icons.Rounded.Logout,
                             color = Color(0xFF5856D6)
                         )
                         // Total hrs
                         AttendanceStatItem(
                             label = "Jami soat",
-                            value = calculateTotalHours(todayRecord?.arrived_at, todayRecord?.left_at),
+                            value = calculateTotalHours(selectedRecord?.arrived_at, selectedRecord?.left_at),
                             icon = Icons.Rounded.CheckCircleOutline,
                             color = Color(0xFF007AFF)
                         )
@@ -584,9 +652,14 @@ fun HomeMockupTab(
                 }
             }
         }
-
-        // Payments History Section inside Home Tab
+ 
+        // Payments History Section inside Home Tab (Filtered to current month)
         item {
+            val currentMonthStr = remember { java.text.SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date()) }
+            val currentMonthPayments = remember(payments, currentMonthStr) {
+                payments.filter { it.month == currentMonthStr }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -605,18 +678,19 @@ fun HomeMockupTab(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "To'lovlar Tarixi",
+                        text = "To'lovlar Tarixi (Joriy oy)",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                 }
-
-                if (payments.isEmpty()) {
+ 
+                if (currentMonthPayments.isEmpty()) {
                     Text(
-                        text = "To'lovlar tarixi yo'q",
+                        text = "Joriy oyda to'lovlar tarixi yo'q",
                         color = Color(0xFF8E8E93),
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(vertical = 4.dp)
                     )
                 } else {
                     Card(
@@ -626,7 +700,7 @@ fun HomeMockupTab(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            payments.forEachIndexed { idx, p ->
+                            currentMonthPayments.forEachIndexed { idx, p ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -656,7 +730,7 @@ fun HomeMockupTab(
                                     }
                                     Text("To'landi", color = Color(0xFF34C759), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
-                                if (idx < payments.lastIndex) {
+                                if (idx < currentMonthPayments.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(horizontal = 16.dp),
                                         color = Color(0xFFE5E5EA),
@@ -670,100 +744,33 @@ fun HomeMockupTab(
             }
         }
 
-        // Exams Section inside Home Tab
+        // 5. "Umumiy" Button
         item {
-            Column(
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onShowGeneralReport,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056C6)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(horizontal = 20.dp)
+                    .height(54.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFFFCC00),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Imtihon Natijalari",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                }
-
-                if (exams.isEmpty()) {
-                    Text(
-                        text = "Imtihonlar tarixi yo'q",
-                        color = Color(0xFF8E8E93),
-                        fontSize = 13.sp
-                    )
-                } else {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            exams.forEachIndexed { idx, exam ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFFFFF2D4)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Star,
-                                            contentDescription = null,
-                                            tint = Color(0xFFFFCC00),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = exam.group?.course?.name ?: "Imtihon",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp
-                                        )
-                                        Text(
-                                            text = "${exam.month} • ${exam.status ?: "Oraliq"}",
-                                            color = Color(0xFF8E8E93),
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                    Text(
-                                        text = "${exam.totalScore ?: 0.0} (${exam.percentage?.toInt() ?: 0}%)",
-                                        fontWeight = FontWeight.Black,
-                                        color = Color(0xFF0056C6),
-                                        fontSize = 15.sp
-                                    )
-                                }
-                                if (idx < exams.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        color = Color(0xFFE5E5EA),
-                                        thickness = 0.5.dp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Rounded.Dashboard,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Umumiy ma'lumotlar",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
