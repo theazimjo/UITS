@@ -5,12 +5,13 @@ import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
 import { Group } from '../groups/entities/group.entity';
 import { GroupPhase } from '../groups/entities/group-phase.entity';
+import { Enrollment } from '../groups/entities/enrollment.entity';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Payment, Group, GroupPhase]),
+    TypeOrmModule.forFeature([Payment, Group, GroupPhase, Enrollment]),
     ActivityLogModule,
     NotificationsModule
   ],

@@ -125,5 +125,6 @@ data class NotificationResponse(
     val title: String,
     val message: String,
     val createdAt: String,
-    val isRead: Boolean
+    val isRead: Boolean,
+    val isGeneral: Boolean? = false
 )

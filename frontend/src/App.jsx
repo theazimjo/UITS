@@ -21,6 +21,7 @@ import Finance from './pages/Finance';
 import Settings from './pages/Settings';
 import AdminReports from './pages/AdminReports';
 import CertificatesPage from './pages/CertificatesPage';
+import Messages from './pages/Messages';
 
 // Teacher Pages
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
@@ -208,6 +209,7 @@ function App() {
           <Route path="/certificates" element={<CertificatesPage />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/reports" element={<AdminReports />} />
+          <Route path="/messages" element={<Messages />} />
         </Route>
 
         {/* Teacher Routes */}

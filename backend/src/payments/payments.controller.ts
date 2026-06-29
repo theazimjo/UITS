@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, BadRequestException, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, BadRequestException, Patch, Query } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -6,6 +6,12 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get('unpaid/status')
+  async getUnpaidStudents(@Query('month') monthStr?: string) {
+    const targetMonth = monthStr || new Date().toISOString().slice(0, 7);
+    return this.paymentsService.findUnpaidStudents(targetMonth);
+  }
 
   @Get('test-status/check')
   test() {

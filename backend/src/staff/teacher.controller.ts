@@ -27,6 +27,7 @@ import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
 import { Exam } from './entities/exam.entity';
 import { CertificateRequest } from './entities/certificate-request.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 import axios from 'axios';
 import * as https from 'https';
 
@@ -61,6 +62,7 @@ export class TeacherController {
     private readonly examRepo: Repository<Exam>,
     @InjectRepository(CertificateRequest)
     private readonly certificateRequestRepo: Repository<CertificateRequest>,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   // GET /teacher/dashboard — dashboard stats for the logged-in teacher
@@ -777,6 +779,24 @@ export class TeacherController {
 
       if (examRecords.length > 0) {
         await this.examRepo.save(examRecords);
+
+        // Notify each student about their exam result
+        const examNotifs = (body.studentIds || []).map(sid => {
+          const score = body.totalScores?.[sid] || 0;
+          const status = body.examStatuses?.[sid] || "O'tdi";
+          return {
+            studentId: sid,
+            title: "Imtihon natijasi",
+            message: `Sizning ${body.month} oyidagi imtihon natijangiz: ${score} ball — ${status}.`
+          };
+        });
+        if (examNotifs.length > 0) {
+          await this.notificationsService.sendBulk({
+            studentIds: examNotifs.map(n => n.studentId),
+            title: "Imtihon natijasi",
+            message: `Sizning ${body.month} oyidagi imtihon natijalari kiritildi.`
+          }).catch(err => console.error('Failed to send exam notifications:', err));
+        }
       }
     }
 

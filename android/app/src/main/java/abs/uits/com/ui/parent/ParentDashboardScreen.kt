@@ -79,6 +79,9 @@ fun ParentDashboardScreen(
     // 0: Home (Asosiy), 1: Attendance (Davomat), 2: Schedule (Dars jadvali), 3: Requests/Payments (To'lovlar)
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showGeneralReport by rememberSaveable { mutableStateOf(false) }
+    var showNotificationsSheet by rememberSaveable { mutableStateOf(false) }
+
+    val personalNotifications = notifications.filter { it.isGeneral != true }
 
     if (showGeneralReport && selectedChild != null) {
         androidx.activity.compose.BackHandler {
@@ -90,6 +93,15 @@ fun ParentDashboardScreen(
             payments = payments,
             exams = exams,
             onBack = { showGeneralReport = false }
+        )
+    } else if (showNotificationsSheet) {
+        androidx.activity.compose.BackHandler {
+            showNotificationsSheet = false
+        }
+        NotificationsFullScreen(
+            notifications = personalNotifications,
+            onMarkAsRead = { id -> viewModel.markAsRead(id) },
+            onClose = { showNotificationsSheet = false }
         )
     } else {
         Box(
@@ -110,8 +122,10 @@ fun ParentDashboardScreen(
                         selectedChildId = selectedChildId,
                         attendance = attendance,
                         payments = payments,
+                        notifications = notifications.filter { it.isGeneral != true },
                         onChildSelected = { id -> viewModel.selectChild(id) },
-                        onShowGeneralReport = { showGeneralReport = true }
+                        onShowGeneralReport = { showGeneralReport = true },
+                        onShowNotifications = { showNotificationsSheet = true }
                     )
                     1 -> AttendanceTab(
                         selectedChild = selectedChild,
@@ -121,7 +135,7 @@ fun ParentDashboardScreen(
                         onChildSelected = { id -> viewModel.selectChild(id) }
                     )
                     2 -> NewsTab(
-                        notifications = notifications,
+                        notifications = notifications.filter { it.isGeneral == true },
                         onMarkAsRead = { id -> viewModel.markAsRead(id) }
                     )
                     3 -> ProfileTab(
@@ -218,8 +232,10 @@ fun HomeMockupTab(
     selectedChildId: Int?,
     attendance: AttendanceResponse,
     payments: List<PaymentResponse>,
+    notifications: List<NotificationResponse> = emptyList(),
     onChildSelected: (Int) -> Unit,
-    onShowGeneralReport: () -> Unit
+    onShowGeneralReport: () -> Unit,
+    onShowNotifications: () -> Unit = {}
 ) {
     var showChildDropdown by remember { mutableStateOf(false) }
 
@@ -227,14 +243,18 @@ fun HomeMockupTab(
     val todayDateStr = remember { sdf.format(Date()) }
     var selectedDateStr by rememberSaveable(selectedChildId) { mutableStateOf(todayDateStr) }
 
-    // Generate Calendar Strip days for 15 days (5 days back, 9 days forward)
+    // Generate Calendar Strip days for the entire current month
     val weekDays = remember(selectedChildId) {
         val list = mutableListOf<CalendarDay>()
         val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -5)
         val todayCal = Calendar.getInstance()
+        val currentMonth = cal.get(Calendar.MONTH)
+        val currentYear = cal.get(Calendar.YEAR)
         
-        repeat(15) {
+        // Start from first day of this month
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        
+        while (cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear) {
             val dayName = when (cal.get(Calendar.DAY_OF_WEEK)) {
                 Calendar.SUNDAY -> "Yak"
                 Calendar.MONDAY -> "Du"
@@ -254,6 +274,17 @@ fun HomeMockupTab(
             cal.add(Calendar.DAY_OF_YEAR, 1)
         }
         list
+    }
+
+    val todayIndex = remember(weekDays) {
+        weekDays.indexOfFirst { it.isToday }.coerceAtLeast(0)
+    }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    LaunchedEffect(todayIndex) {
+        if (todayIndex > 0) {
+            listState.scrollToItem((todayIndex - 2).coerceAtLeast(0))
+        }
     }
 
     val isSundaySelected = remember(selectedDateStr) {
@@ -398,19 +429,37 @@ fun HomeMockupTab(
                 }
  
                 // Notification Bell
+                val unreadCount = notifications.count { !it.isRead }
                 Box(
                     modifier = Modifier
                         .size(40.dp)
                         .background(Color.White, CircleShape)
-                        .border(0.5.dp, Color(0xFFE5E5EA), CircleShape),
+                        .border(0.5.dp, Color(0xFFE5E5EA), CircleShape)
+                        .clickable { onShowNotifications() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.NotificationsNone,
-                        contentDescription = null,
+                        contentDescription = "Bildirishnomalar",
                         tint = Color.Black,
                         modifier = Modifier.size(20.dp)
                     )
+                    if (unreadCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .background(Color(0xFFFF3B30), CircleShape)
+                                .align(Alignment.TopEnd),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (unreadCount > 9) "9+" else unreadCount.toString(),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -418,6 +467,7 @@ fun HomeMockupTab(
         // Weekly Day Calendar Strip (Slidable LazyRow)
         item {
             androidx.compose.foundation.lazy.LazyRow(
+                state = listState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
@@ -441,7 +491,7 @@ fun HomeMockupTab(
 
                     Box(
                         modifier = Modifier
-                            .width(46.dp)
+                            .width(50.dp)
                             .clip(RoundedCornerShape(18.dp))
                             .background(capsuleBg)
                             .then(if (borderStroke != null) Modifier.border(borderStroke, RoundedCornerShape(18.dp)) else Modifier)
@@ -456,14 +506,18 @@ fun HomeMockupTab(
                                 text = day.dayName,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = dayColor
+                                color = dayColor,
+                                maxLines = 1,
+                                softWrap = false
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = day.dayOfMonth,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Black,
-                                color = dateColor
+                                color = dateColor,
+                                maxLines = 1,
+                                softWrap = false
                             )
                             if (day.isToday) {
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -2190,6 +2244,176 @@ fun getScoreBadgeColors(score: String): Pair<Color, Color> {
         }
         else -> {
             Color(0xFFFF3B30).copy(alpha = 0.1f) to Color(0xFFFF3B30)
+        }
+    }
+}
+
+// ==========================================
+// NOTIFICATIONS FULL SCREEN
+// ==========================================
+
+@Composable
+fun NotificationsFullScreen(
+    notifications: List<NotificationResponse>,
+    onMarkAsRead: (Int) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF9FAFC))
+    ) {
+        // Top Bar
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
+            shadowElevation = 0.5.dp,
+            tonalElevation = 0.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowBackIos,
+                        contentDescription = "Orqaga",
+                        tint = Color(0xFF007AFF),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    text = "Bildirishnomalar",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1C1C1E),
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Box(modifier = Modifier.size(48.dp)) // Spacer to center title
+            }
+        }
+
+        if (notifications.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.NotificationsNone,
+                        contentDescription = null,
+                        tint = Color(0xFFD1D1D6),
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Text(
+                        text = "Bildirishnomalar yo'q",
+                        color = Color(0xFF8E8E93),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "To'lov, davomat va imtihon natijalari\nbu yerda ko'rinadi",
+                        color = Color(0xFFAEAEB2),
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(notifications) { notification ->
+                    val isRead = notification.isRead
+                    val cardBg = if (isRead) Color.White else Color(0xFFE8F0FE).copy(alpha = 0.5f)
+                    val borderCol = if (isRead) Color(0xFFE5E5EA) else Color(0xFF007AFF).copy(alpha = 0.3f)
+
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = cardBg),
+                        border = BorderStroke(0.5.dp, borderCol),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (!isRead) onMarkAsRead(notification.id)
+                            },
+                        elevation = CardDefaults.cardElevation(defaultElevation = if (isRead) 0.dp else 1.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        if (isRead) Color(0xFFF2F2F7) else Color(0xFF007AFF).copy(alpha = 0.1f),
+                                        RoundedCornerShape(12.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.NotificationsNone,
+                                    contentDescription = null,
+                                    tint = if (isRead) Color(0xFF8E8E93) else Color(0xFF007AFF),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = notification.title,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF1C1C1E),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (!isRead) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(Color(0xFF007AFF), CircleShape)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = notification.message,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF3C3C43).copy(alpha = 0.6f),
+                                    lineHeight = 18.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = try {
+                                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+                                        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                        val parsed = sdf.parse(notification.createdAt)
+                                        val fmt = java.text.SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
+                                        fmt.format(parsed ?: notification.createdAt)
+                                    } catch (e: Exception) { notification.createdAt },
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFAEAEB2)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

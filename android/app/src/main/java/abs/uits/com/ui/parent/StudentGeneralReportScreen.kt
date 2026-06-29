@@ -130,18 +130,20 @@ fun StudentGeneralReportScreen(
                             fontWeight = FontWeight.Black,
                             color = Color.Black
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Surface(
-                            color = if (child.status == "ACTIVE") Color(0xFFE8F8EE) else Color(0xFFFFE5E5),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = if (child.status == "ACTIVE") "FAOL O'QUVCHI" else "FAOL EMAS",
-                                color = if (child.status == "ACTIVE") Color(0xFF34C759) else Color(0xFFFF3B30),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
+                        if (child.status == "ACTIVE") {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Surface(
+                                color = Color(0xFFE8F8EE),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "FAOL O'QUVCHI",
+                                    color = Color(0xFF34C759),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
                         }
                         
                         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
@@ -197,51 +199,6 @@ fun StudentGeneralReportScreen(
                 }
             }
 
-            // 3. Attendance Summary Section
-            item {
-                SectionHeaderRow(Icons.Rounded.CalendarMonth, "Oylik Davomat tahlili")
-            }
-            item {
-                val presentDays = attendance.recent_attendance.count { it.status_display == "Kelgan" }
-                val absentDays = attendance.recent_attendance.count { it.status_display == "Kelmagan" }
-                val totalDays = attendance.recent_attendance.size
-                val attendanceRate = if (totalDays > 0) (presentDays * 100 / totalDays) else 100
-
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround
-                        ) {
-                            StatCounter("Darslar", totalDays.toString(), Color(0xFF007AFF))
-                            StatCounter("Kelgan", presentDays.toString(), Color(0xFF34C759))
-                            StatCounter("Kelmagan", absentDays.toString(), Color(0xFFFF3B30))
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Davomat ko'rsatkichi: $attendanceRate%",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { (attendanceRate / 100f).coerceIn(0f, 1f) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(CircleShape),
-                            color = Color(0xFF34C759),
-                            trackColor = Color(0xFFE5E5EA)
-                        )
-                    }
-                }
-            }
 
             // 4. Payments Section
             item {

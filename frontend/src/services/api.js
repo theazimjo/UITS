@@ -109,6 +109,7 @@ export const getPaymentsByStudent = (studentId) => api.get(`/payments/student/${
 export const createPayment = (data) => api.post('/payments', data);
 export const updatePayment = (id, data) => api.patch(`/payments/${id}`, data);
 export const deletePayment = (id) => api.delete(`/payments/${id}`);
+export const getUnpaidStudents = (month) => api.get('/payments/unpaid/status', { params: { month } });
 
 export const getFields = () => api.get('/groups/fields');
 export const createField = (field) => api.post('/groups/fields', field);

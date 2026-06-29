@@ -9,6 +9,7 @@ import { AttendanceRecord } from './entities/attendance-record.entity';
 import { Grade } from './entities/grade.entity';
 import { Exam } from '../staff/entities/exam.entity';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // Optimized agent for high-concurrency parallel requests (31 days)
 const httpsAgent = new https.Agent({
@@ -35,6 +36,7 @@ export class StudentsService {
     @InjectRepository(Exam)
     private readonly examRepo: Repository<Exam>,
     private readonly activityLogService: ActivityLogService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findExams(studentId: number): Promise<Exam[]> {
@@ -189,6 +191,20 @@ export class StudentsService {
           arrivedAt: arrTime,
           leftAt: depTime,
         }, ['externalId', 'date']);
+      }
+
+      // After syncing attendance, notify about today's status if a record exists for today
+      const today = new Date().toISOString().split('T')[0];
+      const todayRecord = filteredRecords.find(rec => rec.date && rec.date.split('T')[0] === today);
+      if (todayRecord && student.id) {
+        const isPresent = todayRecord.status?.toLowerCase() === 'present';
+        const arrTime = todayRecord.arrived_at && todayRecord.arrived_at !== 'None' && todayRecord.arrived_at !== '0'
+          ? ` — Keldi: ${todayRecord.arrived_at}` : '';
+        await this.notificationsService.sendBulk({
+          studentIds: [student.id],
+          title: "Davomat",
+          message: `${student.name}: bugun (${today}) ${isPresent ? 'darsga keldi' : 'darsga kelmadi'}${arrTime}.`
+        }).catch(err => console.error('Failed to send attendance notification:', err));
       }
 
       return {

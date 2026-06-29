@@ -19,8 +19,17 @@ export class NotificationsService {
     private readonly staffRepo: Repository<Staff>,
   ) { }
 
-  async sendBulk(data: { studentIds: number[]; title: string; message: string }, senderId?: number, senderRole?: string) {
-    const { studentIds, title, message } = data;
+  async sendBulk(data: { studentIds: number[]; title: string; message: string; isGeneral?: boolean }, senderId?: number, senderRole?: string) {
+    const { studentIds, title, message, isGeneral = false } = data;
+
+    if (isGeneral) {
+      const generalNotification = this.notificationRepo.create({
+        title,
+        message,
+        isGeneral: true
+      });
+      return [await this.notificationRepo.save(generalNotification)];
+    }
 
     if (senderRole === 'teacher' && senderId) {
       // Validate that all students are in groups taught by this teacher
@@ -45,7 +54,8 @@ export class NotificationsService {
       return this.notificationRepo.create({
         studentId: sid,
         title,
-        message
+        message,
+        isGeneral: false
       });
     });
 
@@ -59,13 +69,16 @@ export class NotificationsService {
       select: ['id']
     });
 
-    if (children.length === 0) return [];
-
     const studentIds = children.map(c => c.id);
 
-    // 2. Fetch notifications for these student IDs
+    // 2. Fetch notifications for these student IDs OR general announcements
     return this.notificationRepo.find({
-      where: { studentId: In(studentIds) },
+      where: children.length > 0 ? [
+        { studentId: In(studentIds) },
+        { isGeneral: true }
+      ] : [
+        { isGeneral: true }
+      ],
       order: { createdAt: 'DESC' }
     });
   }

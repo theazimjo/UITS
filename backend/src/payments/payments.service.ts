@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Payment } from './entities/payment.entity';
 import { Group } from '../groups/entities/group.entity';
 import { GroupPhase } from '../groups/entities/group-phase.entity';
+import { Enrollment } from '../groups/entities/enrollment.entity';
+import { EnrollmentStatus } from '../groups/enums/enrollment-status.enum';
 import { LessThanOrEqual } from 'typeorm';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -17,6 +19,8 @@ export class PaymentsService {
     private groupRepository: Repository<Group>,
     @InjectRepository(GroupPhase)
     private groupPhaseRepository: Repository<GroupPhase>,
+    @InjectRepository(Enrollment)
+    private enrollmentRepository: Repository<Enrollment>,
     private activityLogService: ActivityLogService,
     private notificationsService: NotificationsService,
   ) {}
@@ -73,6 +77,16 @@ export class PaymentsService {
         "O'quvchi to'lovi",
         `Siz o'tadigan${groupName} guruhidagi o'quvchingiz ${p.student?.name || 'Noma\'lum'} ${Number(saved.amount).toLocaleString('uz-UZ')} so'm to'lov qildi.`
       ).catch(err => console.error('Failing to send payment notification:', err));
+    }
+
+    if (p && p.student) {
+      const groupName = p.group ? ` "${p.group.name}"` : '';
+      const formattedAmount = Number(saved.amount).toLocaleString('uz-UZ');
+      await this.notificationsService.sendBulk({
+        studentIds: [p.student.id],
+        title: "To'lov qabul qilindi",
+        message: `O'quvchingiz ${p.student.name}${groupName} guruhi uchun ${formattedAmount} UZS to'lov qildi.`
+      }).catch(err => console.error('Failing to send parent payment notification:', err));
     }
 
     await this.activityLogService.logAction({
@@ -156,5 +170,39 @@ export class PaymentsService {
         description: `O'quvchi to'lovi o'chirildi: ${payment.student?.name || 'Noma\'lum'} - ${payment.amount} so'm`,
       });
     }
+  }
+
+  async findUnpaidStudents(month: string) {
+    // 1. Get all enrollments with ACTIVE status
+    const activeEnrollments = await this.enrollmentRepository.find({
+      where: { status: EnrollmentStatus.ACTIVE },
+      relations: ['student', 'group', 'group.course']
+    });
+
+    // 2. Get all payments for this target month
+    const monthPayments = await this.paymentRepository.find({
+      where: { month },
+      relations: ['student', 'group']
+    });
+
+    // Create a Set of key strings: `studentId_groupId` of paid students
+    const paidKeys = new Set(monthPayments.map(p => `${p.student?.id}_${p.group?.id}`));
+
+    // 3. Filter active enrollments that do not have a corresponding payment
+    const unpaidList = activeEnrollments
+      .filter(e => e.student && e.group && !paidKeys.has(`${e.student.id}_${e.group.id}`))
+      .map(e => ({
+        id: e.student.id,
+        name: e.student.name,
+        externalId: e.student.externalId,
+        parentPhone: e.student.parentPhone,
+        group: {
+          id: e.group.id,
+          name: e.group.name,
+          course: e.group.course ? { name: e.group.course.name } : null
+        }
+      }));
+
+    return unpaidList;
   }
 }
