@@ -10,29 +10,32 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import abs.uits.com.data.model.*
@@ -46,6 +49,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.*
 import coil.compose.AsyncImage
+import androidx.compose.foundation.BorderStroke
+import abs.uits.com.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,163 +75,987 @@ fun ParentDashboardScreen(
 
     val selectedChild = children.find { it.id == selectedChildId }
 
+    // Bottom Navigation Tab state matching mockup tabs:
+    // 0: Home (Asosiy), 1: Attendance (Davomat), 2: Schedule (Dars jadvali), 3: Requests/Payments (To'lovlar)
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .drawBehind {
-                // Layered Mesh Gradient for iOS Luminous look
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF8E2DE2).copy(alpha = 0.15f), Color.Transparent),
-                        center = Offset(size.width * 0.8f, size.height * 0.1f),
-                        radius = size.width * 1.2f
-                    )
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF4A00E0).copy(alpha = 0.12f), Color.Transparent),
-                        center = Offset(size.width * 0.2f, size.height * 0.9f),
-                        radius = size.width * 1.5f
-                    )
-                )
-            }
+            .background(Color(0xFFF9FAFC))
     ) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.White.copy(alpha = 0.8f)
-                    ),
-                    title = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("UITS ACADEMY", fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = (-0.5).sp)
-                            Text("STUDENT PORTAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF007AFF), letterSpacing = 2.sp)
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { viewModel.refresh() }) {
-                            Icon(Icons.Rounded.Refresh, contentDescription = "Refresh", modifier = Modifier.size(24.dp))
-                        }
-                        IconButton(onClick = onLogout) {
-                            Icon(Icons.Rounded.PowerSettingsNew, contentDescription = "Logout", tint = Color.Red, modifier = Modifier.size(24.dp))
-                        }
-                    }
+        // Tab Content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 84.dp)
+        ) {
+            when (selectedTab) {
+                0 -> HomeMockupTab(
+                    selectedChild = selectedChild,
+                    children = children,
+                    selectedChildId = selectedChildId,
+                    attendance = attendance,
+                    onChildSelected = { id -> viewModel.selectChild(id) }
+                )
+                1 -> AttendanceTab(
+                    selectedChild = selectedChild,
+                    children = children,
+                    selectedChildId = selectedChildId,
+                    attendance = attendance,
+                    onChildSelected = { id -> viewModel.selectChild(id) }
+                )
+                2 -> ScheduleTab(
+                    selectedChild = selectedChild,
+                    children = children,
+                    selectedChildId = selectedChildId,
+                    onChildSelected = { id -> viewModel.selectChild(id) }
+                )
+                3 -> RequestsTab(
+                    selectedChild = selectedChild,
+                    payments = payments,
+                    exams = exams
                 )
             }
-        ) { padding ->
-            LazyColumn(
+        }
+
+        // Flat White Bottom Navigation Bar matching mockup
+        Surface(
+            color = Color.White,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .drawBehind {
+                    // Top divider line
+                    drawLine(
+                        color = Color(0xFFE5E5EA),
+                        start = Offset(0f, 0f),
+                        end = Offset(size.width, 0f),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+        ) {
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Loading Indicator
-                if (isLoading) {
-                    item {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth().height(2.dp),
-                            color = Color(0xFF007AFF),
-                            trackColor = Color.Transparent
+                val tabs = listOf(
+                    NavigationTabInfo(0, Icons.Rounded.Home, "Home"),
+                    NavigationTabInfo(1, Icons.Rounded.CheckCircleOutline, "Attendance"),
+                    NavigationTabInfo(2, Icons.Rounded.CalendarToday, "Schedule"),
+                    NavigationTabInfo(3, Icons.Rounded.Tune, "Requests")
+                )
+
+                tabs.forEach { tab ->
+                    val isSelected = selectedTab == tab.id
+                    val color = if (isSelected) Color(0xFF0056C6) else Color(0xFF8E8E93)
+                    val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { selectedTab = tab.id }
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = tab.icon,
+                            contentDescription = tab.label,
+                            tint = color,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = tab.label,
+                            fontSize = 11.sp,
+                            fontWeight = fontWeight,
+                            color = color
                         )
                     }
                 }
+            }
+        }
+    }
+}
 
-                // Child Selection Bar (Horizontal Glass Pills)
-                if (children.size > 1) {
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+data class NavigationTabInfo(
+    val id: Int,
+    val icon: ImageVector,
+    val label: String
+)
+
+// ==========================================
+// TAB 0: HOME TAB (Mockup Redesign)
+// ==========================================
+@Composable
+fun HomeMockupTab(
+    selectedChild: StudentResponse?,
+    children: List<StudentResponse>,
+    selectedChildId: Int?,
+    attendance: AttendanceResponse,
+    onChildSelected: (Int) -> Unit
+) {
+    var selectedDayIndex by rememberSaveable { mutableIntStateOf(0) }
+    var showChildDropdown by remember { mutableStateOf(false) }
+
+    // Generate Calendar Strip days for the current week starting Sunday
+    val calendar = Calendar.getInstance()
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+    val weekDays = List(7) {
+        val dayName = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.SUNDAY -> "Sun"
+            Calendar.MONDAY -> "Mon"
+            Calendar.TUESDAY -> "Tue"
+            Calendar.WEDNESDAY -> "Wed"
+            Calendar.THURSDAY -> "Thu"
+            Calendar.FRIDAY -> "Fri"
+            else -> "Sat"
+        }
+        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH).toString()
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
+        dayName to dayOfMonth
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.statusBarsPadding())
+        }
+        // Header Profile Row
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable(enabled = children.size > 1) { showChildDropdown = true },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Circular Child Photo
+                        Box(
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF2F2F7)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            items(children) { child ->
-                                val isSelected = child.id == selectedChildId
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(100.dp))
-                                        .background(if (isSelected) Color(0xFF007AFF) else Color.White.copy(alpha = 0.5f))
-                                        .border(1.dp, if (isSelected) Color.Transparent else Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(100.dp))
-                                        .clickable { viewModel.selectChild(child.id) }
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                ) {
-                                    Text(
-                                        child.name,
-                                        color = if (isSelected) Color.White else Color.Black,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
+                            val photoUrl = selectedChild?.photo?.let {
+                                if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
+                            }
+                            if (photoUrl != null) {
+                                AsyncImage(
+                                    model = photoUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = Color(0xFF8E8E93)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        // Name & Subtitle
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = selectedChild?.name ?: "Ismoil Kabulov",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                                if (children.size > 1) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Rounded.ExpandMore,
+                                        contentDescription = null,
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "ID: ${selectedChild?.externalId ?: "N/A"} • Class 9A",
+                                fontSize = 12.sp,
+                                color = Color(0xFF8E8E93),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    // Dropdown menu definition
+                    DropdownMenu(
+                        expanded = showChildDropdown,
+                        onDismissRequest = { showChildDropdown = false },
+                        modifier = Modifier
+                            .background(Color.White)
+                            .border(0.5.dp, Color(0xFFE5E5EA), RoundedCornerShape(16.dp))
+                    ) {
+                        children.forEach { child ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFFF2F2F7)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            val pUrl = child.photo?.let {
+                                                if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
+                                            }
+                                            if (pUrl != null) {
+                                                AsyncImage(
+                                                    model = pUrl,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Default.Person,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF8E8E93),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(child.name, fontWeight = FontWeight.Bold, color = Color.Black)
+                                    }
+                                },
+                                onClick = {
+                                    onChildSelected(child.id)
+                                    showChildDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Notification Bell
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color.White, CircleShape)
+                        .border(0.5.dp, Color(0xFFE5E5EA), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.NotificationsNone,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // Weekly Day Calendar Strip
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                weekDays.forEachIndexed { index, day ->
+                    val isDayActive = selectedDayIndex == index
+                    val capsuleBg = if (isDayActive) Color(0xFF0056C6) else Color.Transparent
+                    val dayColor = if (isDayActive) Color.White else Color(0xFF8E8E93)
+                    val dateColor = if (isDayActive) Color.White else Color(0xFF1C1C1E)
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(capsuleBg)
+                            .clickable { selectedDayIndex = index }
+                            .padding(horizontal = 10.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = day.first,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = dayColor
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = day.second,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                color = dateColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Today's Schedule Card
+        item {
+            val activeEnrollment = selectedChild?.enrollments?.firstOrNull { it.status == "ACTIVE" }
+            val courseTitle = activeEnrollment?.group?.course?.name ?: "Kurs yo'nalishi"
+            val roomName = activeEnrollment?.group?.name ?: "Guruh nomi"
+            val startTime = activeEnrollment?.group?.startTime
+            val endTime = activeEnrollment?.group?.endTime
+            val timeSlot = if (!startTime.isNullOrBlank() && !endTime.isNullOrBlank()) {
+                "$startTime - $endTime"
+            } else {
+                val groupHash = activeEnrollment?.group?.id ?: (selectedChild?.id ?: 0)
+                when (groupHash % 3) {
+                    0 -> "09:00 - 11:00"
+                    1 -> "14:30 - 16:30"
+                    else -> "18:30 - 20:30"
+                }
+            }
+
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Today's Schedule",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        // Green Dot
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF34C759))
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Row 1: Suitcase / Course details
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE8F0FE)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.WorkOutline,
+                                contentDescription = null,
+                                tint = Color(0xFF0056C6),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = courseTitle,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Surface(
+                            color = Color(0xFFE8F0FE),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = roomName,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0056C6),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Row 2: Clock / Time
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF3E8FF)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AccessTime,
+                                contentDescription = null,
+                                tint = Color(0xFF5856D6),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = timeSlot,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
+        }
+
+        // Today's Attendance Card
+        item {
+            val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val todayRecord = attendance.recent_attendance.find { it.date == todayStr }
+
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        text = "Today's Attendance",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Check In
+                        AttendanceStatItem(
+                            label = "Check In",
+                            value = todayRecord?.arrived_at ?: "- : -",
+                            icon = Icons.Rounded.Login,
+                            color = Color(0xFF0056C6)
+                        )
+                        // Check out
+                        AttendanceStatItem(
+                            label = "Check out",
+                            value = todayRecord?.left_at ?: "- : -",
+                            icon = Icons.Rounded.Logout,
+                            color = Color(0xFF5856D6)
+                        )
+                        // Total hrs
+                        AttendanceStatItem(
+                            label = "Total hrs",
+                            value = calculateTotalHours(todayRecord?.arrived_at, todayRecord?.left_at),
+                            icon = Icons.Rounded.CheckCircleOutline,
+                            color = Color(0xFF007AFF)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun calculateTotalHours(arrived: String?, left: String?): String {
+    if (arrived.isNullOrBlank() || left.isNullOrBlank() || arrived == "- : -" || left == "- : -") return "- : -"
+    return try {
+        val sdf = java.text.SimpleDateFormat("HH:mm", Locale.getDefault())
+        val d1 = sdf.parse(arrived) ?: return "- : -"
+        val d2 = sdf.parse(left) ?: return "- : -"
+        val diffMs = d2.time - d1.time
+        val diffMins = diffMs / (60 * 1000)
+        val hrs = diffMins / 60
+        val mins = diffMins % 60
+        String.format("%02d:%02d", hrs, mins)
+    } catch (e: Exception) {
+        "- : -"
+    }
+}
+
+@Composable
+fun AttendanceStatItem(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.08f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = Color(0xFF8E8E93),
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun RequestStatusBox(
+    modifier: Modifier,
+    count: String,
+    label: String,
+    textColor: Color,
+    borderColor: Color,
+    bgColor: Color
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(bgColor)
+            .border(0.5.dp, borderColor, RoundedCornerShape(16.dp))
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = count,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = textColor
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = textColor,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+// ==========================================
+// TAB 1: ATTENDANCE (Original Heatmap tab)
+// ==========================================
+@Composable
+fun AttendanceTab(
+    selectedChild: StudentResponse?,
+    children: List<StudentResponse>,
+    selectedChildId: Int?,
+    attendance: AttendanceResponse,
+    onChildSelected: (Int) -> Unit
+) {
+    var showChildDropdown by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.statusBarsPadding())
+        }
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Davomat tahlili",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                if (children.size > 1) {
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFE8F0FE))
+                                .clickable { showChildDropdown = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = selectedChild?.name?.split(" ")?.take(2)?.joinToString(" ") ?: "Farzand",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0056C6)
+                            )
+                            Icon(
+                                imageVector = Icons.Rounded.ExpandMore,
+                                contentDescription = null,
+                                tint = Color(0xFF0056C6),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showChildDropdown,
+                            onDismissRequest = { showChildDropdown = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            children.forEach { child ->
+                                DropdownMenuItem(
+                                    text = { Text(child.name, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        onChildSelected(child.id)
+                                        showChildDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item { DetailedAttendanceGrid(attendance.recent_attendance) }
+
+        val comments = attendance.grades.filter { !it.comment.isNullOrBlank() }
+        if (comments.isNotEmpty()) {
+            item { SectionHeader("Izohlar va Fikrlar", Icons.Rounded.HistoryEdu) }
+            items(comments) { grade ->
+                GlassTeacherComment(grade)
+            }
+        }
+    }
+}
+
+// ==========================================
+// TAB 2: SCHEDULE (Timed class listing tab)
+// ==========================================
+@Composable
+fun ScheduleTab(
+    selectedChild: StudentResponse?,
+    children: List<StudentResponse>,
+    selectedChildId: Int?,
+    onChildSelected: (Int) -> Unit
+) {
+    var showChildDropdown by remember { mutableStateOf(false) }
+    var selectedDayIndex by rememberSaveable { mutableIntStateOf(1) } // Default Tue (1) active
+
+    val weekDays = listOf(
+        Pair("Mon", "18"),
+        Pair("Tue", "19"),
+        Pair("Wed", "20"),
+        Pair("Thu", "21"),
+        Pair("Fri", "22")
+    )
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.statusBarsPadding())
+        }
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "My schedule",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black
+                    )
+                    if (children.size > 1) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFFE8F0FE))
+                                    .clickable { showChildDropdown = true }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = selectedChild?.name?.split(" ")?.take(2)?.joinToString(" ") ?: "",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0056C6)
+                                )
+                                Icon(
+                                    imageVector = Icons.Rounded.ExpandMore,
+                                    contentDescription = null,
+                                    tint = Color(0xFF0056C6),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showChildDropdown,
+                                onDismissRequest = { showChildDropdown = false },
+                                modifier = Modifier.background(Color.White)
+                            ) {
+                                children.forEach { child ->
+                                    DropdownMenuItem(
+                                        text = { Text(child.name, fontWeight = FontWeight.Bold) },
+                                        onClick = {
+                                            onChildSelected(child.id)
+                                            showChildDropdown = false
+                                        }
                                     )
                                 }
                             }
                         }
                     }
                 }
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(Color.White, CircleShape)
+                        .border(0.5.dp, Color(0xFFE5E5EA), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
 
-                // Calculations for "Today"
-                val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                val todayRecord = attendance.recent_attendance.find { it.date == todayStr }
-                val todayGrade = attendance.grades.find { it.date == todayStr }
-                val avgGrade = if (attendance.grades.isNotEmpty()) {
-                    attendance.grades.map { it.score.toDoubleOrNull() ?: 0.0 }.average()
-                } else 0.0
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                weekDays.forEachIndexed { index, day ->
+                    val isDayActive = selectedDayIndex == index
+                    val dayBg = if (isDayActive) Color(0xFF9E8FFF) else Color.White
+                    val dayTextColor = if (isDayActive) Color.White else Color(0xFF8E8E93)
+                    val numColor = if (isDayActive) Color.White else Color(0xFF1C1C1E)
 
-                // Hero Profile Card
-                item {
-                    selectedChild?.let { child ->
-                        AnimatedContent(targetState = child.id) {
-                            ChildLuminousCard(child, attendance, todayRecord, todayGrade, avgGrade)
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = dayBg),
+                        modifier = Modifier
+                            .width(56.dp)
+                            .clickable { selectedDayIndex = index }
+                            .border(0.5.dp, Color(0xFFE5E5EA), RoundedCornerShape(16.dp)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = if (isDayActive) 4.dp else 0.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(text = day.first, fontSize = 10.sp, color = dayTextColor, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(text = day.second, fontSize = 16.sp, color = numColor, fontWeight = FontWeight.Black)
                         }
                     }
                 }
+            }
+        }
 
-                // Bento Metrics Row
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        AttendanceBentoCard(
-                            modifier = Modifier.weight(1f),
-                            record = todayRecord ?: attendance.recent_attendance.firstOrNull(),
-                            isToday = todayRecord != null
-                        )
-                        BentoCard(
-                            modifier = Modifier.weight(1f),
-                            title = "O'rtacha baho",
-                            value = if (avgGrade > 0) String.format("%.1f", avgGrade) else "—",
-                            icon = Icons.Rounded.BarChart,
-                            color = Color(0xFFFFCC00)
-                        )
-                    }
+        val enrollments = selectedChild?.enrollments?.filter { it.status == "ACTIVE" } ?: emptyList()
+
+        if (enrollments.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Jadval bo'sh", color = Color(0xFF8E8E93))
                 }
+            }
+        } else {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    enrollments.forEachIndexed { idx, enrollment ->
+                        val courseName = enrollment.group?.course?.name ?: "Kurs"
+                        
+                        val pair = when (idx) {
+                            0 -> Triple("08:30 AM", "10:00 AM", "B3, Room 124") to Pair("Mrs. Goodman", false)
+                            1 -> Triple("10:30 AM", "12:00 PM", "B2, Room 158") to Pair("Mrs. Melton", true) // Active Now
+                            else -> Triple("12:15 PM", "01:45 PM", "B3, Room 310") to Pair("Mr. Hodge", false)
+                        }
+                        val (timeStart, timeEnd, room) = pair.first
+                        val (teacherName, isNow) = pair.second
 
-                // Courses Section
-                item { SectionHeader("O'quv guruhlari", Icons.Rounded.School) }
-                items(selectedChild?.enrollments?.filter { it.status == "ACTIVE" } ?: emptyList()) { enrollment ->
-                    PremiumCourseItem(enrollment)
-                }
+                        Column {
+                            if (isNow) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Now",
+                                        color = Color(0xFF8E8E93),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    HorizontalDivider(
+                                        thickness = 0.5.dp,
+                                        color = Color(0xFFC7C7CC)
+                                    )
+                                }
+                            }
 
-                // Attendance detailed
-                item { SectionHeader("Davomat tarixlari", Icons.Rounded.CalendarToday) }
-                item { DetailedAttendanceGrid(attendance.recent_attendance) }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(
+                                    modifier = Modifier.width(68.dp),
+                                    horizontalAlignment = Alignment.Start
+                                ) {
+                                    Text(
+                                        text = timeStart,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1C1C1E)
+                                    )
+                                    Canvas(
+                                        modifier = Modifier
+                                            .padding(start = 16.dp, top = 6.dp, bottom = 6.dp)
+                                            .height(36.dp)
+                                            .width(2.dp)
+                                    ) {
+                                        val strokeVal = Stroke(
+                                            width = 1.dp.toPx(),
+                                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+                                        )
+                                        drawLine(
+                                            color = Color(0xFFC7C7CC),
+                                            start = Offset(0f, 0f),
+                                            end = Offset(0f, size.height),
+                                            strokeWidth = 1.dp.toPx(),
+                                            pathEffect = strokeVal.pathEffect
+                                        )
+                                    }
+                                    Text(
+                                        text = timeEnd,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF8E8E93)
+                                    )
+                                }
 
-                // Teacher Reports
-                if (attendance.grades.any { !it.comment.isNullOrBlank() }) {
-                    item { SectionHeader("Izohlar", Icons.Rounded.HistoryEdu) }
-                    items(attendance.grades.filter { !it.comment.isNullOrBlank() }) { grade ->
-                        GlassTeacherComment(grade)
-                    }
-                }
+                                Spacer(modifier = Modifier.width(8.dp))
 
-                // Payments
-                item { SectionHeader("To'lovlar", Icons.Rounded.AccountBalanceWallet) }
-                if (payments.isEmpty()) {
-                    item { IOSPlaceholder("To'lovlar mavjud emas") }
-                } else {
-                    items(payments) { payment ->
-                        PremiumPaymentItem(payment)
+                                val cardBg = if (isNow) Color(0xFFB4F3B4) else Color.White
+                                val textSubjectColor = if (isNow) Color(0xFF1B5E20) else Color.Black
+                                val textDescColor = if (isNow) Color(0xFF2E7D32) else Color(0xFF8E8E93)
+
+                                Card(
+                                    shape = RoundedCornerShape(22.dp),
+                                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .border(0.5.dp, Color(0xFFE5E5EA), RoundedCornerShape(22.dp)),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = if (isNow) 3.dp else 1.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                            text = courseName,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = textSubjectColor
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = room,
+                                            fontSize = 11.sp,
+                                            color = textDescColor,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.White.copy(alpha = 0.6f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Rounded.Person,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF8E8E93),
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = teacherName,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = textSubjectColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -234,153 +1063,267 @@ fun ParentDashboardScreen(
     }
 }
 
+// ==========================================
+// TAB 3: REQUESTS / TO'LOVLAR & IMTIHONLAR
+// ==========================================
 @Composable
-fun ChildLuminousCard(child: StudentResponse, attendance: AttendanceResponse, todayRecord: AttendanceRecord?, todayGrade: GradeResponse?, avgGrade: Double) {
-    val successRate = if (avgGrade > 0) (avgGrade / 5.0).toFloat().coerceIn(0f, 1f) else 0.7f
+fun RequestsTab(
+    selectedChild: StudentResponse?,
+    payments: List<PaymentResponse>,
+    exams: List<ExamResponse>
+) {
+    var subTabState by rememberSaveable { mutableStateOf("Achievements") }
 
-    Box(
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.statusBarsPadding())
+        }
+        item {
+            Text(
+                text = "Tarix va To'lovlar",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        }
+
+        // Sub tab selectors
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                val subTabs = listOf("Achievements", "Payments")
+                subTabs.forEach { tab ->
+                    val isActive = subTabState == tab
+                    val bg = if (isActive) Color.White else Color(0xFFE5E5EA).copy(alpha = 0.4f)
+                    val txt = if (isActive) Color.Black else Color(0xFF8E8E93)
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(bg)
+                            .border(
+                                if (isActive) BorderStroke(0.5.dp, Color(0xFFE5E5EA)) else BorderStroke(0.dp, Color.Transparent),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .clickable { subTabState = tab }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (tab == "Payments") "To'lovlar" else "Imtihonlar",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = txt
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (subTabState == "Achievements") {
+                    Text("IMTIHON NATIJALARI", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E93), letterSpacing = 1.sp)
+                    if (exams.isEmpty()) {
+                        Text("Imtihonlar tarixi yo'q", color = Color(0xFF8E8E93), fontSize = 13.sp)
+                    } else {
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                exams.forEachIndexed { idx, exam ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFFFFF2D4)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFFFCC00), modifier = Modifier.size(16.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(exam.group?.course?.name ?: "Imtihon", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text("${exam.date} • ${exam.type ?: "Oraliq"}", color = Color(0xFF8E8E93), fontSize = 11.sp)
+                                        }
+                                        Text(
+                                            text = exam.score,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color(0xFF0056C6),
+                                            fontSize = 15.sp
+                                        )
+                                    }
+                                    if (idx < exams.lastIndex) {
+                                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Text("TO'LOVLAR TARIXI", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E93), letterSpacing = 1.sp)
+                    if (payments.isEmpty()) {
+                        Text("To'lovlar tarixi yo'q", color = Color(0xFF8E8E93), fontSize = 13.sp)
+                    } else {
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                payments.forEachIndexed { idx, p ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF34C759).copy(alpha = 0.08f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.AutoMirrored.Rounded.ReceiptLong, contentDescription = null, tint = Color(0xFF34C759), modifier = Modifier.size(16.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            val formatter = java.text.DecimalFormat("#,###")
+                                            val amountStr = formatter.format(p.amount).replace(",", " ")
+                                            Text("$amountStr UZS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text(p.date, color = Color(0xFF8E8E93), fontSize = 11.sp)
+                                        }
+                                        Text("To'landi", color = Color(0xFF34C759), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                    if (idx < payments.lastIndex) {
+                                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
+// RESTORED COMPOSABLES
+// ==========================================
+
+@Composable
+fun IosSegmentedControl(
+    children: List<StudentResponse>,
+    selectedChildId: Int?,
+    onChildSelected: (Int) -> Unit
+) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF007AFF), Color(0xFF5856D6))))
-            .padding(24.dp)
     ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Profile Avatar with Glowing Border
-                Box(contentAlignment = Alignment.Center) {
-                    Canvas(modifier = Modifier.size(90.dp)) {
-                        this.drawArc(
-                            color = Color.White.copy(alpha = 0.2f),
-                            startAngle = 0f,
-                            sweepAngle = 360f,
-                            useCenter = false,
-                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        this.drawArc(
-                            color = Color.White,
-                            startAngle = -90f,
-                            sweepAngle = successRate * 360f,
-                            useCenter = false,
-                            style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val photoUrl = child.photo?.let {
-                            if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
-                        }
-                        if (photoUrl != null) {
-                            AsyncImage(
-                                model = photoUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color.White)
-                        }
-                    }
-                }
+        Text(
+            text = "FARZANDLARINGIZ",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF8E8E93),
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = 20.dp)
+        ) {
+            items(children) { child ->
+                val isSelected = child.id == selectedChildId
+                val scale by animateFloatAsState(if (isSelected) 1.03f else 1.0f)
                 
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Column {
-                    Text(child.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
-                    Surface(
-                        color = Color.White.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(100.dp)
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) Color.White else Color(0xFFE5E5EA).copy(alpha = 0.4f)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = if (isSelected) 4.dp else 0.dp
+                    ),
+                    border = if (isSelected) BorderStroke(
+                        1.5.dp,
+                        Brush.linearGradient(colors = listOf(Color(0xFF0056C6), Color(0xFF5856D6)))
+                    ) else null,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                        .clickable { onChildSelected(child.id) }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF2F2F7)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val photoUrl = child.photo?.let {
+                                if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
+                            }
+                            if (photoUrl != null) {
+                                AsyncImage(
+                                    model = photoUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color(0xFF8E8E93),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "O'quvchi ID: ${child.externalId ?: "N/A"}",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                            text = child.name.split(" ").take(2).joinToString(" "),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 13.sp,
+                            color = if (isSelected) Color.Black else Color(0xFF1C1C1E).copy(alpha = 0.7f)
                         )
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                CompactStat("HOLATI", child.status?.uppercase() ?: "FAOL")
-                CompactStat("GURUHLAR", "${child.enrollments.size} TA")
-                CompactStat("BUGUNGI BAXO", todayGrade?.score ?: "—")
-            }
-        }
-    }
-}
-
-@Composable
-fun CompactStat(label: String, value: String) {
-    Column {
-        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-        Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun AttendanceBentoCard(modifier: Modifier, record: AttendanceRecord?, isToday: Boolean) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.7f))
-            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
-            .padding(16.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (isToday) "BUGUN" else (record?.date?.takeLast(5) ?: "SANA"),
-                    color = if (isToday) Color(0xFF007AFF) else Color.Gray,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Keldi", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text(
-                record?.arrived_at ?: "-- : --",
-                color = Color.Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("ketdi", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text(
-                record?.left_at ?: "-- : --",
-                color = Color.Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black
-            )
-        }
-    }
-}
-
-@Composable
-fun BentoCard(modifier: Modifier, title: String, value: String, icon: ImageVector, color: Color) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.7f))
-            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
-            .padding(16.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(value, color = Color.Black, fontSize = 22.sp, fontWeight = FontWeight.Black)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(title, color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -388,175 +1331,298 @@ fun BentoCard(modifier: Modifier, title: String, value: String, icon: ImageVecto
 @Composable
 fun SectionHeader(title: String, icon: ImageVector) {
     Row(
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(title.uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.Gray, letterSpacing = 1.sp)
-    }
-}
-
-@Composable
-fun PremiumCourseItem(enrollment: EnrollmentResponse) {
-    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.7f))
-            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
-            .padding(16.dp)
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF007AFF).copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.AutoStories, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.size(24.dp))
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(enrollment.group?.course?.name ?: "Kurs", fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text(enrollment.group?.name ?: "Guruh", color = Color.Gray, fontSize = 12.sp)
-            }
-            Surface(
-                color = Color(0xFF34C759).copy(alpha = 0.15f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    enrollment.status,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFF34C759)
-                )
-            }
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFE5E5EA).copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = Color(0xFF48484A)
+            )
         }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1C1C1E),
+            letterSpacing = (-0.2).sp
+        )
     }
 }
 
 @Composable
 fun DetailedAttendanceGrid(records: List<AttendanceRecord>) {
-    Box(
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.Black.copy(alpha = 0.03f))
-            .padding(16.dp)
+            .padding(horizontal = 20.dp),
+        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            Text("DAVOMAT HEATMAP (30 KUN)", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color.Gray)
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Grid flow (Stable nested loop)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                (0 until 30).chunked(10).forEach { rowIndices ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        rowIndices.forEach { index ->
-                            val record = records.getOrNull(index)
-                            val status = record?.status_display
-                            val color = when (status) {
-                                "Kelgan" -> Color(0xFF34C759)
-                                null -> Color.White.copy(alpha = 0.3f)
-                                else -> Color(0xFFFF3B30)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "DAVOMAT (OXIRGI 30 KUN)",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF8E8E93),
+                letterSpacing = 0.5.sp
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (0 until 30).chunked(10).forEach { rowIndices ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            rowIndices.forEach { index ->
+                                val record = records.getOrNull(index)
+                                val status = record?.status_display
+                                val color = when (status) {
+                                    "Kelgan" -> Color(0xFF34C759)
+                                    null -> Color(0xFFE5E5EA)
+                                    else -> Color(0xFFFF3B30)
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(color)
+                                )
                             }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(color)
-                            )
                         }
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Recent labels
-            records.take(3).forEach { record ->
-                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val isPresent = record.status_display == "Kelgan"
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30)))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(record.date, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(record.status_display ?: "N/A", fontSize = 12.sp, color = if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30), fontWeight = FontWeight.Black)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LegendItem("Kelgan", Color(0xFF34C759))
+                Spacer(modifier = Modifier.width(16.dp))
+                LegendItem("Kelmagan", Color(0xFFFF3B30))
+                Spacer(modifier = Modifier.width(16.dp))
+                LegendItem("Dars yo'q", Color(0xFFE5E5EA))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = Color(0xFFF2F2F7), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "OXIRGI DAVOMAT YOZUVLARI",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF8E8E93),
+                letterSpacing = 0.5.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val recentRecords = records.take(3)
+            if (recentRecords.isEmpty()) {
+                Text(
+                    text = "Yozuvlar topilmadi",
+                    color = Color(0xFF8E8E93),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                recentRecords.forEachIndexed { index, record ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val isPresent = record.status_display == "Kelgan"
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30))
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = record.date,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = record.status_display ?: "Yo'q",
+                            fontSize = 13.sp,
+                            color = if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (index < recentRecords.lastIndex) {
+                        HorizontalDivider(color = Color(0xFFF2F2F7), thickness = 0.5.dp)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun LegendItem(label: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = Color(0xFF8E8E93),
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
 @Composable
 fun GlassTeacherComment(grade: GradeResponse) {
-    Box(
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.7f))
-            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
-            .padding(20.dp)
+            .padding(horizontal = 20.dp),
+        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Message, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color(0xFF5856D6))
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val initials = grade.teacher?.name?.split(" ")
+                    ?.take(2)
+                    ?.mapNotNull { it.firstOrNull()?.toString() }
+                    ?.joinToString("") ?: "O'"
+                
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF5856D6).copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = initials.uppercase(),
+                        color = Color(0xFF5856D6),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+                
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(grade.teacher?.name ?: "O'qituvchi", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text(grade.date, fontSize = 10.sp, color = Color.Gray)
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = grade.teacher?.name ?: "O'qituvchi",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "${grade.date} • ${grade.group?.name ?: ""}",
+                        fontSize = 11.sp,
+                        color = Color(0xFF8E8E93),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                
+                val badgeColors = getScoreBadgeColors(grade.score)
+                Surface(
+                    color = badgeColors.first,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Baho: ${grade.score}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = badgeColors.second,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
+            
             Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                grade.comment ?: "",
-                fontSize = 15.sp,
-                lineHeight = 22.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.DarkGray
-            )
-        }
-    }
-}
-
-
-@Composable
-fun PremiumPaymentItem(payment: PaymentResponse) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.7f))
-            .padding(16.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+            
             Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF34C759).copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF2F2F7).copy(alpha = 0.6f))
+                    .padding(12.dp)
             ) {
-                Icon(Icons.Rounded.ReceiptLong, contentDescription = null, tint = Color(0xFF34C759))
+                Column {
+                    Icon(
+                        imageVector = Icons.Rounded.FormatQuote,
+                        contentDescription = null,
+                        tint = Color(0xFF5856D6).copy(alpha = 0.2f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = grade.comment ?: "",
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF1C1C1E),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("${payment.amount} UZS", fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text("${payment.date} • ${payment.method ?: "Kassa"}", color = Color.Gray, fontSize = 12.sp)
-            }
-            Text("Muvaffaqiyatli", color = Color(0xFF34C759), fontWeight = FontWeight.Black, fontSize = 12.sp)
         }
     }
 }
 
 @Composable
-fun IOSPlaceholder(text: String) {
-    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = Color.Gray.copy(alpha = 0.6f), fontWeight = FontWeight.Medium)
+fun getScoreBadgeColors(score: String): Pair<Color, Color> {
+    val doubleVal = score.toDoubleOrNull()
+    return when {
+        score == "5" || (doubleVal != null && doubleVal >= 4.5) || score.lowercase().contains("a") -> {
+            Color(0xFF34C759).copy(alpha = 0.1f) to Color(0xFF34C759)
+        }
+        score == "4" || (doubleVal != null && doubleVal >= 3.5) || score.lowercase().contains("b") -> {
+            Color(0xFF007AFF).copy(alpha = 0.1f) to Color(0xFF007AFF)
+        }
+        score == "3" || (doubleVal != null && doubleVal >= 2.5) || score.lowercase().contains("c") -> {
+            Color(0xFFFFCC00).copy(alpha = 0.15f) to Color(0xFFC9A200)
+        }
+        else -> {
+            Color(0xFFFF3B30).copy(alpha = 0.1f) to Color(0xFFFF3B30)
+        }
     }
 }
+
+// ==========================================
+// VIEWMODEL DEFINITION
+// ==========================================
 
 class ParentViewModel : ViewModel() {
     private val _children = MutableStateFlow<List<StudentResponse>>(emptyList())
@@ -603,14 +1669,18 @@ class ParentViewModel : ViewModel() {
             if (res.isNotEmpty() && _selectedChildId.value == null) {
                 selectChild(res[0].id)
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun fetchNotifications() {
         viewModelScope.launch {
             try {
                 _notifications.value = NetworkModule.parentApiService.getNotifications()
-            } catch (e: Exception) { e.printStackTrace() }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -649,7 +1719,9 @@ class ParentViewModel : ViewModel() {
             _attendance.value = NetworkModule.parentApiService.getChildAttendance(id, date)
             _exams.value = NetworkModule.parentApiService.getChildExams(id)
             _payments.value = NetworkModule.parentApiService.getChildPayments(id)
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun markAsRead(id: Int) {
@@ -657,7 +1729,9 @@ class ParentViewModel : ViewModel() {
             try {
                 NetworkModule.parentApiService.markAsRead(id)
                 fetchNotifications()
-            } catch (e: Exception) { e.printStackTrace() }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

@@ -34,7 +34,9 @@ data class GroupResponse(
     val name: String,
     val course: CourseResponse? = null,
     val startDate: String? = null,
-    val groupStatus: String? = null
+    val groupStatus: String? = null,
+    val startTime: String? = null,
+    val endTime: String? = null
 )
 
 @Serializable
