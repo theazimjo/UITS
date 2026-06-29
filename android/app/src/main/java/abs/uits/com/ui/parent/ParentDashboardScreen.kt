@@ -96,6 +96,8 @@ fun ParentDashboardScreen(
                     children = children,
                     selectedChildId = selectedChildId,
                     attendance = attendance,
+                    payments = payments,
+                    exams = exams,
                     onChildSelected = { id -> viewModel.selectChild(id) }
                 )
                 1 -> AttendanceTab(
@@ -105,16 +107,13 @@ fun ParentDashboardScreen(
                     attendance = attendance,
                     onChildSelected = { id -> viewModel.selectChild(id) }
                 )
-                2 -> ScheduleTab(
-                    selectedChild = selectedChild,
-                    children = children,
-                    selectedChildId = selectedChildId,
-                    onChildSelected = { id -> viewModel.selectChild(id) }
+                2 -> NewsTab(
+                    notifications = notifications,
+                    onMarkAsRead = { id -> viewModel.markAsRead(id) }
                 )
-                3 -> RequestsTab(
+                3 -> ProfileTab(
                     selectedChild = selectedChild,
-                    payments = payments,
-                    exams = exams
+                    onLogout = onLogout
                 )
             }
         }
@@ -146,8 +145,8 @@ fun ParentDashboardScreen(
                 val tabs = listOf(
                     NavigationTabInfo(0, Icons.Rounded.Home, "Home"),
                     NavigationTabInfo(1, Icons.Rounded.CheckCircleOutline, "Attendance"),
-                    NavigationTabInfo(2, Icons.Rounded.CalendarToday, "Schedule"),
-                    NavigationTabInfo(3, Icons.Rounded.Tune, "Requests")
+                    NavigationTabInfo(2, Icons.Rounded.Newspaper, "News"),
+                    NavigationTabInfo(3, Icons.Rounded.Person, "Profile")
                 )
 
                 tabs.forEach { tab ->
@@ -197,6 +196,8 @@ fun HomeMockupTab(
     children: List<StudentResponse>,
     selectedChildId: Int?,
     attendance: AttendanceResponse,
+    payments: List<PaymentResponse>,
+    exams: List<ExamResponse>,
     onChildSelected: (Int) -> Unit
 ) {
     var selectedDayIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -583,6 +584,187 @@ fun HomeMockupTab(
                 }
             }
         }
+
+        // Payments History Section inside Home Tab
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
+                        contentDescription = null,
+                        tint = Color(0xFF34C759),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "To'lovlar Tarixi",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+
+                if (payments.isEmpty()) {
+                    Text(
+                        text = "To'lovlar tarixi yo'q",
+                        color = Color(0xFF8E8E93),
+                        fontSize = 13.sp
+                    )
+                } else {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            payments.forEachIndexed { idx, p ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF34C759).copy(alpha = 0.08f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
+                                            contentDescription = null,
+                                            tint = Color(0xFF34C759),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        val formatter = java.text.DecimalFormat("#,###")
+                                        val amountStr = formatter.format(p.amount).replace(",", " ")
+                                        Text("$amountStr UZS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text(p.date, color = Color(0xFF8E8E93), fontSize = 11.sp)
+                                    }
+                                    Text("To'landi", color = Color(0xFF34C759), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                                if (idx < payments.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        color = Color(0xFFE5E5EA),
+                                        thickness = 0.5.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Exams Section inside Home Tab
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFCC00),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Imtihon Natijalari",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+
+                if (exams.isEmpty()) {
+                    Text(
+                        text = "Imtihonlar tarixi yo'q",
+                        color = Color(0xFF8E8E93),
+                        fontSize = 13.sp
+                    )
+                } else {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            exams.forEachIndexed { idx, exam ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFFFF2D4)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Star,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFFCC00),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = exam.group?.course?.name ?: "Imtihon",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+                                        Text(
+                                            text = "${exam.date} • ${exam.type ?: "Oraliq"}",
+                                            color = Color(0xFF8E8E93),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    Text(
+                                        text = exam.score,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color(0xFF0056C6),
+                                        fontSize = 15.sp
+                                    )
+                                }
+                                if (idx < exams.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        color = Color(0xFFE5E5EA),
+                                        thickness = 0.5.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -756,7 +938,7 @@ fun AttendanceTab(
             }
         }
 
-        item { DetailedAttendanceGrid(attendance.recent_attendance) }
+        item { InteractiveAttendanceCalendar(attendance.recent_attendance) }
 
         val comments = attendance.grades.filter { !it.comment.isNullOrBlank() }
         if (comments.isNotEmpty()) {
@@ -1064,27 +1246,24 @@ fun ScheduleTab(
 }
 
 // ==========================================
-// TAB 3: REQUESTS / TO'LOVLAR & IMTIHONLAR
+// TAB 2 (NEW): NEWS / ANNOUNCEMENTS TAB
 // ==========================================
 @Composable
-fun RequestsTab(
-    selectedChild: StudentResponse?,
-    payments: List<PaymentResponse>,
-    exams: List<ExamResponse>
+fun NewsTab(
+    notifications: List<NotificationResponse>,
+    onMarkAsRead: (Int) -> Unit
 ) {
-    var subTabState by rememberSaveable { mutableStateOf("Achievements") }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
             Spacer(modifier = Modifier.statusBarsPadding())
         }
         item {
             Text(
-                text = "Tarix va To'lovlar",
+                text = "Yangiliklar va E'lonlar",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black,
@@ -1092,141 +1271,267 @@ fun RequestsTab(
             )
         }
 
-        // Sub tab selectors
+        if (notifications.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Yangiliklar yoki e'lonlar mavjud emas",
+                        color = Color(0xFF8E8E93),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        } else {
+            items(notifications) { notification ->
+                val cardBg = if (notification.isRead) Color.White else Color(0xFFE8F0FE).copy(alpha = 0.4f)
+                val borderCol = if (notification.isRead) Color(0xFFE5E5EA) else Color(0xFF0056C6).copy(alpha = 0.3f)
+                val badgeColor = Color(0xFF0056C6)
+
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .clickable {
+                            if (!notification.isRead) {
+                                onMarkAsRead(notification.id)
+                            }
+                        },
+                    border = BorderStroke(0.5.dp, borderCol),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(if (notification.isRead) Color(0xFFF2F2F7) else Color(0xFFE8F0FE)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Campaign,
+                                contentDescription = null,
+                                tint = if (notification.isRead) Color(0xFF8E8E93) else Color(0xFF0056C6),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(14.dp))
+                        
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = notification.title,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (!notification.isRead) {
+                                    Surface(
+                                        color = badgeColor,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "YANGI",
+                                            color = Color.White,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = notification.message,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = Color(0xFF48484A)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = notification.createdAt,
+                                fontSize = 11.sp,
+                                color = Color(0xFF8E8E93),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
+// TAB 3: REQUESTS / TO'LOVLAR & IMTIHONLAR
+// ==========================================
+@Composable
+fun ProfileTab(
+    selectedChild: StudentResponse?,
+    onLogout: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         item {
-            Row(
+            Spacer(modifier = Modifier.statusBarsPadding())
+        }
+        
+        item {
+            Text(
+                text = "Profil",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        }
+
+        item {
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                val subTabs = listOf("Achievements", "Payments")
-                subTabs.forEach { tab ->
-                    val isActive = subTabState == tab
-                    val bg = if (isActive) Color.White else Color(0xFFE5E5EA).copy(alpha = 0.4f)
-                    val txt = if (isActive) Color.Black else Color(0xFF8E8E93)
-
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(bg)
-                            .border(
-                                if (isActive) BorderStroke(0.5.dp, Color(0xFFE5E5EA)) else BorderStroke(0.dp, Color.Transparent),
-                                RoundedCornerShape(16.dp)
-                            )
-                            .clickable { subTabState = tab }
-                            .padding(vertical = 12.dp),
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF2F2F7)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = if (tab == "Payments") "To'lovlar" else "Imtihonlar",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = txt
+                        Icon(
+                            imageVector = Icons.Rounded.Person,
+                            contentDescription = null,
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(36.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Ota-ona Profili",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "Farzand: ${selectedChild?.name ?: "N/A"}",
+                        fontSize = 12.sp,
+                        color = Color(0xFF8E8E93),
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
 
         item {
-            Column(
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                if (subTabState == "Achievements") {
-                    Text("IMTIHON NATIJALARI", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E93), letterSpacing = 1.sp)
-                    if (exams.isEmpty()) {
-                        Text("Imtihonlar tarixi yo'q", color = Color(0xFF8E8E93), fontSize = 13.sp)
-                    } else {
-                        Card(
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                            modifier = Modifier.fillMaxWidth()
+                Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE8F0FE)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                                exams.forEachIndexed { idx, exam ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFFFFF2D4)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFFFCC00), modifier = Modifier.size(16.dp))
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(exam.group?.course?.name ?: "Imtihon", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                            Text("${exam.date} • ${exam.type ?: "Oraliq"}", color = Color(0xFF8E8E93), fontSize = 11.sp)
-                                        }
-                                        Text(
-                                            text = exam.score,
-                                            fontWeight = FontWeight.Black,
-                                            color = Color(0xFF0056C6),
-                                            fontSize = 15.sp
-                                        )
-                                    }
-                                    if (idx < exams.lastIndex) {
-                                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
-                                    }
-                                }
-                            }
+                            Icon(Icons.Rounded.Phone, contentDescription = null, tint = Color(0xFF0056C6), modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Telefon raqam", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text("Mavjud emas", color = Color(0xFF8E8E93), fontSize = 11.sp)
                         }
                     }
-                } else {
-                    Text("TO'LOVLAR TARIXI", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E93), letterSpacing = 1.sp)
-                    if (payments.isEmpty()) {
-                        Text("To'lovlar tarixi yo'q", color = Color(0xFF8E8E93), fontSize = 13.sp)
-                    } else {
-                        Card(
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                            modifier = Modifier.fillMaxWidth()
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE8F0FE)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                                payments.forEachIndexed { idx, p ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFF34C759).copy(alpha = 0.08f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Rounded.ReceiptLong, contentDescription = null, tint = Color(0xFF34C759), modifier = Modifier.size(16.dp))
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            val formatter = java.text.DecimalFormat("#,###")
-                                            val amountStr = formatter.format(p.amount).replace(",", " ")
-                                            Text("$amountStr UZS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                            Text(p.date, color = Color(0xFF8E8E93), fontSize = 11.sp)
-                                        }
-                                        Text("To'landi", color = Color(0xFF34C759), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                    }
-                                    if (idx < payments.lastIndex) {
-                                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
-                                    }
-                                }
-                            }
+                            Icon(Icons.Rounded.Language, contentDescription = null, tint = Color(0xFF0056C6), modifier = Modifier.size(16.dp))
                         }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Til / Language", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text("O'zbek tili", color = Color(0xFF8E8E93), fontSize = 11.sp)
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onLogout() }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFFE5E5)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Logout, contentDescription = null, tint = Color(0xFFFF3B30), modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Tizimdan chiqish", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF3B30))
+                            Text("Profil seansini tugatish", color = Color(0xFFFF3B30).copy(alpha = 0.7f), fontSize = 11.sp)
+                        }
+                        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -1358,6 +1663,268 @@ fun SectionHeader(title: String, icon: ImageVector) {
             color = Color(0xFF1C1C1E),
             letterSpacing = (-0.2).sp
         )
+    }
+}
+
+@Composable
+fun InteractiveAttendanceCalendar(recentAttendance: List<AttendanceRecord>) {
+    var calendarState by remember { mutableStateOf(Calendar.getInstance()) }
+    var selectedDateState by remember { mutableStateOf(Calendar.getInstance()) }
+
+    val currentMonth = calendarState.get(Calendar.MONTH)
+    val currentYear = calendarState.get(Calendar.YEAR)
+
+    val monthNamesCorrect = listOf(
+        "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+        "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"
+    )
+
+    val tempCal = Calendar.getInstance().apply {
+        time = calendarState.time
+        set(Calendar.DAY_OF_MONTH, 1)
+    }
+    
+    val firstDayOfWeek = when (tempCal.get(Calendar.DAY_OF_WEEK)) {
+        Calendar.MONDAY -> 0
+        Calendar.TUESDAY -> 1
+        Calendar.WEDNESDAY -> 2
+        Calendar.THURSDAY -> 3
+        Calendar.FRIDAY -> 4
+        Calendar.SATURDAY -> 5
+        else -> 6 // Sunday
+    }
+
+    val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+    val totalCells = firstDayOfWeek + daysInMonth
+
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = {
+                    calendarState = (calendarState.clone() as Calendar).apply {
+                        add(Calendar.MONTH, -1)
+                    }
+                }) {
+                    Icon(Icons.Rounded.ChevronLeft, contentDescription = "Oldingi oy", tint = Color.Black)
+                }
+
+                Text(
+                    text = "${monthNamesCorrect[currentMonth]} $currentYear",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+
+                IconButton(onClick = {
+                    calendarState = (calendarState.clone() as Calendar).apply {
+                        add(Calendar.MONTH, 1)
+                    }
+                }) {
+                    Icon(Icons.Rounded.ChevronRight, contentDescription = "Keyingi oy", tint = Color.Black)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val weekDayLabels = listOf("Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                weekDayLabels.forEach { label ->
+                    Text(
+                        text = label,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF8E8E93),
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val cellList = List(totalCells) { cellIdx ->
+                if (cellIdx < firstDayOfWeek) null else cellIdx - firstDayOfWeek + 1
+            }
+
+            cellList.chunked(7).forEach { weekDays ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    weekDays.forEach { dayOfMonth ->
+                        if (dayOfMonth != null) {
+                            val dateQuery = String.format(Locale.US, "%04d-%02d-%02d", currentYear, currentMonth + 1, dayOfMonth)
+                            val record = recentAttendance.find { it.date == dateQuery }
+                            
+                            val isSelected = selectedDateState.get(Calendar.YEAR) == currentYear &&
+                                    selectedDateState.get(Calendar.MONTH) == currentMonth &&
+                                    selectedDateState.get(Calendar.DAY_OF_MONTH) == dayOfMonth
+
+                            val isPresent = record?.status_display == "Kelgan"
+                            val cellBg = when {
+                                isSelected -> Color(0xFF0056C6)
+                                record != null -> {
+                                    if (isPresent) Color(0xFF34C759).copy(alpha = 0.15f) else Color(0xFFFF3B30).copy(alpha = 0.15f)
+                                }
+                                else -> Color.Transparent
+                            }
+                            
+                            val textColor = when {
+                                isSelected -> Color.White
+                                record != null -> {
+                                    if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30)
+                                }
+                                else -> Color.Black
+                            }
+
+                            val borderStroke = if (isSelected) null else BorderStroke(0.5.dp, Color(0xFFF2F2F7))
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .padding(3.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(cellBg)
+                                    .clickable {
+                                        selectedDateState = Calendar.getInstance().apply {
+                                            set(Calendar.YEAR, currentYear)
+                                            set(Calendar.MONTH, currentMonth)
+                                            set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                        }
+                                    }
+                                    .then(if (borderStroke != null) Modifier.border(borderStroke, RoundedCornerShape(10.dp)) else Modifier),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = dayOfMonth.toString(),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f).aspectRatio(1f).padding(3.dp))
+                        }
+                    }
+                    if (weekDays.size < 7) {
+                        repeat(7 - weekDays.size) {
+                            Spacer(modifier = Modifier.weight(1f).aspectRatio(1f).padding(3.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LegendItem("Kelgan", Color(0xFF34C759))
+                Spacer(modifier = Modifier.width(16.dp))
+                LegendItem("Kelmagan", Color(0xFFFF3B30))
+                Spacer(modifier = Modifier.width(16.dp))
+                LegendItem("Dars yo'q", Color(0xFFE5E5EA))
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    val selYear = selectedDateState.get(Calendar.YEAR)
+    val selMonth = selectedDateState.get(Calendar.MONTH)
+    val selDay = selectedDateState.get(Calendar.DAY_OF_MONTH)
+    val selDateQuery = String.format(Locale.US, "%04d-%02d-%02d", selYear, selMonth + 1, selDay)
+    
+    val selectedRecord = recentAttendance.find { it.date == selDateQuery }
+    val isPresent = selectedRecord?.status_display == "Kelgan"
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "$selDay-${monthNamesCorrect[selMonth]}, $selYear",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Surface(
+                    color = when {
+                        selectedRecord == null -> Color(0xFFE5E5EA)
+                        isPresent -> Color(0xFF34C759).copy(alpha = 0.1f)
+                        else -> Color(0xFFFF3B30).copy(alpha = 0.1f)
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = selectedRecord?.status_display ?: "Dars yo'q",
+                        color = when {
+                            selectedRecord == null -> Color(0xFF8E8E93)
+                            isPresent -> Color(0xFF34C759)
+                            else -> Color(0xFFFF3B30)
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                AttendanceStatItem(
+                    label = "Check In",
+                    value = selectedRecord?.arrived_at ?: "- : -",
+                    icon = Icons.Rounded.Login,
+                    color = Color(0xFF0056C6)
+                )
+                AttendanceStatItem(
+                    label = "Check out",
+                    value = selectedRecord?.left_at ?: "- : -",
+                    icon = Icons.Rounded.Logout,
+                    color = Color(0xFF5856D6)
+                )
+                AttendanceStatItem(
+                    label = "Total hrs",
+                    value = calculateTotalHours(selectedRecord?.arrived_at, selectedRecord?.left_at),
+                    icon = Icons.Rounded.CheckCircleOutline,
+                    color = Color(0xFF007AFF)
+                )
+            }
+        }
     }
 }
 
