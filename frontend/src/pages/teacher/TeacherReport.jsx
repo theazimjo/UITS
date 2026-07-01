@@ -1048,22 +1048,22 @@ const TeacherReport = () => {
                     </div>
 
                     {isExam ? (
-                      <div className="bg-white dark:bg-black/20 rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-sm overflow-hidden">
+                      <div className="bg-white dark:bg-[#161618] rounded-xl border border-gray-300 dark:border-white/15 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-[13px] whitespace-nowrap">
-                            <thead className="bg-gray-50/50 dark:bg-white/5 text-gray-500 font-bold uppercase tracking-tight text-[11px] border-b border-gray-200/50 dark:border-white/10">
+                          <table className="w-full text-left text-[12px] whitespace-nowrap border-collapse">
+                            <thead className="bg-gray-100 dark:bg-[#232326] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider text-[10px] border-b border-gray-300 dark:border-white/15">
                               <tr>
-                                <th className="px-6 py-4">O'quvchi</th>
-                                <th className="px-3 py-4 text-center">Joriy</th>
-                                <th className="px-3 py-4 text-center">Nazariy</th>
-                                <th className="px-3 py-4 text-center">Amaliy</th>
-                                <th className="px-3 py-4 text-center">Umumiy</th>
-                                <th className="px-3 py-4 text-center">Foiz %</th>
-                                <th className="px-3 py-4 text-center">Natija</th>
-                                <th className="px-6 py-4">Izoh</th>
+                                <th className="px-4 py-3 border-r border-gray-300 dark:border-white/15">O'quvchi</th>
+                                <th className="px-3 py-3 text-center border-r border-gray-300 dark:border-white/15 w-[80px]">Joriy</th>
+                                <th className="px-3 py-3 text-center border-r border-gray-300 dark:border-white/15 w-[80px]">Nazariy</th>
+                                <th className="px-3 py-3 text-center border-r border-gray-300 dark:border-white/15 w-[80px]">Amaliy</th>
+                                <th className="px-3 py-3 text-center border-r border-gray-300 dark:border-white/15 w-[90px]">Umumiy</th>
+                                <th className="px-3 py-3 text-center border-r border-gray-300 dark:border-white/15 w-[80px]">Foiz %</th>
+                                <th className="px-3 py-3 text-center border-r border-gray-300 dark:border-white/15 w-[110px]">Natija</th>
+                                <th className="px-4 py-3">Izoh</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                            <tbody className="divide-y divide-gray-250 dark:divide-white/10">
                               {students.filter(s => selectedIds.has(String(s.id))).map(s => {
                                 const avg = currentAverages[s.id] || 0;
                                 const theory = theoryScores[s.id] || '';
@@ -1087,76 +1087,77 @@ const TeacherReport = () => {
                                 };
 
                                 return (
-                                  <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[12px] font-bold text-blue-600 shrink-0">
+                                  <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                                    <td className="px-4 py-2 border-r border-gray-250 dark:border-white/10">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 dark:text-blue-400 shrink-0">
                                           {s.name?.charAt(0)}
                                         </div>
                                         <div>
-                                          <p className="font-bold text-[#1d1d1f] dark:text-white leading-none">{s.name}</p>
-                                          <p className="text-[10px] text-gray-400 mt-1">{s.groupName}</p>
+                                          <p className="font-semibold text-gray-900 dark:text-gray-150 leading-tight">{s.name}</p>
+                                          <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">{s.groupName}</p>
                                         </div>
                                       </div>
                                     </td>
-                                    <td className="px-3 py-4 text-center">
+                                    <td className="p-0 border-r border-gray-250 dark:border-white/10 bg-blue-500/[0.02] dark:bg-blue-500/[0.01]">
                                       <input
                                         type="number"
                                         value={currentAverages[s.id] || ''}
                                         onChange={(e) => setCurrentAverages(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-16 bg-blue-50/50 dark:bg-blue-900/20 border-none rounded-lg py-1.5 text-center font-bold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        className="w-full h-9 bg-transparent border-none text-center font-bold text-blue-600 dark:text-blue-400 outline-none focus:bg-blue-100/30 dark:focus:bg-blue-950/20 text-[13px]"
                                       />
                                     </td>
-                                    <td className="px-3 py-4 text-center">
+                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
                                       <input
                                         type="number"
                                         placeholder="0"
                                         value={theoryScores[s.id] || ''}
                                         onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
-                                        className="w-16 bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-lg py-1.5 text-center outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-150 text-[13px]"
                                       />
                                     </td>
-                                    <td className="px-3 py-4 text-center">
+                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
                                       <input
                                         type="number"
                                         placeholder="0"
                                         value={practiceScores[s.id] || ''}
                                         onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
-                                        className="w-16 bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-lg py-1.5 text-center outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-150 text-[13px]"
                                       />
                                     </td>
-                                    <td className="px-3 py-4 text-center font-black text-[#1d1d1f] dark:text-white text-[15px]">
+                                    <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-extrabold text-gray-900 dark:text-white text-[13px] bg-gray-50/50 dark:bg-white/[0.01]">
                                       {totalScores[s.id] || calculateTotal(theoryScores[s.id] || 0, practiceScores[s.id] || 0)}
                                     </td>
-                                    <td className="px-3 py-4 text-center">
+                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
                                       <input
                                         type="number"
                                         placeholder="%"
                                         value={percentages[s.id] || ''}
                                         onChange={(e) => setPercentages(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-16 bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-lg py-1.5 text-center outline-none font-bold text-emerald-600"
+                                        className="w-full h-9 bg-transparent border-none text-center outline-none font-bold text-emerald-600 dark:text-emerald-400 focus:bg-emerald-500/[0.03] text-[13px]"
                                       />
                                     </td>
-                                    <td className="px-3 py-4 text-center">
+                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
                                       <select
                                         value={examStatuses[s.id] || "O'tdi"}
                                         onChange={(e) => setExamStatuses(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border outline-none transition-all cursor-pointer ${(examStatuses[s.id] || "O'tdi") === "O'tdi"
-                                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
-                                          : 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                                          }`}
+                                        className={`w-full h-9 bg-transparent border-none text-[12px] font-bold text-center outline-none cursor-pointer transition-all ${
+                                          (examStatuses[s.id] || "O'tdi") === "O'tdi"
+                                            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/[0.02]'
+                                            : 'text-red-600 dark:text-red-400 bg-red-500/[0.02]'
+                                        }`}
                                       >
                                         <option value="O'tdi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">O'tdi</option>
                                         <option value="O'tmadi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">O'tmadi</option>
                                       </select>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="p-0">
                                       <input
                                         type="text"
-                                        placeholder="..."
+                                        placeholder="Izoh yozing..."
                                         value={examComments[s.id] || ''}
                                         onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-full min-w-[200px] bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-[13px] outline-none focus:ring-2 focus:ring-blue-500/30"
+                                        className="w-full h-9 bg-transparent border-none px-3 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-150 text-[12.5px]"
                                       />
                                     </td>
                                   </tr>
