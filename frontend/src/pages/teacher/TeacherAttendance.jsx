@@ -56,6 +56,11 @@ const TeacherAttendance = () => {
 
   const onSaveGrade = async () => {
     if (!selectedCell) return;
+    const scoreNum = Number(gradeInput.score);
+    if (gradeInput.score === '' || isNaN(scoreNum) || scoreNum < 0 || scoreNum > 5) {
+      alert('Baho faqat 0 dan 5 gacha bo\'lishi kerak');
+      return;
+    }
     setIsSavingGrade(true);
     try {
       const date = `${currentMonth}-${String(selectedCell.day).padStart(2, '0')}`;
@@ -63,7 +68,7 @@ const TeacherAttendance = () => {
         studentId: selectedCell.student.id,
         groupId: selectedCell.student.groupId,
         date,
-        score: Number(gradeInput.score),
+        score: scoreNum,
         comment: gradeInput.comment
       });
       // Refresh to see the new grade
@@ -355,15 +360,28 @@ const TeacherAttendance = () => {
                 </button>
               </div>
 
-              <div className="space-y-4">
+               <div className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Baho (0-100)</label>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Baho (0-5)</label>
                   <input
                     type="number"
+                    min="0"
+                    max="5"
                     value={gradeInput.score}
-                    onChange={(e) => setGradeInput({ ...gradeInput, score: e.target.value })}
-                    className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[15px] outline-none focus:border-[#007aff] transition-colors"
-                    placeholder="Baho kiriting..."
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '' || (!isNaN(val) && Number(val) >= 0 && Number(val) <= 5)) {
+                        setGradeInput({ ...gradeInput, score: val });
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onSaveGrade();
+                      }
+                    }}
+                    className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[15px] outline-none focus:border-[#007aff] transition-colors font-bold"
+                    placeholder="Baho kiriting (0-5)..."
                     autoFocus
                   />
                 </div>
@@ -372,6 +390,12 @@ const TeacherAttendance = () => {
                   <textarea
                     value={gradeInput.comment}
                     onChange={(e) => setGradeInput({ ...gradeInput, comment: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        onSaveGrade();
+                      }
+                    }}
                     className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-[#007aff] transition-colors h-24 resize-none"
                     placeholder="Qo'shimcha izoh..."
                   />

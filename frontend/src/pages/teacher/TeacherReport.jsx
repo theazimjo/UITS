@@ -455,10 +455,14 @@ const TeacherReport = () => {
           <select
             value={selectedGroup}
             onChange={e => setSelectedGroup(e.target.value)}
-            className="bg-white/60 dark:bg-black/20 border border-gray-200/50 dark:border-white/10 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#1d1d1f] dark:text-white outline-none shadow-sm"
+            className="bg-white/60 dark:bg-[#1c1c1e] border border-gray-200/50 dark:border-white/10 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#1d1d1f] dark:text-white outline-none shadow-sm cursor-pointer"
           >
-            <option value="all">Barcha guruhlar</option>
-            {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
+            <option value="all" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Barcha guruhlar</option>
+            {uniqueGroups.map(g => (
+              <option key={g} value={g} className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">
+                {g}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -1137,13 +1141,13 @@ const TeacherReport = () => {
                                       <select
                                         value={examStatuses[s.id] || "O'tdi"}
                                         onChange={(e) => setExamStatuses(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border outline-none transition-all ${(examStatuses[s.id] || "O'tdi") === "O'tdi"
+                                        className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border outline-none transition-all cursor-pointer ${(examStatuses[s.id] || "O'tdi") === "O'tdi"
                                           ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
                                           : 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:border-red-800'
                                           }`}
                                       >
-                                        <option value="O'tdi">O'tdi</option>
-                                        <option value="O'tmadi">O'tmadi</option>
+                                        <option value="O'tdi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">O'tdi</option>
+                                        <option value="O'tmadi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">O'tmadi</option>
                                       </select>
                                     </td>
                                     <td className="px-6 py-4">
@@ -1203,13 +1207,13 @@ const TeacherReport = () => {
                                             setAttendanceCounts(prev => ({ ...prev, [s.id]: val }));
                                           }
                                         }}
-                                        className="bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/30 font-bold w-full"
+                                        className="bg-gray-50 dark:bg-[#1c1c1e] border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-blue-500/30 font-bold w-full cursor-pointer"
                                       >
-                                        <option value="">Tanlang...</option>
-                                        <option value="Kelyapti">Kelyapti</option>
-                                        <option value="Kelmayapti">Kelmayapti</option>
-                                        <option value="Dars qoldiryapti">Dars qoldiryapti</option>
-                                        <option value="Boshqa">Qo'lda yozish...</option>
+                                        <option value="" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Tanlang...</option>
+                                        <option value="Kelyapti" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Kelyapti</option>
+                                        <option value="Kelmayapti" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Kelmayapti</option>
+                                        <option value="Dars qoldiryapti" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Dars qoldiryapti</option>
+                                        <option value="Boshqa" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Qo'lda yozish...</option>
                                       </select>
                                       {(!['Kelyapti', 'Kelmayapti', 'Dars qoldiryapti'].includes(attendanceCounts[s.id]) || attendanceCounts[s.id] === '') && (
                                         <input
@@ -1242,12 +1246,12 @@ const TeacherReport = () => {
                                     <select
                                       value={homeworkStatuses[s.id] || ''}
                                       onChange={(e) => setHomeworkStatuses(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                      className="bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/30 font-bold"
+                                      className="bg-gray-50 dark:bg-[#1c1c1e] border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-[12px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-blue-500/30 font-bold cursor-pointer"
                                     >
-                                      <option value="">Tanlang...</option>
-                                      <option value="Aktiv">Aktiv</option>
-                                      <option value="Passiv">Passiv</option>
-                                      <option value="Bajarmaydi">Bajarmaydi</option>
+                                      <option value="" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Tanlang...</option>
+                                      <option value="Aktiv" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Aktiv</option>
+                                      <option value="Passiv" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Passiv</option>
+                                      <option value="Bajarmaydi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Bajarmaydi</option>
                                     </select>
                                   </td>
                                   <td className="px-6 py-4">
@@ -1255,15 +1259,15 @@ const TeacherReport = () => {
                                       <select
                                         value={studentConclusions[s.id] || ''}
                                         onChange={(e) => setStudentConclusions(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-full bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/30 font-bold"
+                                        className="w-full bg-gray-50 dark:bg-[#1c1c1e] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-[12px] text-[#1d1d1f] dark:text-white outline-none focus:ring-2 focus:ring-blue-500/30 font-bold cursor-pointer"
                                       >
-                                        <option value="">Status tanlang...</option>
-                                        <option value="O'zlashtirmoqda">O'zlashtirmoqda</option>
-                                        <option value="Qiynalmoqda">Qiynalmoqda</option>
-                                        <option value="Kritik: Ota-onasini chaqirish kerak">Kritik: Ota-onasini chaqirish kerak</option>
-                                        <option value="Kritik: Tel qilindi">Kritik: Tel qilindi</option>
-                                        <option value="Kritik: Ota-onasi chaqirildi">Kritik: Ota-onasi chaqirildi</option>
-                                        <option value="Kritik: Qo'shimcha darsga yo'naltirildi">Kritik: Qo'shimcha darsga yo'naltirildi</option>
+                                        <option value="" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Status tanlang...</option>
+                                        <option value="O'zlashtirmoqda" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">O'zlashtirmoqda</option>
+                                        <option value="Qiynalmoqda" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Qiynalmoqda</option>
+                                        <option value="Kritik: Ota-onasini chaqirish kerak" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Kritik: Ota-onasini chaqirish kerak</option>
+                                        <option value="Kritik: Tel qilindi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Kritik: Tel qilindi</option>
+                                        <option value="Kritik: Ota-onasi chaqirildi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Kritik: Ota-onasi chaqirildi</option>
+                                        <option value="Kritik: Qo'shimcha darsga yo'naltirildi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Kritik: Qo'shimcha darsga yo'naltirildi</option>
                                       </select>
                                       <textarea
                                         value={studentNotes[s.id] || ''}

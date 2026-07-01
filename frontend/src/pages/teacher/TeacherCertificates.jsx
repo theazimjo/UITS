@@ -227,11 +227,13 @@ const TeacherCertificates = () => {
                     setSelectedGroupId(e.target.value);
                     setSelectedStudents([]);
                   }}
-                  className="w-full px-4 py-3 bg-white/80 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 rounded-2xl text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all cursor-pointer shadow-sm"
+                  className="w-full px-4 py-3 bg-white/80 dark:bg-[#1c1c1e] border border-gray-200/50 dark:border-white/10 rounded-2xl text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all cursor-pointer shadow-sm"
                 >
-                  <option value="">Guruh...</option>
+                  <option value="" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Guruh...</option>
                   {activeGroups.map(g => (
-                    <option key={g.id} value={g.id}>{g.name} ({g.course?.name || 'Kurs nomi yo\'q'})</option>
+                    <option key={g.id} value={g.id} className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">
+                      {g.name} ({g.course?.name || 'Kurs nomi yo\'q'})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -242,11 +244,13 @@ const TeacherCertificates = () => {
                 <select
                   value={selectedTemplate}
                   onChange={(e) => setSelectedTemplate(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/80 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 rounded-2xl text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all cursor-pointer shadow-sm"
+                  className="w-full px-4 py-3 bg-white/80 dark:bg-[#1c1c1e] border border-gray-200/50 dark:border-white/10 rounded-2xl text-[13px] text-[#1d1d1f] dark:text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all cursor-pointer shadow-sm"
                 >
-                  <option value="">Shablon...</option>
+                  <option value="" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Shablon...</option>
                   {courses.map(c => (
-                    <option key={c.key} value={c.template}>{courseDisplayNames[c.key] || c.name}</option>
+                    <option key={c.key} value={c.template} className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">
+                      {courseDisplayNames[c.key] || c.name}
+                    </option>
                   ))}
                 </select>
               </div>

@@ -1446,159 +1446,345 @@ fun ProfileTab(
     selectedChild: StudentResponse?,
     onLogout: () -> Unit
 ) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val packageInfo = remember {
+        try { ctx.packageManager.getPackageInfo(ctx.packageName, 0) } catch (e: Exception) { null }
+    }
+    val appVersion = packageInfo?.versionName ?: "1.0.0"
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF2F2F7)),
+        contentPadding = PaddingValues(bottom = 36.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        item {
-            Spacer(modifier = Modifier.statusBarsPadding())
-        }
-        
-        item {
-            Text(
-                text = "Profil",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
+        item { Spacer(modifier = Modifier.statusBarsPadding()) }
+
+        // ── FARZAND MA'LUMOTLARI ─────────────────────────────────
+        if (selectedChild != null) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "FARZAND MA'LUMOTLARI",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF8E8E93),
+                    letterSpacing = 0.8.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                )
+            }
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                        // Ism
+                        ProfileInfoRow(
+                            icon = Icons.Rounded.Person,
+                            iconBg = Color(0xFF007AFF).copy(alpha = 0.1f),
+                            iconTint = Color(0xFF007AFF),
+                            label = "To'liq ismi",
+                            value = selectedChild.name,
+                            showDivider = true
+                        )
+                        // ID
+                        if (!selectedChild.externalId.isNullOrBlank()) {
+                            ProfileInfoRow(
+                                icon = Icons.Rounded.Badge,
+                                iconBg = Color(0xFF5856D6).copy(alpha = 0.1f),
+                                iconTint = Color(0xFF5856D6),
+                                label = "O'quvchi ID",
+                                value = selectedChild.externalId!!,
+                                showDivider = true
+                            )
+                        }
+                        // Holat
+                        val statusLabel = when (selectedChild.status) {
+                            "ACTIVE" -> "Faol o'quvchi"
+                            "INACTIVE" -> "Nofaol"
+                            "GRADUATED" -> "Bitiruvchi"
+                            else -> selectedChild.status ?: "Noma'lum"
+                        }
+                        val statusColor = when (selectedChild.status) {
+                            "ACTIVE" -> Color(0xFF34C759)
+                            "INACTIVE" -> Color(0xFFFF9500)
+                            else -> Color(0xFF8E8E93)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.VerifiedUser, null, tint = statusColor, modifier = Modifier.size(18.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Holati", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                                Text(statusLabel, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = statusColor)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Guruhlar
+            if (selectedChild.enrollments.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(
+                        text = "O'QIYOTGAN GURUHLAR",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF8E8E93),
+                        letterSpacing = 0.8.sp,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                    )
+                }
+                items(selectedChild.enrollments.filter { it.group != null }) { enrollment ->
+                    val group = enrollment.group!!
+                    val isActive = enrollment.status == "ACTIVE"
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(Color(0xFF007AFF).copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.School, null, tint = Color(0xFF007AFF), modifier = Modifier.size(22.dp))
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(group.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1C1C1E))
+                                if (group.course != null) {
+                                    Text(group.course.name, fontSize = 12.sp, color = Color(0xFF8E8E93))
+                                }
+                                if (group.teacher != null) {
+                                    Text("O'qituvchi: ${group.teacher.name}", fontSize = 11.sp, color = Color(0xFF8E8E93))
+                                }
+                                if (group.startTime != null && group.endTime != null) {
+                                    Text("${group.startTime} – ${group.endTime}", fontSize = 11.sp, color = Color(0xFF8E8E93))
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (isActive) Color(0xFF34C759).copy(alpha = 0.12f) else Color(0xFF8E8E93).copy(alpha = 0.1f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = if (isActive) "Faol" else "Nofaol",
+                                    fontSize = 11.sp,
+                                    color = if (isActive) Color(0xFF34C759) else Color(0xFF8E8E93),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
 
+        // ── ILOVA SOZLAMALARI ────────────────────────────────────
+        item {
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "ILOVA SOZLAMALARI",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF8E8E93),
+                letterSpacing = 0.8.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            )
+        }
         item {
             Card(
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    .padding(horizontal = 16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(
+                Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                    // Til
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(Color(0xFFFF9500).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Language, null, tint = Color(0xFFFF9500), modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Til", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                            Text("O'zbek tili", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+                        }
+                        Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFFC7C7CC), modifier = Modifier.size(16.dp))
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
+
+                    // Bildirishnomalar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(Color(0xFFFF3B30).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.NotificationsNone, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Bildirishnomalar", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                            Text("Yoqilgan", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+                        }
+                        Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFFC7C7CC), modifier = Modifier.size(16.dp))
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
+
+                    // Versiya
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(Color(0xFF34C759).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Info, null, tint = Color(0xFF34C759), modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Ilova versiyasi", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                            Text("v$appVersion", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── CHIQISH TUGMASI ──────────────────────────────────────
+        item {
+            Spacer(modifier = Modifier.height(20.dp))
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .clickable { onLogout() }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFF2F2F7)),
+                            .size(34.dp)
+                            .background(Color(0xFFFF3B30).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Person,
-                            contentDescription = null,
-                            tint = Color(0xFF8E8E93),
-                            modifier = Modifier.size(36.dp)
-                        )
+                        Icon(Icons.AutoMirrored.Rounded.Logout, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
                     }
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Ota-ona Profili",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        "Tizimdan chiqish",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFFF3B30),
+                        modifier = Modifier.weight(1f)
                     )
-                    Text(
-                        text = "Farzand: ${selectedChild?.name ?: "N/A"}",
-                        fontSize = 12.sp,
-                        color = Color(0xFF8E8E93),
-                        fontWeight = FontWeight.Medium
-                    )
+                    Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFFFF3B30).copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
                 }
             }
-        }
-
-        item {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE8F0FE)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.Phone, contentDescription = null, tint = Color(0xFF0056C6), modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Telefon raqam", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Text("Mavjud emas", color = Color(0xFF8E8E93), fontSize = 11.sp)
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE8F0FE)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.Language, contentDescription = null, tint = Color(0xFF0056C6), modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Til", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Text("O'zbek tili", color = Color(0xFF8E8E93), fontSize = 11.sp)
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onLogout() }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFFFE5E5)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.Logout, contentDescription = null, tint = Color(0xFFFF3B30), modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Tizimdan chiqish", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF3B30))
-                            Text("Profil seansini tugatish", color = Color(0xFFFF3B30).copy(alpha = 0.7f), fontSize = 11.sp)
-                        }
-                        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
+
+@Composable
+private fun ProfileInfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconBg: Color,
+    iconTint: Color,
+    label: String,
+    value: String,
+    showDivider: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .background(iconBg, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, fontSize = 12.sp, color = Color(0xFF8E8E93))
+            Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+        }
+    }
+    if (showDivider) {
+        HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
+    }
+}
+
 
 // ==========================================
 // RESTORED COMPOSABLES

@@ -860,9 +860,9 @@ const TeacherDashboard = () => {
                       onChange={(e) => setOverviewGroup(e.target.value)}
                       className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-black text-gray-700 dark:text-gray-300 outline-none cursor-pointer max-w-[140px] truncate shadow-sm hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
                     >
-                      <option value="all">Barcha guruhlar</option>
+                      <option value="all" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">Barcha guruhlar</option>
                       {todayGroups.map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
+                        <option key={g.id} value={g.id} className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">{g.name}</option>
                       ))}
                     </select>
                   </div>
