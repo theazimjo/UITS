@@ -449,7 +449,7 @@ const Finance = () => {
         <div className="max-w-[1400px] mx-auto space-y-8 animate-fade-in pb-10">
 
           {/* Core Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <StatCard
               title="Oylik Tushum"
               value={stats.totalIncome}
@@ -471,13 +471,6 @@ const Finance = () => {
               icon={DollarSign}
               color="blue"
               subLabel={`${stats.totalIncome > 0 ? ((stats.netProfit / stats.totalIncome) * 100).toFixed(1) : 0}% rentabellik`}
-            />
-            <StatCard
-              title="Zaxira / Boshqa"
-              value={stats.totalGeneralExpense}
-              icon={LucidePieChart}
-              color="orange"
-              subLabel="Umumiy xarajatlar"
             />
           </div>
 

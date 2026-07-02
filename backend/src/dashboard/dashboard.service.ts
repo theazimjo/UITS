@@ -155,6 +155,7 @@ export class DashboardService {
     });
 
     let debtorCount = 0;
+    const debtors: any[] = [];
     activeGroups.forEach(g => {
       const price = Number(g.monthlyPrice) || 0;
       (g.enrollments || []).forEach(e => {
@@ -163,6 +164,15 @@ export class DashboardService {
           const paid = studentGroupPaymentMap.get(key) || 0;
           if (paid < price) {
             debtorCount++;
+            debtors.push({
+              id: e.student.id,
+              name: e.student.name,
+              phone: e.student.phone,
+              groupName: g.name,
+              monthlyPrice: price,
+              paid: paid,
+              debt: price - paid
+            });
           }
         }
       });
@@ -190,7 +200,8 @@ export class DashboardService {
       debtorCount,
       paymentPercentage,
       totalExpectedMonth,
-      totalActualMonth
+      totalActualMonth,
+      debtors
     };
   }
 

@@ -12,7 +12,8 @@ import {
   Activity, UserPlus, BookOpen, Clock, ChevronRight,
   RefreshCw, LayoutDashboard, Database, UserRound, UsersRound,
   ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
-  Calendar, ChevronLeft, ChevronDown, Trash2, Edit3, Repeat
+  Calendar, ChevronLeft, ChevronDown, Trash2, Edit3, Repeat,
+  Search, X
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -68,6 +69,10 @@ const Dashboard = () => {
     paymentPercentage: 0
   });
   const [loadingGen, setLoadingGen] = useState(true);
+
+  // Debtors Modal & Search States
+  const [isDebtorsModalOpen, setIsDebtorsModalOpen] = useState(false);
+  const [debtorSearchQuery, setDebtorSearchQuery] = useState('');
 
   // Finance Chart Data
   const [financeChartData, setFinanceChartData] = useState([]);
@@ -166,6 +171,17 @@ const Dashboard = () => {
       label: formatMonthLabel(item.month)
     }));
   }, [financeChartData]);
+
+  const filteredDebtors = useMemo(() => {
+    const list = genStats.debtors || [];
+    const q = debtorSearchQuery.toLowerCase().trim();
+    if (!q) return list;
+    return list.filter(d =>
+      d.name?.toLowerCase().includes(q) ||
+      d.groupName?.toLowerCase().includes(q) ||
+      d.phone?.toLowerCase().includes(q)
+    );
+  }, [genStats.debtors, debtorSearchQuery]);
 
   const colorStyles = {
     blue: { bg: 'bg-[#007aff]/10', text: 'text-[#007aff]', border: 'group-hover:border-[#007aff]/30' },
@@ -436,7 +452,14 @@ const Dashboard = () => {
               {generalStatsList.map((stat, i) => (
                 <div
                   key={i}
-                  className={`bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group hover:-translate-y-1 shadow-sm flex flex-col justify-between ${colorStyles[stat.color].border}`}
+                  onClick={() => {
+                    if (stat.label === 'Qarzdorlar') {
+                      setIsDebtorsModalOpen(true);
+                    }
+                  }}
+                  className={`bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-gray-200/50 dark:border-white/10 transition-all duration-300 group shadow-sm flex flex-col justify-between ${colorStyles[stat.color].border} ${
+                    stat.label === 'Qarzdorlar' ? 'cursor-pointer hover:-translate-y-1 hover:shadow-md hover:border-[#ff453a]/30' : 'hover:-translate-y-1'
+                  }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
@@ -589,6 +612,82 @@ const Dashboard = () => {
             ) : (
               <div className="text-center py-12 text-gray-400 italic">
                 Bu kunda o'quvchilar ro'yxati bo'sh
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Debtors Detail Modal */}
+      <Modal
+        isOpen={isDebtorsModalOpen}
+        onClose={() => {
+          setIsDebtorsModalOpen(false);
+          setDebtorSearchQuery('');
+        }}
+        title="Qarzdor talabalar ro'yxati"
+      >
+        <div className="space-y-4 max-h-[70vh] flex flex-col font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
+          {/* Search bar */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Talaba ismi yoki guruh nomi bo'yicha qidirish..."
+              value={debtorSearchQuery}
+              onChange={(e) => setDebtorSearchQuery(e.target.value)}
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-[13px] text-[#1d1d1f] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-[#007aff]/30 transition-all font-medium"
+            />
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-505">
+              <Search size={16} />
+            </div>
+            {debtorSearchQuery && (
+              <button
+                onClick={() => setDebtorSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 transition-all"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* List content */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar min-h-[300px]">
+            {filteredDebtors.length > 0 ? (
+              filteredDebtors.map((d) => (
+                <div key={`${d.id}-${d.groupName}`} className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-rose-500/20 dark:hover:border-rose-500/10 hover:bg-rose-500/[0.01] transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-rose-500 flex items-center justify-center font-bold text-[14px] shrink-0 border border-rose-100/50 dark:border-rose-900/10">
+                      {d.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="text-[13px] font-bold text-gray-900 dark:text-gray-100 leading-snug group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">{d.name}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-medium text-gray-500 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-gray-200/50 dark:border-white/10 max-w-[120px] truncate">{d.groupName}</span>
+                        {d.phone && (
+                          <a href={`tel:${d.phone}`} className="text-[10px] font-bold text-[#007aff] hover:underline flex items-center gap-0.5 bg-[#007aff]/5 px-2 py-0.5 rounded-md border border-[#007aff]/10">
+                            {d.phone}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right flex flex-col items-end">
+                    <span className="text-[12px] font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
+                      -{formatCurrency(d.debt).replace(' UZS', '')} UZS
+                    </span>
+                    <span className="text-[9px] text-gray-400 mt-0.5 font-medium">
+                      To'landi: {formatCurrency(d.paid).replace(' UZS', '')} / {formatCurrency(d.monthlyPrice).replace(' UZS', '')}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 italic font-medium gap-3">
+                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-300 dark:text-gray-600">
+                  <Users size={22} />
+                </div>
+                <p className="text-[12px]">Qarzdor o'quvchilar topilmadi</p>
               </div>
             )}
           </div>
