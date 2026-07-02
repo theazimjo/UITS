@@ -379,11 +379,34 @@ const TeacherReport = () => {
     const studentNames = {};
     const groupNames = {};
     const groupIds = {};
+
+    const finalTotals = {};
+    const finalPercentages = {};
+    const finalStatuses = {};
+    const finalComments = {};
+
     selectedStudents.forEach(s => {
       studentNames[s.id] = s.name;
       groupNames[s.id] = s.groupName || (s.groups && s.groups.length > 0 ? s.groups[0].name : '');
       // Try to get groupId from direct property, then from groups array
       groupIds[s.id] = s.groupId || (s.groups && s.groups.length > 0 ? s.groups[0].id : 0);
+
+      const avg = parseFloat(currentAverages[s.id]) || 0;
+      const theory = parseFloat(theoryScores[s.id]) || 0;
+      const practice = parseFloat(practiceScores[s.id]) || 0;
+      const total = parseFloat((avg + theory + practice).toFixed(2));
+      
+      finalTotals[s.id] = total;
+      finalPercentages[s.id] = total;
+      finalStatuses[s.id] = total >= 70 ? "O'tdi" : "O'tmadi";
+
+      let defaultComment = "O'qishi yaxshi emas";
+      if (total >= 85) {
+        defaultComment = "Zo'r o'qiyapti";
+      } else if (total >= 70) {
+        defaultComment = "Yaxshi o'qiyapti";
+      }
+      finalComments[s.id] = examComments[s.id] !== undefined ? examComments[s.id] : defaultComment;
     });
 
     try {
@@ -397,13 +420,13 @@ const TeacherReport = () => {
         groupNames,
         groupIds,
         examScores,
-        examComments,
+        examComments: finalComments,
         theoryScores: theoryScores,
         practiceScores: practiceScores,
         currentAverages: currentAverages,
-        totalScores: totalScores,
-        percentages: percentages,
-        examStatuses,
+        totalScores: finalTotals,
+        percentages: finalPercentages,
+        examStatuses: finalStatuses,
         attendanceCounts: attendanceCounts,
         progressScores: progressScores,
         homeworkStatuses: homeworkStatuses,
@@ -1149,48 +1172,20 @@ const TeacherReport = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-250 dark:divide-white/10">
                               {students.filter(s => selectedIds.has(String(s.id))).map(s => {
-                                 const calculateTotal = (t, p, j) => {
-                                   const joriyVal = parseFloat(j !== undefined ? j : (currentAverages[s.id] || 0));
-                                   const theoryVal = parseFloat(t !== undefined ? t : (theoryScores[s.id] || 0));
-                                   const practiceVal = parseFloat(p !== undefined ? p : (practiceScores[s.id] || 0));
-                                   const total = joriyVal + theoryVal + practiceVal;
-                                   return parseFloat(total.toFixed(2));
-                                 };
-
-                                 const handleScoreChange = (sid, type, val) => {
-                                   const floatVal = parseFloat(val) || 0;
-                                   
-                                   let curTheory = theoryScores[sid] || 0;
-                                   let curPractice = practiceScores[sid] || 0;
-                                   
-                                   if (type === 'theory') {
-                                     setTheoryScores(prev => ({ ...prev, [sid]: val }));
-                                     curTheory = floatVal;
-                                   } else {
-                                     setPracticeScores(prev => ({ ...prev, [sid]: val }));
-                                     curPractice = floatVal;
-                                   }
-
-                                   const joriy = parseFloat(currentAverages[sid]) || 0;
-                                   const total = parseFloat((joriy + curTheory + curPractice).toFixed(2));
-                                   const percentage = total; // out of 100%
-
-                                   // Calculate Natija
-                                   const status = percentage >= 70 ? "O'tdi" : "O'tmadi";
-
-                                   // Calculate Izoh
-                                   let comment = "O'qishi yaxshi emas";
-                                   if (percentage >= 85) {
-                                     comment = "Zo'r o'qiyapti";
-                                   } else if (percentage >= 70) {
-                                     comment = "Yaxshi o'qiyapti";
-                                   }
-
-                                   setTotalScores(prev => ({ ...prev, [sid]: total }));
-                                   setPercentages(prev => ({ ...prev, [sid]: percentage }));
-                                   setExamStatuses(prev => ({ ...prev, [sid]: status }));
-                                   setExamComments(prev => ({ ...prev, [sid]: comment }));
-                                 };
+                                 const avg = parseFloat(currentAverages[s.id]) || 0;
+                                 const theory = parseFloat(theoryScores[s.id]) || 0;
+                                 const practice = parseFloat(practiceScores[s.id]) || 0;
+                                 const total = parseFloat((avg + theory + practice).toFixed(2));
+                                 const percentage = total;
+                                 const status = percentage >= 70 ? "O'tdi" : "O'tmadi";
+                                 
+                                 let defaultComment = "O'qishi yaxshi emas";
+                                 if (percentage >= 85) {
+                                   defaultComment = "Zo'r o'qiyapti";
+                                 } else if (percentage >= 70) {
+                                   defaultComment = "Yaxshi o'qiyapti";
+                                 }
+                                 const comment = examComments[s.id] !== undefined ? examComments[s.id] : defaultComment;
 
                                  return (
                                    <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
@@ -1201,7 +1196,7 @@ const TeacherReport = () => {
                                          </div>
                                          <div>
                                            <p className="font-semibold text-gray-900 dark:text-gray-200 leading-tight">{s.name}</p>
-                                           <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">{s.groupName}</p>
+                                           <p className="text-[9px] text-gray-400 dark:text-gray-505 font-medium mt-0.5">{s.groupName}</p>
                                          </div>
                                        </div>
                                      </td>
@@ -1209,7 +1204,7 @@ const TeacherReport = () => {
                                        <input
                                          type="number"
                                          readOnly
-                                         value={currentAverages[s.id] !== undefined ? currentAverages[s.id] : 0}
+                                         value={avg}
                                          className="w-full h-9 bg-transparent border-none text-center font-bold text-blue-600 dark:text-blue-400 outline-none cursor-default text-[13px]"
                                        />
                                      </td>
@@ -1218,7 +1213,7 @@ const TeacherReport = () => {
                                          type="number"
                                          placeholder="0"
                                          value={theoryScores[s.id] || ''}
-                                         onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
+                                         onChange={(e) => setTheoryScores(prev => ({ ...prev, [s.id]: e.target.value }))}
                                          className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
                                        />
                                      </td>
@@ -1227,30 +1222,30 @@ const TeacherReport = () => {
                                          type="number"
                                          placeholder="0"
                                          value={practiceScores[s.id] || ''}
-                                         onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
+                                         onChange={(e) => setPracticeScores(prev => ({ ...prev, [s.id]: e.target.value }))}
                                          className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
                                        />
                                      </td>
                                      <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-extrabold text-gray-900 dark:text-white text-[13px] bg-gray-50/50 dark:bg-white/[0.01]">
-                                       {totalScores[s.id] !== undefined ? totalScores[s.id] : calculateTotal(theoryScores[s.id] || 0, practiceScores[s.id] || 0)}
+                                       {total}
                                      </td>
                                      <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-bold text-emerald-600 dark:text-emerald-400 text-[13px] bg-emerald-500/[0.01]">
-                                       {percentages[s.id] !== undefined ? `${percentages[s.id]}%` : '0%'}
+                                       {percentage}%
                                      </td>
                                      <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-bold text-[12px] bg-gray-50/30 dark:bg-white/[0.01]">
                                        <span className={
-                                         (examStatuses[s.id] || "O'tmadi") === "O'tdi"
+                                         status === "O'tdi"
                                            ? "text-emerald-600 dark:text-emerald-400"
                                            : "text-rose-600 dark:text-rose-400"
                                        }>
-                                         {examStatuses[s.id] || "O'tmadi"}
+                                         {status}
                                        </span>
                                      </td>
                                      <td className="p-0">
                                        <input
                                          type="text"
                                          placeholder="Izoh yozing..."
-                                         value={examComments[s.id] || ''}
+                                         value={comment}
                                          onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
                                          className="w-full h-9 bg-transparent border-none px-3 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[12.5px]"
                                        />
