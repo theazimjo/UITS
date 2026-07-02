@@ -119,6 +119,10 @@ fi
 echo "[3/5] Yangilangan konteynerlarni qayta ishga tushirish..."
 docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build
 
+# Force Nginx to re-resolve backend container IPs
+echo "🔄 Nginx DNS keshini yangilash uchun frontend konteynerini qayta ishga tushirmoqdamiz..."
+docker compose -f docker-compose.prod.yml restart frontend || true
+
 # 5. Konteynerlar holati va tozalash
 echo "[4/5] Eski ortiqcha Docker fayllarini tozalash..."
 docker system prune -f

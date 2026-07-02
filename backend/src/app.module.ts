@@ -23,6 +23,8 @@ import { UsersService } from './users/users.service';
 import * as bcrypt from 'bcrypt';
 
 import { ConfigModule } from '@nestjs/config';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { ConfigModule } from '@nestjs/config';
     GoogleSheetsModule,
     ProjectsModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule implements OnApplicationBootstrap {
   constructor(private readonly usersService: UsersService) {}
