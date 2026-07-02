@@ -1187,6 +1187,33 @@ const TeacherReport = () => {
                                  }
                                  const comment = examComments[s.id] !== undefined ? examComments[s.id] : defaultComment;
 
+                                 const handleScoreChange = (sid, type, val) => {
+                                   const floatVal = parseFloat(val) || 0;
+                                   
+                                   let curTheory = parseFloat(theoryScores[sid]) || 0;
+                                   let curPractice = parseFloat(practiceScores[sid]) || 0;
+                                   
+                                   if (type === 'theory') {
+                                     setTheoryScores(prev => ({ ...prev, [sid]: val }));
+                                     curTheory = floatVal;
+                                   } else {
+                                     setPracticeScores(prev => ({ ...prev, [sid]: val }));
+                                     curPractice = floatVal;
+                                   }
+
+                                   const joriy = parseFloat(currentAverages[sid]) || 0;
+                                   const totalVal = parseFloat((joriy + curTheory + curPractice).toFixed(2));
+
+                                   let commentVal = "O'qishi yaxshi emas";
+                                   if (totalVal >= 85) {
+                                     commentVal = "Zo'r o'qiyapti";
+                                   } else if (totalVal >= 70) {
+                                     commentVal = "Yaxshi o'qiyapti";
+                                   }
+
+                                   setExamComments(prev => ({ ...prev, [sid]: commentVal }));
+                                 };
+
                                  return (
                                    <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
                                      <td className="px-4 py-2 border-r border-gray-250 dark:border-white/10">
@@ -1196,7 +1223,7 @@ const TeacherReport = () => {
                                          </div>
                                          <div>
                                            <p className="font-semibold text-gray-900 dark:text-gray-200 leading-tight">{s.name}</p>
-                                           <p className="text-[9px] text-gray-400 dark:text-gray-505 font-medium mt-0.5">{s.groupName}</p>
+                                           <p className="text-[9px] text-gray-400 dark:text-gray-55 font-medium mt-0.5">{s.groupName}</p>
                                          </div>
                                        </div>
                                      </td>
@@ -1213,7 +1240,7 @@ const TeacherReport = () => {
                                          type="number"
                                          placeholder="0"
                                          value={theoryScores[s.id] || ''}
-                                         onChange={(e) => setTheoryScores(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                         onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
                                          className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
                                        />
                                      </td>
@@ -1222,7 +1249,7 @@ const TeacherReport = () => {
                                          type="number"
                                          placeholder="0"
                                          value={practiceScores[s.id] || ''}
-                                         onChange={(e) => setPracticeScores(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                         onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
                                          className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
                                        />
                                      </td>
