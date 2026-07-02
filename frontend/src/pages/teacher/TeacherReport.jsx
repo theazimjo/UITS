@@ -34,35 +34,53 @@ const getStudentPhotoUrl = (photo) => {
 const TeacherReport = () => {
   const { students: allStudents, groups, loading, refreshAllRows } = useStore();
 
+  const getDraftField = (field, defaultValue) => {
+    try {
+      const saved = localStorage.getItem('uits_teacher_report_draft');
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft[field] !== undefined) {
+          if (field === 'selectedIds') {
+            return new Set(draft[field]);
+          }
+          return draft[field];
+        }
+      }
+    } catch (e) {
+      console.error(`Error parsing draft field ${field}:`, e);
+    }
+    return defaultValue;
+  };
+
   const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [selectedGroup, setSelectedGroup] = useState('all');
+  const [selectedGroup, setSelectedGroup] = useState(() => getDraftField('selectedGroup', 'all'));
   const [listFilter, setListFilter] = useState('all'); // 'all', 'pending', 'reported'
 
   // Table multi-select
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState(() => getDraftField('selectedIds', new Set()));
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [reportSummary, setReportSummary] = useState('');
+  const [reportSummary, setReportSummary] = useState(() => getDraftField('reportSummary', ''));
   const [examScores, setExamScores] = useState({});
-  const [examComments, setExamComments] = useState({});
-  const [theoryScores, setTheoryScores] = useState({});
-  const [practiceScores, setPracticeScores] = useState({});
-  const [currentAverages, setCurrentAverages] = useState({});
-  const [totalScores, setTotalScores] = useState({});
-  const [percentages, setPercentages] = useState({});
-  const [examStatuses, setExamStatuses] = useState({});
-  const [attendanceCounts, setAttendanceCounts] = useState({});
-  const [progressScores, setProgressScores] = useState({});
-  const [homeworkStatuses, setHomeworkStatuses] = useState({});
-  const [studentConclusions, setStudentConclusions] = useState({});
+  const [examComments, setExamComments] = useState(() => getDraftField('examComments', {}));
+  const [theoryScores, setTheoryScores] = useState(() => getDraftField('theoryScores', {}));
+  const [practiceScores, setPracticeScores] = useState(() => getDraftField('practiceScores', {}));
+  const [currentAverages, setCurrentAverages] = useState(() => getDraftField('currentAverages', {}));
+  const [totalScores, setTotalScores] = useState(() => getDraftField('totalScores', {}));
+  const [percentages, setPercentages] = useState(() => getDraftField('percentages', {}));
+  const [examStatuses, setExamStatuses] = useState(() => getDraftField('examStatuses', {}));
+  const [attendanceCounts, setAttendanceCounts] = useState(() => getDraftField('attendanceCounts', {}));
+  const [progressScores, setProgressScores] = useState(() => getDraftField('progressScores', {}));
+  const [homeworkStatuses, setHomeworkStatuses] = useState(() => getDraftField('homeworkStatuses', {}));
+  const [studentConclusions, setStudentConclusions] = useState(() => getDraftField('studentConclusions', {}));
   const [studentNotes, setStudentNotes] = useState({});
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   // History & Dates
   const [reports, setReports] = useState([]);
-  const [activeDate, setActiveDate] = useState(null); // Which period ID is selected
+  const [activeDate, setActiveDate] = useState(() => getDraftField('activeDate', null)); // Which period ID is selected
   const [reportsLoading, setReportsLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [isEditingReport, setIsEditingReport] = useState(false);
@@ -104,17 +122,41 @@ const TeacherReport = () => {
       if (!groupObj) return;
 
       const res = await getCurrentAverages(currentMonth, groupObj.id);
-      setCurrentAverages(res.data || {});
+      const averages = res.data || {};
+      setCurrentAverages(averages);
 
-      // Also pre-fill total scores if we have averages
+      // Pre-fill total scores, percentages, statuses, and comments if we have averages
       const newTotals = { ...totalScores };
-      Object.keys(res.data).forEach(sid => {
-        const avg = res.data[sid] || 0;
-        const theory = theoryScores[sid] || 0;
-        const practice = practiceScores[sid] || 0;
-        newTotals[sid] = parseFloat((avg + parseFloat(theory) + parseFloat(practice)).toFixed(2));
+      const newPercs = { ...percentages };
+      const newStatuses = { ...examStatuses };
+      const newComments = { ...examComments };
+
+      Object.keys(averages).forEach(sid => {
+        const avg = parseFloat(averages[sid]) || 0;
+        const theory = parseFloat(theoryScores[sid]) || 0;
+        const practice = parseFloat(practiceScores[sid]) || 0;
+        
+        const total = parseFloat((avg + theory + practice).toFixed(2));
+        newTotals[sid] = total;
+        newPercs[sid] = total; // out of 100%
+
+        // Natija
+        newStatuses[sid] = total >= 70 ? "O'tdi" : "O'tmadi";
+
+        // Izoh
+        let comment = "O'qishi yaxshi emas";
+        if (total >= 85) {
+          comment = "Zo'r o'qiyapti";
+        } else if (total >= 70) {
+          comment = "Yaxshi o'qiyapti";
+        }
+        newComments[sid] = comment;
       });
+
       setTotalScores(newTotals);
+      setPercentages(newPercs);
+      setExamStatuses(newStatuses);
+      setExamComments(newComments);
     } catch (e) {
       console.error("Error fetching averages:", e);
     }
@@ -124,7 +166,48 @@ const TeacherReport = () => {
     if (activeDate === 'EXAM' && selectedGroup !== 'all') {
       fetchAverages();
     }
-  }, [activeDate, selectedGroup, currentMonth]);
+  }, [activeDate, selectedGroup, currentMonth, groups]);
+
+  useEffect(() => {
+    if (selectedGroup === 'all' && !activeDate && selectedIds.size === 0) {
+      localStorage.removeItem('uits_teacher_report_draft');
+      return;
+    }
+    const draft = {
+      selectedGroup,
+      activeDate,
+      selectedIds: Array.from(selectedIds),
+      theoryScores,
+      practiceScores,
+      currentAverages,
+      totalScores,
+      percentages,
+      examStatuses,
+      examComments,
+      attendanceCounts,
+      progressScores,
+      homeworkStatuses,
+      studentConclusions,
+      reportSummary
+    };
+    localStorage.setItem('uits_teacher_report_draft', JSON.stringify(draft));
+  }, [
+    selectedGroup,
+    activeDate,
+    selectedIds,
+    theoryScores,
+    practiceScores,
+    currentAverages,
+    totalScores,
+    percentages,
+    examStatuses,
+    examComments,
+    attendanceCounts,
+    progressScores,
+    homeworkStatuses,
+    studentConclusions,
+    reportSummary
+  ]);
 
   const changeMonth = (delta) => {
     const [y, m] = currentMonth.split('-').map(Number);
@@ -329,6 +412,7 @@ const TeacherReport = () => {
         mode: isEditingReport ? 'replace' : 'merge',
         reportId: isEditingReport ? editingReportId : null
       });
+      localStorage.removeItem('uits_teacher_report_draft');
       toast.success(isEditingReport ? "Hisobot yangilandi! ✅" : "Hisobot yuborildi! ✅");
       setIsModalOpen(false);
       setSelectedIds(new Set());
@@ -1065,104 +1149,115 @@ const TeacherReport = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-250 dark:divide-white/10">
                               {students.filter(s => selectedIds.has(String(s.id))).map(s => {
-                                const avg = currentAverages[s.id] || 0;
-                                const theory = theoryScores[s.id] || '';
-                                const practice = practiceScores[s.id] || '';
+                                 const calculateTotal = (t, p, j) => {
+                                   const joriyVal = parseFloat(j !== undefined ? j : (currentAverages[s.id] || 0));
+                                   const theoryVal = parseFloat(t !== undefined ? t : (theoryScores[s.id] || 0));
+                                   const practiceVal = parseFloat(p !== undefined ? p : (practiceScores[s.id] || 0));
+                                   const total = joriyVal + theoryVal + practiceVal;
+                                   return parseFloat(total.toFixed(2));
+                                 };
 
-                                const calculateTotal = (t, p) => {
-                                  const total = parseFloat(avg) + (parseFloat(t) || 0) + (parseFloat(p) || 0);
-                                  return parseFloat(total.toFixed(2));
-                                };
+                                 const handleScoreChange = (sid, type, val) => {
+                                   const floatVal = parseFloat(val) || 0;
+                                   
+                                   let curTheory = theoryScores[sid] || 0;
+                                   let curPractice = practiceScores[sid] || 0;
+                                   
+                                   if (type === 'theory') {
+                                     setTheoryScores(prev => ({ ...prev, [sid]: val }));
+                                     curTheory = floatVal;
+                                   } else {
+                                     setPracticeScores(prev => ({ ...prev, [sid]: val }));
+                                     curPractice = floatVal;
+                                   }
 
-                                const handleScoreChange = (sid, type, val) => {
-                                  if (type === 'theory') {
-                                    setTheoryScores(prev => ({ ...prev, [sid]: val }));
-                                    const newTotal = calculateTotal(val, practiceScores[sid]);
-                                    setTotalScores(prev => ({ ...prev, [sid]: newTotal }));
-                                  } else {
-                                    setPracticeScores(prev => ({ ...prev, [sid]: val }));
-                                    const newTotal = calculateTotal(theoryScores[sid], val);
-                                    setTotalScores(prev => ({ ...prev, [sid]: newTotal }));
-                                  }
-                                };
+                                   const joriy = parseFloat(currentAverages[sid]) || 0;
+                                   const total = parseFloat((joriy + curTheory + curPractice).toFixed(2));
+                                   const percentage = total; // out of 100%
 
-                                return (
-                                  <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                                    <td className="px-4 py-2 border-r border-gray-250 dark:border-white/10">
-                                      <div className="flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                                          {s.name?.charAt(0)}
-                                        </div>
-                                        <div>
-                                          <p className="font-semibold text-gray-900 dark:text-gray-200 leading-tight">{s.name}</p>
-                                          <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">{s.groupName}</p>
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td className="p-0 border-r border-gray-250 dark:border-white/10 bg-blue-500/[0.02] dark:bg-blue-500/[0.01]">
-                                      <input
-                                        type="number"
-                                        value={currentAverages[s.id] || ''}
-                                        onChange={(e) => setCurrentAverages(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-full h-9 bg-transparent border-none text-center font-bold text-blue-600 dark:text-blue-400 outline-none focus:bg-blue-100/30 dark:focus:bg-blue-950/20 text-[13px]"
-                                      />
-                                    </td>
-                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
-                                      <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={theoryScores[s.id] || ''}
-                                        onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
-                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
-                                      />
-                                    </td>
-                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
-                                      <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={practiceScores[s.id] || ''}
-                                        onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
-                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
-                                      />
-                                    </td>
-                                    <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-extrabold text-gray-900 dark:text-white text-[13px] bg-gray-50/50 dark:bg-white/[0.01]">
-                                      {totalScores[s.id] || calculateTotal(theoryScores[s.id] || 0, practiceScores[s.id] || 0)}
-                                    </td>
-                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
-                                      <input
-                                        type="number"
-                                        placeholder="%"
-                                        value={percentages[s.id] || ''}
-                                        onChange={(e) => setPercentages(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-full h-9 bg-transparent border-none text-center outline-none font-bold text-emerald-600 dark:text-emerald-400 focus:bg-emerald-500/[0.03] text-[13px]"
-                                      />
-                                    </td>
-                                    <td className="p-0 border-r border-gray-250 dark:border-white/10">
-                                      <select
-                                        value={examStatuses[s.id] || "O'tdi"}
-                                        onChange={(e) => setExamStatuses(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className={`w-full h-9 bg-transparent border-none text-[12px] font-bold text-center outline-none cursor-pointer transition-all ${
-                                          (examStatuses[s.id] || "O'tdi") === "O'tdi"
-                                            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/[0.02]'
-                                            : 'text-red-600 dark:text-red-400 bg-red-500/[0.02]'
-                                        }`}
-                                      >
-                                        <option value="O'tdi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">O'tdi</option>
-                                        <option value="O'tmadi" className="bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white">O'tmadi</option>
-                                      </select>
-                                    </td>
-                                    <td className="p-0">
-                                      <input
-                                        type="text"
-                                        placeholder="Izoh yozing..."
-                                        value={examComments[s.id] || ''}
-                                        onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-full h-9 bg-transparent border-none px-3 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[12.5px]"
-                                      />
-                                    </td>
-                                  </tr>
-                                );
-                              })}
+                                   // Calculate Natija
+                                   const status = percentage >= 70 ? "O'tdi" : "O'tmadi";
+
+                                   // Calculate Izoh
+                                   let comment = "O'qishi yaxshi emas";
+                                   if (percentage >= 85) {
+                                     comment = "Zo'r o'qiyapti";
+                                   } else if (percentage >= 70) {
+                                     comment = "Yaxshi o'qiyapti";
+                                   }
+
+                                   setTotalScores(prev => ({ ...prev, [sid]: total }));
+                                   setPercentages(prev => ({ ...prev, [sid]: percentage }));
+                                   setExamStatuses(prev => ({ ...prev, [sid]: status }));
+                                   setExamComments(prev => ({ ...prev, [sid]: comment }));
+                                 };
+
+                                 return (
+                                   <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                                     <td className="px-4 py-2 border-r border-gray-250 dark:border-white/10">
+                                       <div className="flex items-center gap-2.5">
+                                         <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-[11px] font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                                           {s.name?.charAt(0)}
+                                         </div>
+                                         <div>
+                                           <p className="font-semibold text-gray-900 dark:text-gray-200 leading-tight">{s.name}</p>
+                                           <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">{s.groupName}</p>
+                                         </div>
+                                       </div>
+                                     </td>
+                                     <td className="p-0 border-r border-gray-250 dark:border-white/10 bg-blue-500/[0.02] dark:bg-blue-500/[0.01]">
+                                       <input
+                                         type="number"
+                                         readOnly
+                                         value={currentAverages[s.id] !== undefined ? currentAverages[s.id] : 0}
+                                         className="w-full h-9 bg-transparent border-none text-center font-bold text-blue-600 dark:text-blue-400 outline-none cursor-default text-[13px]"
+                                       />
+                                     </td>
+                                     <td className="p-0 border-r border-gray-250 dark:border-white/10">
+                                       <input
+                                         type="number"
+                                         placeholder="0"
+                                         value={theoryScores[s.id] || ''}
+                                         onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
+                                         className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
+                                       />
+                                     </td>
+                                     <td className="p-0 border-r border-gray-250 dark:border-white/10">
+                                       <input
+                                         type="number"
+                                         placeholder="0"
+                                         value={practiceScores[s.id] || ''}
+                                         onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
+                                         className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
+                                       />
+                                     </td>
+                                     <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-extrabold text-gray-900 dark:text-white text-[13px] bg-gray-50/50 dark:bg-white/[0.01]">
+                                       {totalScores[s.id] !== undefined ? totalScores[s.id] : calculateTotal(theoryScores[s.id] || 0, practiceScores[s.id] || 0)}
+                                     </td>
+                                     <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-bold text-emerald-600 dark:text-emerald-400 text-[13px] bg-emerald-500/[0.01]">
+                                       {percentages[s.id] !== undefined ? `${percentages[s.id]}%` : '0%'}
+                                     </td>
+                                     <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-bold text-[12px] bg-gray-50/30 dark:bg-white/[0.01]">
+                                       <span className={
+                                         (examStatuses[s.id] || "O'tmadi") === "O'tdi"
+                                           ? "text-emerald-600 dark:text-emerald-400"
+                                           : "text-rose-600 dark:text-rose-400"
+                                       }>
+                                         {examStatuses[s.id] || "O'tmadi"}
+                                       </span>
+                                     </td>
+                                     <td className="p-0">
+                                       <input
+                                         type="text"
+                                         placeholder="Izoh yozing..."
+                                         value={examComments[s.id] || ''}
+                                         onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                         className="w-full h-9 bg-transparent border-none px-3 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[12.5px]"
+                                       />
+                                     </td>
+                                   </tr>
+                                 );
+                               })}
                             </tbody>
                           </table>
                         </div>
