@@ -192,6 +192,7 @@ export const deleteCertificate = (pk) => certApi.delete(`/api/certificates/${pk}
 export const generateCertificates = (courseKey) => `${certApi.defaults.baseURL}/${courseKey}/`;
 export const generateBulkCertificates = (data) => certApi.post('/api/certificates/generate-bulk/', data, { responseType: 'blob' });
 export const generateBulkCertificatesPreview = (data) => certApi.post('/api/certificates/preview-bulk/', data);
+export const downloadBulkCertificatesZip = (certIds) => certApi.post('/api/certificates/download-zip/', { certIds }, { responseType: 'blob' });
 
 export const getProjectTasks = () => api.get('/project-items');
 export const createProjectTask = (data) => api.post('/project-items', data);
@@ -200,6 +201,7 @@ export const updateProjectTask = (id, data) => api.patch(`/project-items/${id}`,
 // Teacher — Certificate Requests
 export const createCertificateRequest = (data) => api.post('/teacher/certificate-request', data);
 export const getTeacherCertificateRequests = () => api.get('/teacher/certificate-requests');
+export const getTakenCertificateStudents = (template) => api.get('/teacher/certificate-request/taken', { params: { template } });
 export const deleteTeacherCertificateRequest = (id) => api.delete(`/teacher/certificate-requests/${id}`);
 
 // Admin — Certificate Requests

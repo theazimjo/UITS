@@ -488,3 +488,112 @@ def api_certificates_bulk_preview(request):
         
     return JsonResponse({'previews': previews})
 
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_certificates_download_zip(request):
+    """
+    Generate and stream a ZIP archive of existing certificates on-the-fly.
+    """
+    import time
+    from wsgiref.util import FileWrapper
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': "Noto'g'ri JSON format"}, status=400)
+    
+    cert_ids = body.get('certIds', [])
+    if not cert_ids:
+        return JsonResponse({'error': "certIds majburiy"}, status=400)
+        
+    certs = Certificate.objects.filter(cert_id__in=cert_ids)
+    if not certs.exists():
+        return JsonResponse({'error': "Hech qanday sertifikat topilmadi"}, status=404)
+        
+    host_url, host2_url = get_hosts(request)
+    base_path = getattr(settings, 'CERTIFICATE_BASE_PATH', '')
+    
+    temp_folder = os.path.join(settings.MEDIA_ROOT, f"bulk_download_{int(time.time())}")
+    os.makedirs(temp_folder, exist_ok=True)
+    
+    zip_filename = f"re_certificates_{int(time.time())}.zip"
+    zip_path = os.path.join(settings.MEDIA_ROOT, zip_filename)
+    
+    try:
+        for cert in certs:
+            template_rel = cert.template or 'new_templates/computer_science.jpg'
+            template_path = os.path.join(base_path, template_rel)
+            
+            img_template = cv2.imread(template_path)
+            if img_template is None:
+                continue
+                
+            is_doctor = 'doctor' in template_rel.lower()
+            img = img_template.copy()
+            
+            if is_doctor:
+                cv2.putText(img, cert.full_name.strip().center(31), (0, 1190), 
+                             cv2.FONT_HERSHEY_COMPLEX, 6, (0, 0, 0), 4, cv2.LINE_8)
+                cv2.putText(img, cert.cert_id.strip(), (2090, 2125), 
+                             cv2.FONT_HERSHEY_TRIPLEX, 2, (0, 0, 0), 2, cv2.LINE_AA)
+                cv2.putText(img, cert.date.strip(), (1340, 1650), 
+                             cv2.FONT_HERSHEY_TRIPLEX, 2, (0, 0, 0), 2, cv2.LINE_AA)
+                
+                qr_data = f"{host2_url}{cert.cert_id.strip().replace(':', '-')}/"
+                qr_img = generate_qr_code(qr_data, size=400)
+                x_offset = img.shape[1] - qr_img.shape[1] - 200
+                y_offset = img.shape[0] - qr_img.shape[0] - 2000
+            else:
+                cv2.putText(img, cert.full_name.strip(), (700, 4100), 
+                             cv2.FONT_HERSHEY_COMPLEX, 14, (0, 0, 0), 10, cv2.LINE_8)
+                cv2.putText(img, cert.cert_id.strip(), (7700, 5850), 
+                             cv2.FONT_HERSHEY_TRIPLEX, 6, (0, 0, 0), 5, cv2.LINE_AA)
+                cv2.putText(img, cert.date.strip(), (7700, 6450), 
+                             cv2.FONT_HERSHEY_TRIPLEX, 6, (0, 0, 0), 5, cv2.LINE_AA)
+                
+                qr_data = f"{host_url}{cert.cert_id.strip().replace(':', '-')}/"
+                qr_img = generate_qr_code(qr_data, size=900)
+                x_offset = img.shape[1] - qr_img.shape[1] - 4500
+                y_offset = img.shape[0] - qr_img.shape[0] - 800
+                
+            if x_offset >= 0 and y_offset >= 0:
+                img[y_offset:y_offset+qr_img.shape[0], x_offset:x_offset+qr_img.shape[1]] = qr_img
+                
+            resized_img = cv2.resize(img, (0, 0), fx=0.4, fy=0.4)
+            filename = f"ID_{cert.cert_id[3:]}_{cert.full_name.replace(' ', '_')}.jpg"
+            file_path = os.path.join(temp_folder, filename)
+            cv2.imwrite(file_path, resized_img, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            
+        with zipfile.ZipFile(zip_path, "w") as zipf:
+            for file_name in os.listdir(temp_folder):
+                full_path = os.path.join(temp_folder, file_name)
+                zipf.write(full_path, arcname=file_name)
+                
+    finally:
+        if os.path.exists(temp_folder):
+            for f in os.listdir(temp_folder):
+                try:
+                    os.remove(os.path.join(temp_folder, f))
+                except Exception:
+                    pass
+            try:
+                os.rmdir(temp_folder)
+            except Exception:
+                pass
+                
+    file_handle = open(zip_path, 'rb')
+    response = StreamingHttpResponse(FileWrapper(file_handle), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+    
+    def cleanup(path, fh):
+        def closer():
+            try:
+                fh.close()
+                os.remove(path)
+            except Exception as e:
+                print(f"Xatolik ZIP cleanupda: {e}")
+        return closer
+        
+    response.close = cleanup(zip_path, file_handle)
+    return response
+

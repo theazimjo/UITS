@@ -3,7 +3,7 @@ import {
   getCertificateCourses, getCertificates, getCertificateStats,
   getCertificateImageUrl, createCertificate, deleteCertificate, generateCertificates,
   getNextCertificateId, getAllCertificateRequests, updateCertificateRequestStatus,
-  deleteCertificateRequest
+  deleteCertificateRequest, generateBulkCertificates, downloadBulkCertificatesZip
 } from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -49,6 +49,7 @@ const CertificatesPage = () => {
   const [requests, setRequests] = useState([]);
   const [reqLoading, setReqLoading] = useState(false);
   const [processingReqId, setProcessingReqId] = useState(null);
+  const [downloadingZipId, setDownloadingZipId] = useState(null);
 
   // Filtering states
   const [selectedCourse, setSelectedCourse] = useState('all');
@@ -153,23 +154,24 @@ const CertificatesPage = () => {
     if (processingReqId) return;
     setProcessingReqId(req.id);
     try {
-      const resId = await getNextCertificateId();
-      let currentId = resId.data?.nextId;
-      if (!currentId) {
-        toast.error('Keyingi Sertifikat ID sini aniqlab bo\'lmadi');
-        setProcessingReqId(null);
-        return;
-      }
+      const courseObj = courses.find(c => c.template === req.template);
+      const courseKey = courseObj ? courseObj.key : 'ks';
 
-      for (const student of req.students) {
-        await createCertificate({
-          fullName: student.name,
-          certId: currentId,
-          date: req.issueDate || new Date().toLocaleDateString('ru-RU'),
-          template: req.template
-        });
-        currentId = incrementCertId(currentId);
-      }
+      const response = await generateBulkCertificates({
+        students: req.students.map(s => ({ fullName: s.name })),
+        courseKey: courseKey,
+        date: req.issueDate || new Date().toLocaleDateString('ru-RU')
+      });
+
+      // Create download link
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      const dateClean = (req.issueDate || new Date().toLocaleDateString('ru-RU')).replace(/\./g, '_');
+      link.setAttribute('download', `sertifikatlar_${courseKey}_${dateClean}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
       await updateCertificateRequestStatus(req.id, 'APPROVED');
       toast.success('Sertifikatlar muvaffaqiyatli yaratildi va tasdiqlandi!');
@@ -192,6 +194,46 @@ const CertificatesPage = () => {
     } catch (e) {
       console.error(e);
       toast.error('Xatolik yuz berdi');
+    }
+  };
+
+  const handleDownloadApprovedZip = async (req) => {
+    if (downloadingZipId) return;
+    setDownloadingZipId(req.id);
+    try {
+      // Find matching cert IDs in the certificates list
+      const studentNames = (req.students || []).map(s => s.name.trim().toLowerCase());
+      const matchingCerts = certificates.filter(cert =>
+        cert.template === req.template &&
+        studentNames.includes((cert.fullName || '').trim().toLowerCase())
+      );
+
+      if (matchingCerts.length === 0) {
+        toast.error("Ushbu so'rov uchun generatsiya qilingan sertifikatlar topilmadi. Ular o'chirib yuborilgan bo'lishi mumkin.");
+        setDownloadingZipId(null);
+        return;
+      }
+
+      const certIds = matchingCerts.map(c => c.certId);
+      const response = await downloadBulkCertificatesZip(certIds);
+
+      // Trigger browser download
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      const courseObj = courses.find(c => c.template === req.template);
+      const courseKey = courseObj ? courseObj.key : 'ks';
+      const dateClean = (req.issueDate || new Date().toLocaleDateString('ru-RU')).replace(/\./g, '_');
+      link.setAttribute('download', `sertifikatlar_${courseKey}_${dateClean}_qayta.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Sertifikatlar muvaffaqiyatli yuklab olindi!");
+    } catch (e) {
+      console.error('Error downloading approved ZIP:', e);
+      toast.error("Yuklab olishda xatolik yuz berdi");
+    } finally {
+      setDownloadingZipId(null);
     }
   };
 
@@ -760,13 +802,31 @@ const CertificatesPage = () => {
                           </>
                         )}
                         {req.status !== 'PENDING' && (
-                          <button
-                            onClick={() => handleDeleteRequest(req.id)}
-                            className="w-full py-2 text-[12px] font-bold text-gray-550 dark:text-gray-400 hover:text-rose-600 bg-gray-100 dark:bg-white/5 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center gap-1"
-                          >
-                            <Trash2 size={13} />
-                            So'rovni o'chirish
-                          </button>
+                          <div className="flex flex-col gap-2 w-full">
+                            {req.status === 'APPROVED' && (
+                              <button
+                                onClick={() => handleDownloadApprovedZip(req)}
+                                disabled={downloadingZipId !== null}
+                                className="w-full py-2 text-[12px] font-bold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                              >
+                                {downloadingZipId === req.id ? (
+                                  <Loader2 size={13} className="animate-spin" />
+                                ) : (
+                                  <>
+                                    <Download size={13} />
+                                    Yuklab olish (ZIP)
+                                  </>
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteRequest(req.id)}
+                              className="w-full py-2 text-[12px] font-bold text-gray-550 dark:text-gray-400 hover:text-rose-600 bg-gray-100 dark:bg-white/5 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center gap-1"
+                            >
+                              <Trash2 size={13} />
+                              So'rovni o'chirish
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

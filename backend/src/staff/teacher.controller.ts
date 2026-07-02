@@ -9,6 +9,7 @@ import {
   Post,
   Body,
   Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -885,6 +886,28 @@ export class TeacherController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('certificate-request/taken')
+  async getTakenStudents(@Query('template') template: string) {
+    if (!template) return [];
+    const requests = await this.certificateRequestRepo.find({
+      where: {
+        template,
+        status: In(['PENDING', 'APPROVED']),
+      },
+      select: ['students'],
+    });
+    const takenIds = new Set<number>();
+    for (const req of requests) {
+      if (req.students) {
+        for (const s of req.students) {
+          if (s.id) takenIds.add(s.id);
+        }
+      }
+    }
+    return Array.from(takenIds);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('certificate-request')
   async createCertificateRequest(
     @Req() req: any,
@@ -902,6 +925,34 @@ export class TeacherController {
     const teacher = await this.staffRepo.findOne({ where: { id: teacherId } });
     if (!teacher) {
       throw new ForbiddenException('Teacher profile not found');
+    }
+
+    if (!body.template) {
+      throw new BadRequestException('Sertifikat shabloni majburiy');
+    }
+
+    // Duplicate prevention: check if any student already has a pending/approved certificate for this template
+    const existingRequests = await this.certificateRequestRepo.find({
+      where: {
+        template: body.template,
+        status: In(['PENDING', 'APPROVED']),
+      },
+    });
+
+    const alreadyRequestedOrApproved: string[] = [];
+    for (const student of body.students) {
+      const hasRequest = existingRequests.some(r =>
+        (r.students || []).some(s => s.id === student.id)
+      );
+      if (hasRequest) {
+        alreadyRequestedOrApproved.push(student.name);
+      }
+    }
+
+    if (alreadyRequestedOrApproved.length > 0) {
+      throw new BadRequestException(
+        `Quyidagi o'quvchilarga ushbu yo'nalishda allaqachon sertifikat berilgan yoki so'rov yuborilgan: ${alreadyRequestedOrApproved.join(', ')}`
+      );
     }
 
     const newRequest = this.certificateRequestRepo.create({

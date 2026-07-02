@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/certificates/next-id/', api_views.api_next_cert_id, name='api_next_cert_id'),
     path('api/certificates/generate-bulk/', api_views.api_certificates_bulk_generate, name='api_certificates_bulk_generate'),
     path('api/certificates/preview-bulk/', api_views.api_certificates_bulk_preview, name='api_certificates_bulk_preview'),
+    path('api/certificates/download-zip/', api_views.api_certificates_download_zip, name='api_certificates_download_zip'),
     path('api/certificates/<str:cert_id>/detail/', api_views.api_certificate_detail, name='api_certificate_detail'),
     path('api/certificates/<str:cert_id>/image/', api_views.api_certificate_image, name='api_certificate_image'),
     path('api/certificates/<int:pk>/delete/', api_views.api_certificate_delete, name='api_certificate_delete'),

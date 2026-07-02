@@ -4,7 +4,8 @@ import {
   getCertificateCourses,
   createCertificateRequest,
   getTeacherCertificateRequests,
-  deleteTeacherCertificateRequest
+  deleteTeacherCertificateRequest,
+  getTakenCertificateStudents
 } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -35,6 +36,28 @@ const TeacherCertificates = () => {
   const [message, setMessage] = useState('');
   const [issueDate, setIssueDate] = useState(new Date().toLocaleDateString('ru-RU'));
   const [submitting, setSubmitting] = useState(false);
+  const [takenStudentIds, setTakenStudentIds] = useState([]);
+
+  useEffect(() => {
+    const fetchTaken = async () => {
+      if (!selectedTemplate) {
+        setTakenStudentIds([]);
+        return;
+      }
+      try {
+        const res = await getTakenCertificateStudents(selectedTemplate);
+        setTakenStudentIds(res.data || []);
+      } catch (e) {
+        console.error('Error fetching taken students:', e);
+      }
+    };
+    fetchTaken();
+    setSelectedStudents([]);
+  }, [selectedTemplate]);
+
+  useEffect(() => {
+    setSelectedStudents([]);
+  }, [selectedGroupId]);
 
   useEffect(() => {
     refreshAllRows();
@@ -81,10 +104,11 @@ const TeacherCertificates = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedStudents.length === activeStudents.length) {
+    const selectable = activeStudents.filter(s => !takenStudentIds.includes(s.id));
+    if (selectedStudents.length === selectable.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(activeStudents.map(s => s.id));
+      setSelectedStudents(selectable.map(s => s.id));
     }
   };
 
@@ -100,6 +124,12 @@ const TeacherCertificates = () => {
     }
     if (!selectedTemplate) {
       toast.error('Iltimos, sertifikat shablonini tanlang');
+      return;
+    }
+
+    const containsTaken = selectedStudents.some(id => takenStudentIds.includes(id));
+    if (containsTaken) {
+      toast.error("Ba'zi tanlangan o'quvchilarga allaqachon sertifikat berilgan yoki so'rov yuborilgan");
       return;
     }
 
@@ -290,29 +320,46 @@ const TeacherCertificates = () => {
                         onClick={handleSelectAll}
                         className="text-[11px] font-bold text-emerald-500 hover:text-emerald-600 transition-colors"
                       >
-                        {selectedStudents.length === activeStudents.length ? 'Barchasini bekor qilish' : 'Barchasini tanlash'}
+                        {selectedStudents.length === activeStudents.filter(s => !takenStudentIds.includes(s.id)).length ? 'Barchasini bekor qilish' : 'Barchasini tanlash'}
                       </button>
                     )}
                   </div>
 
                   <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1 scrollbar-premium">
                     {activeStudents.length > 0 ? (
-                      activeStudents.map(student => (
-                        <label
-                          key={student.id}
-                          className="flex items-center gap-3 p-3 bg-gray-50/50 dark:bg-white/[0.03] hover:bg-gray-100/50 dark:hover:bg-white/[0.05] rounded-xl border border-gray-100 dark:border-white/5 cursor-pointer select-none transition-all"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedStudents.includes(student.id)}
-                            onChange={() => handleStudentSelect(student.id)}
-                            className="w-4.5 h-4.5 text-emerald-500 border-gray-300 rounded focus:ring-emerald-500/50 cursor-pointer"
-                          />
-                          <div className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white truncate">
-                            {student.name}
-                          </div>
-                        </label>
-                      ))
+                      activeStudents.map(student => {
+                        const isTaken = takenStudentIds.includes(student.id);
+                        return (
+                          <label
+                            key={student.id}
+                            className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                              isTaken
+                                ? 'bg-gray-150/40 dark:bg-white/[0.01] border-gray-200/30 dark:border-white/5 opacity-60 cursor-not-allowed select-none'
+                                : 'bg-gray-50/50 dark:bg-white/[0.03] hover:bg-gray-100/50 dark:hover:bg-white/[0.05] border-gray-100 dark:border-white/5 cursor-pointer select-none'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 truncate">
+                              <input
+                                type="checkbox"
+                                disabled={isTaken}
+                                checked={selectedStudents.includes(student.id)}
+                                onChange={() => handleStudentSelect(student.id)}
+                                className={`w-4.5 h-4.5 rounded focus:ring-emerald-500/50 ${
+                                  isTaken ? 'border-gray-200 dark:border-white/10 cursor-not-allowed' : 'text-emerald-500 border-gray-300 cursor-pointer'
+                                }`}
+                              />
+                              <div className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white truncate">
+                                {student.name}
+                              </div>
+                            </div>
+                            {isTaken && (
+                              <span className="px-2 py-0.5 text-[9px] font-bold bg-[#ff9500]/10 text-[#ff9500] dark:text-[#ffb64d] rounded-md whitespace-nowrap">
+                                Sertifikat berilgan
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })
                     ) : (
                       <div className="text-center py-6 text-[12px] text-gray-400 font-medium">
                         Ushbu guruhda faol o'quvchilar topilmadi
