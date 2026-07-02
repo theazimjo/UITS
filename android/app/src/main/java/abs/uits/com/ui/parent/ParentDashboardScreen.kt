@@ -132,7 +132,8 @@ fun ParentDashboardScreen(
                         children = children,
                         selectedChildId = selectedChildId,
                         attendance = attendance,
-                        onChildSelected = { id -> viewModel.selectChild(id) }
+                        onChildSelected = { id -> viewModel.selectChild(id) },
+                        onMonthChanged = { year, month -> viewModel.loadAttendanceForMonth(year, month) }
                     )
                     2 -> NewsTab(
                         notifications = notifications.filter { it.isGeneral == true },
@@ -369,7 +370,7 @@ fun HomeMockupTab(
                                 }
                             }
                             Text(
-                                text = "ID: ${selectedChild?.externalId ?: "N/A"} • Class 9A",
+                                text = "ID: ${selectedChild?.externalId ?: "N/A"}",
                                 fontSize = 12.sp,
                                 color = Color(0xFF8E8E93),
                                 fontWeight = FontWeight.Medium
@@ -930,7 +931,8 @@ fun AttendanceTab(
     children: List<StudentResponse>,
     selectedChildId: Int?,
     attendance: AttendanceResponse,
-    onChildSelected: (Int) -> Unit
+    onChildSelected: (Int) -> Unit,
+    onMonthChanged: (Int, Int) -> Unit
 ) {
     var showChildDropdown by remember { mutableStateOf(false) }
 
@@ -999,7 +1001,12 @@ fun AttendanceTab(
             }
         }
 
-        item { InteractiveAttendanceCalendar(attendance.recent_attendance) }
+        item {
+            InteractiveAttendanceCalendar(
+                recentAttendance = attendance.recent_attendance,
+                onMonthChanged = onMonthChanged
+            )
+        }
 
         val comments = attendance.grades.filter { !it.comment.isNullOrBlank() }
         if (comments.isNotEmpty()) {
@@ -1914,7 +1921,10 @@ fun SectionHeader(title: String, icon: ImageVector) {
 }
 
 @Composable
-fun InteractiveAttendanceCalendar(recentAttendance: List<AttendanceRecord>) {
+fun InteractiveAttendanceCalendar(
+    recentAttendance: List<AttendanceRecord>,
+    onMonthChanged: (Int, Int) -> Unit
+) {
     var calendarState by remember { mutableStateOf(Calendar.getInstance()) }
     var selectedDateState by remember { mutableStateOf(Calendar.getInstance()) }
 
@@ -1963,6 +1973,7 @@ fun InteractiveAttendanceCalendar(recentAttendance: List<AttendanceRecord>) {
                     calendarState = (calendarState.clone() as Calendar).apply {
                         add(Calendar.MONTH, -1)
                     }
+                    onMonthChanged(calendarState.get(Calendar.YEAR), calendarState.get(Calendar.MONTH) + 1)
                 }) {
                     Icon(Icons.Rounded.ChevronLeft, contentDescription = "Oldingi oy", tint = Color.Black)
                 }
@@ -1978,6 +1989,7 @@ fun InteractiveAttendanceCalendar(recentAttendance: List<AttendanceRecord>) {
                     calendarState = (calendarState.clone() as Calendar).apply {
                         add(Calendar.MONTH, 1)
                     }
+                    onMonthChanged(calendarState.get(Calendar.YEAR), calendarState.get(Calendar.MONTH) + 1)
                 }) {
                     Icon(Icons.Rounded.ChevronRight, contentDescription = "Keyingi oy", tint = Color.Black)
                 }
@@ -2705,6 +2717,21 @@ class ParentViewModel : ViewModel() {
             _payments.value = NetworkModule.parentApiService.getChildPayments(id)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    fun loadAttendanceForMonth(year: Int, month: Int) {
+        val childId = _selectedChildId.value ?: return
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val dateStr = String.format(Locale.US, "%04d-%02d-01", year, month)
+                _attendance.value = NetworkModule.parentApiService.getChildAttendance(childId, dateStr)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 

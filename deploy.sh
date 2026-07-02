@@ -23,6 +23,17 @@ if [ "$FREE_SWAP" -eq "0" ]; then
     sleep 2
 fi
 
+# Load environment variables to read JWT_SECRET
+if [ -f .env ]; then
+    # Parse env variables safely
+    export $(grep -v '^#' .env | xargs 2>/dev/null || true)
+fi
+SECRET_TOKEN=${JWT_SECRET:-"your_super_secret_jwt_key_change_this_in_production"}
+BACKEND_PORT=${DB_PORT:-3000} # Fallback port
+
+echo "🚧 [Maintenance] Signaling backend to start maintenance mode..."
+curl -s -X POST -H "Authorization: Bearer $SECRET_TOKEN" "http://localhost:3000/system/maintenance/start" || true
+
 # 1. So'nggi commitni olish va git pull
 echo "[1/5] Git-dan so'nggi versiyani yuklab olish..."
 
@@ -117,6 +128,10 @@ docker compose -f docker-compose.prod.yml ps
 
 # Oxirgi commitni saqlab qo'yish
 echo "$CURRENT_COMMIT" > .last_deployed_commit
+
+echo "✅ [Maintenance] Signaling backend to end maintenance mode..."
+sleep 3
+curl -s -X POST -H "Authorization: Bearer $SECRET_TOKEN" "http://localhost:3000/system/maintenance/end" || true
 
 echo ""
 echo "✅ Deploy muvaffaqiyatli yakunlandi!"

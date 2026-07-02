@@ -85,7 +85,7 @@ export class PaymentsService {
       await this.notificationsService.sendBulk({
         studentIds: [p.student.id],
         title: "To'lov qabul qilindi",
-        message: `O'quvchingiz ${p.student.name}${groupName} guruhi uchun ${formattedAmount} UZS to'lov qildi.`
+        message: `Farzandingiz ${p.student.name}${groupName} guruhi uchun ${formattedAmount} UZS to'lov qabul qilindi.`
       }).catch(err => console.error('Failing to send parent payment notification:', err));
     }
 

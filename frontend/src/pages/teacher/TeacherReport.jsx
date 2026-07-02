@@ -1094,7 +1094,7 @@ const TeacherReport = () => {
                                           {s.name?.charAt(0)}
                                         </div>
                                         <div>
-                                          <p className="font-semibold text-gray-900 dark:text-gray-150 leading-tight">{s.name}</p>
+                                          <p className="font-semibold text-gray-900 dark:text-gray-200 leading-tight">{s.name}</p>
                                           <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">{s.groupName}</p>
                                         </div>
                                       </div>
@@ -1113,7 +1113,7 @@ const TeacherReport = () => {
                                         placeholder="0"
                                         value={theoryScores[s.id] || ''}
                                         onChange={(e) => handleScoreChange(s.id, 'theory', e.target.value)}
-                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-150 text-[13px]"
+                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
                                       />
                                     </td>
                                     <td className="p-0 border-r border-gray-250 dark:border-white/10">
@@ -1122,7 +1122,7 @@ const TeacherReport = () => {
                                         placeholder="0"
                                         value={practiceScores[s.id] || ''}
                                         onChange={(e) => handleScoreChange(s.id, 'practice', e.target.value)}
-                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-150 text-[13px]"
+                                        className="w-full h-9 bg-transparent border-none text-center outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[13px]"
                                       />
                                     </td>
                                     <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-extrabold text-gray-900 dark:text-white text-[13px] bg-gray-50/50 dark:bg-white/[0.01]">
@@ -1157,7 +1157,7 @@ const TeacherReport = () => {
                                         placeholder="Izoh yozing..."
                                         value={examComments[s.id] || ''}
                                         onChange={(e) => setExamComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                        className="w-full h-9 bg-transparent border-none px-3 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-150 text-[12.5px]"
+                                        className="w-full h-9 bg-transparent border-none px-3 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-gray-900 dark:text-gray-200 text-[12.5px]"
                                       />
                                     </td>
                                   </tr>

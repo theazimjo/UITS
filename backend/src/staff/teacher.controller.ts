@@ -787,14 +787,14 @@ export class TeacherController {
           return {
             studentId: sid,
             title: "Imtihon natijasi",
-            message: `Sizning ${body.month} oyidagi imtihon natijangiz: ${score} ball — ${status}.`
+            message: `Farzandingizning ${body.month} oyidagi imtihon natijasi: ${score} ball — ${status}.`
           };
         });
         if (examNotifs.length > 0) {
           await this.notificationsService.sendBulk({
             studentIds: examNotifs.map(n => n.studentId),
             title: "Imtihon natijasi",
-            message: `Sizning ${body.month} oyidagi imtihon natijalari kiritildi.`
+            message: `Farzandingizning ${body.month} oyidagi imtihon natijalari kiritildi.`
           }).catch(err => console.error('Failed to send exam notifications:', err));
         }
       }

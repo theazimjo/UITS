@@ -50,34 +50,26 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
-    const handleMaintenance = () => {
-      setIsMaintenance(true);
-    };
-    window.addEventListener('backend-maintenance', handleMaintenance);
-    return () => {
-      window.removeEventListener('backend-maintenance', handleMaintenance);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isMaintenance) return;
-
-    const interval = setInterval(async () => {
+    const checkStatus = async () => {
       try {
         const baseUrl = import.meta.env.VITE_API_URL || '/api';
-        const res = await fetch(`${baseUrl}/settings`);
-        if (res.status !== 503) {
-          clearInterval(interval);
-          setIsMaintenance(false);
-          window.location.reload();
+        const res = await fetch(`${baseUrl}/system/status`);
+        if (!res.ok) {
+          setIsMaintenance(true);
+          return;
         }
+        const data = await res.json();
+        setIsMaintenance(!!data.maintenance);
       } catch (err) {
-        // Network connection error is expected during deploy
+        setIsMaintenance(true);
       }
-    }, 3000);
+    };
 
+    // Run immediately and then poll every 4 seconds
+    checkStatus();
+    const interval = setInterval(checkStatus, 4000);
     return () => clearInterval(interval);
-  }, [isMaintenance]);
+  }, []);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -119,53 +111,52 @@ function App() {
   };
 
   // Global loading is handled by Layout/ProtectedRoute or per-page via the loading prop
-
-  if (isMaintenance) {
-    return (
-      <div className="fixed inset-0 z-9999 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 text-center select-none">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 flex flex-col items-center">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
-            <svg 
-              className="w-20 h-20 text-blue-600 animate-spin" 
-              style={{ animationDuration: '3s' }}
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor" 
-              strokeWidth="1.5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">
-            Tizim yangilanmoqda
-          </h1>
-          
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
-            Hozirda tizimni yaxshilash maqsadida texnik ishlar olib borilmoqda. 
-            Yangilanish yakunlangach, dastur <strong>avtomatik ravishda</strong> ishga tushadi. 
-            Iltimos, sahifani yopmang...
-          </p>
-
-          <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 px-4 py-2 rounded-full border border-gray-100 dark:border-gray-600">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-              Server holati tekshirilmoqda...
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       <Toaster position="top-center" reverseOrder={false} />
+
+      {/* Maintenance Overlay */}
+      {isMaintenance && (
+        <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md px-4 text-center select-none animate-fade-in">
+          <div className="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-100/50 dark:border-gray-700/50 flex flex-col items-center animate-scale-up">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+              <svg 
+                className="w-20 h-20 text-blue-600 animate-spin" 
+                style={{ animationDuration: '3s' }}
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth="1.5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">
+              Tizim yangilanmoqda
+            </h1>
+            
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+              Hozirda tizimni yaxshilash maqsadida texnik ishlar olib borilmoqda. 
+              Yangilanish yakunlangach, dastur <strong>avtomatik ravishda</strong> ishga tushadi. 
+              Iltimos, sahifani yopmang...
+            </p>
+
+            <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 px-4 py-2 rounded-full border border-gray-100 dark:border-gray-600">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                Server holati tekshirilmoqda...
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Routes>
         <Route path="/login" element={
           <Login onLoginSuccess={(u) => { 
