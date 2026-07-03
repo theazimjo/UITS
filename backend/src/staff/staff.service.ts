@@ -8,6 +8,7 @@ import { MonthlyReport } from './entities/monthly-report.entity';
 import { MonthlyReportItem } from './entities/monthly-report-item.entity';
 import { ReportDate } from './entities/report-date.entity';
 import { CertificateRequest } from './entities/certificate-request.entity';
+import { StaffSalaryConfig } from './entities/staff-salary-config.entity';
 import * as bcrypt from 'bcrypt';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -25,6 +26,8 @@ export class StaffService {
     private readonly reportDateRepo: Repository<ReportDate>,
     @InjectRepository(CertificateRequest)
     private readonly certificateRequestRepo: Repository<CertificateRequest>,
+    @InjectRepository(StaffSalaryConfig)
+    private readonly staffSalaryConfigRepo: Repository<StaffSalaryConfig>,
     private readonly activityLogService: ActivityLogService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -75,8 +78,27 @@ export class StaffService {
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate = new Date(year, monthNum, 0);
 
-    let totalFixed = (staff.salaryType === 'FIXED' || staff.salaryType === 'MIXED')
-      ? Number(staff.fixedAmount || 0)
+    // Find active salary configuration for this month
+    const configs = await this.staffSalaryConfigRepo.find({
+      where: { staffId: id },
+      order: { month: 'ASC' }
+    });
+
+    let activeConfig: StaffSalaryConfig | null = null;
+    for (const config of configs) {
+      if (config.month <= month) {
+        activeConfig = config;
+      } else {
+        break;
+      }
+    }
+
+    const effectiveSalaryType = activeConfig ? activeConfig.salaryType : staff.salaryType;
+    const effectiveFixedAmount = activeConfig ? activeConfig.fixedAmount : staff.fixedAmount;
+    const effectiveKpiPercentage = activeConfig ? activeConfig.kpiPercentage : staff.kpiPercentage;
+
+    let totalFixed = (effectiveSalaryType === 'FIXED' || effectiveSalaryType === 'MIXED')
+      ? Number(effectiveFixedAmount || 0)
       : 0;
     
     let totalRevenue = 0;
@@ -106,10 +128,10 @@ export class StaffService {
           .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
         if (groupRevenue > 0 || isStaffTeaching) {
-          const kpiPercentage = Number(staff.kpiPercentage) || 0;
+          const kpiPercentage = Number(effectiveKpiPercentage) || 0;
           const groupKpi = (groupRevenue * kpiPercentage) / 100;
 
-          if (staff.salaryType === 'KPI' || staff.salaryType === 'MIXED') {
+          if (effectiveSalaryType === 'KPI' || effectiveSalaryType === 'MIXED') {
             totalKpi += groupKpi;
           }
           totalRevenue += groupRevenue;
@@ -225,6 +247,43 @@ export class StaffService {
     const staff = await this.staffRepository.findOne({ where: { id } });
     if (!staff) throw new NotFoundException('Staff not found');
     
+    const salaryStartMonth = (data as any).salaryStartMonth;
+    if (salaryStartMonth) {
+      let config = await this.staffSalaryConfigRepo.findOne({
+        where: { staffId: id, month: salaryStartMonth }
+      });
+      if (!config) {
+        config = new StaffSalaryConfig();
+        config.staffId = id;
+        config.month = salaryStartMonth;
+      }
+      config.salaryType = data.salaryType !== undefined ? data.salaryType : staff.salaryType;
+      config.fixedAmount = data.fixedAmount !== undefined ? Number(data.fixedAmount) : staff.fixedAmount;
+      config.kpiPercentage = data.kpiPercentage !== undefined ? Number(data.kpiPercentage) : staff.kpiPercentage;
+      await this.staffSalaryConfigRepo.save(config);
+
+      // Determine if this month is the latest config month
+      const allConfigs = await this.staffSalaryConfigRepo.find({
+        where: { staffId: id }
+      });
+      const isLatest = allConfigs.every(c => c.month <= salaryStartMonth);
+      if (isLatest) {
+        // Keep Staff columns in sync with the latest config
+        staff.salaryType = config.salaryType;
+        staff.fixedAmount = config.fixedAmount;
+        staff.kpiPercentage = config.kpiPercentage;
+      }
+
+      delete (data as any).salaryStartMonth;
+      // Remove salary settings from data so Object.assign doesn't overwrite the staff record
+      // if it's NOT the latest config!
+      if (!isLatest) {
+        delete (data as any).salaryType;
+        delete (data as any).fixedAmount;
+        delete (data as any).kpiPercentage;
+      }
+    }
+
     // Merge new data and save
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);

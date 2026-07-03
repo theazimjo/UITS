@@ -130,7 +130,8 @@ const StaffDetail = () => {
       fixedAmount: staff.fixedAmount?.toString() || '0',
       kpiPercentage: staff.kpiPercentage?.toString() || '0',
       username: staff.username || '',
-      password: ''
+      password: '',
+      salaryStartMonth: new Date().toISOString().slice(0, 7)
     });
     setIsEditModalOpen(true);
   };
@@ -144,7 +145,8 @@ const StaffDetail = () => {
         fixedAmount: parseFloat(editFormData.fixedAmount || 0),
         kpiPercentage: parseFloat(editFormData.kpiPercentage || 0),
         username: editFormData.username || null,
-        password: editFormData.password || undefined
+        password: editFormData.password || undefined,
+        salaryStartMonth: editFormData.salaryStartMonth
       };
       await updateStaff(id, payload);
 
@@ -1290,6 +1292,17 @@ const StaffDetail = () => {
                         />
                       </div>
                     )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-gray-400 mb-1">QAYSI OYDAN KUCHGA KIRADI?</label>
+                    <input
+                      type="month"
+                      value={editFormData.salaryStartMonth}
+                      onChange={(e) => setEditFormData({ ...editFormData, salaryStartMonth: e.target.value })}
+                      className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all font-medium shadow-inner"
+                      required
+                    />
                   </div>
                 </div>
               </div>
