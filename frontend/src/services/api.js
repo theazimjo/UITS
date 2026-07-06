@@ -82,6 +82,8 @@ export const deleteIncome = (id) => api.delete(`/incomes/${id}`);
 export const createStaff = (data) => api.post('/staff', data);
 export const updateStaff = (id, data) => api.patch(`/staff/${id}`, data);
 export const deleteStaff = (id) => api.delete(`/staff/${id}`);
+export const getStaffSalaryConfigs = (id) => api.get(`/staff/${id}/salary-configs`);
+export const resetStaffSalaryConfigs = (id) => api.delete(`/staff/${id}/salary-configs`);
 
 export const getRoles = () => api.get('/roles');
 export const createRole = (role) => api.post('/roles', role);

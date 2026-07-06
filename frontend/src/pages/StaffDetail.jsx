@@ -7,7 +7,7 @@ import {
   ChevronRight, CreditCard, Percent, Briefcase, Edit,
   FileText, Send, Star, ChevronDown, ChevronUp, Award
 } from 'lucide-react';
-import { getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment, updateStaffPayment, deleteStaffPayment, createMonthlyReport, getMonthlyReports } from '../services/api';
+import { getStaff, getStaffById, deleteStaff, updateStaff, getRoles, getStaffSalary, addStaffPayment, updateStaffPayment, deleteStaffPayment, createMonthlyReport, getMonthlyReports, getStaffSalaryConfigs } from '../services/api';
 import Modal from '../components/common/Modal';
 import toast from 'react-hot-toast';
 
@@ -28,6 +28,12 @@ const StaffDetail = () => {
   // Report state
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);
+
+  // New Salary Configuration entry states
+  const [newConfigMonth, setNewConfigMonth] = useState('');
+  const [newConfigSalaryType, setNewConfigSalaryType] = useState('FIXED');
+  const [newConfigFixedAmount, setNewConfigFixedAmount] = useState('0');
+  const [newConfigKpiPercentage, setNewConfigKpiPercentage] = useState('0');
   const [selectedStudents, setSelectedStudents] = useState(new Set());
   const [reportData, setReportData] = useState({}); // { studentId: { examScore, examComment, note, attendanceCount, paymentStatus } }
   const [reportSummary, setReportSummary] = useState('');
@@ -121,32 +127,48 @@ const StaffDetail = () => {
 
 
 
-  const handleEditClick = () => {
-    setEditFormData({
-      name: staff.name,
-      roleId: staff.role?.id?.toString() || '',
-      phone: staff.phone || '',
-      salaryType: staff.salaryType || 'FIXED',
-      fixedAmount: staff.fixedAmount?.toString() || '0',
-      kpiPercentage: staff.kpiPercentage?.toString() || '0',
-      username: staff.username || '',
-      password: '',
-      salaryStartMonth: new Date().toISOString().slice(0, 7)
-    });
-    setIsEditModalOpen(true);
+  const handleEditClick = async () => {
+    try {
+      const res = await getStaffSalaryConfigs(id);
+      const fetchedConfigs = res.data || [];
+      
+      const initialConfigs = fetchedConfigs.length > 0 ? fetchedConfigs : [
+        {
+          month: '2000-01',
+          salaryType: staff.salaryType || 'FIXED',
+          fixedAmount: Number(staff.fixedAmount) || 0,
+          kpiPercentage: Number(staff.kpiPercentage) || 0
+        }
+      ];
+
+      setEditFormData({
+        name: staff.name,
+        roleId: staff.role?.id?.toString() || '',
+        phone: staff.phone || '',
+        salaryType: staff.salaryType || 'FIXED',
+        fixedAmount: staff.fixedAmount?.toString() || '0',
+        kpiPercentage: staff.kpiPercentage?.toString() || '0',
+        username: staff.username || '',
+        password: '',
+        salaryConfigs: initialConfigs
+      });
+      setIsEditModalOpen(true);
+    } catch (err) {
+      console.error('Error fetching configurations:', err);
+      toast.error("Xodim maosh sozlamalari tarixini yuklashda xatolik yuz berdi");
+    }
   };
 
   const handleUpdateStaff = async (e) => {
     e.preventDefault();
     try {
       const payload = {
-        ...editFormData,
+        name: editFormData.name,
         role: { id: parseInt(editFormData.roleId) },
-        fixedAmount: parseFloat(editFormData.fixedAmount || 0),
-        kpiPercentage: parseFloat(editFormData.kpiPercentage || 0),
+        phone: editFormData.phone,
         username: editFormData.username || null,
         password: editFormData.password || undefined,
-        salaryStartMonth: editFormData.salaryStartMonth
+        salaryConfigs: editFormData.salaryConfigs
       };
       await updateStaff(id, payload);
 
@@ -161,6 +183,54 @@ const StaffDetail = () => {
       console.error('Error updating staff:', err);
       toast.error("Ma'lumotlarni saqlashda xatolik yuzaga keldi.");
     }
+  };
+
+  const handleAddSalaryConfig = () => {
+    if (!newConfigMonth) {
+      toast.error("Iltimos, amal qilish muddatini tanlang!");
+      return;
+    }
+    const exists = editFormData.salaryConfigs.some(c => c.month === newConfigMonth);
+    if (exists) {
+      toast.error("Ushbu oy uchun sozlama allaqachon mavjud!");
+      return;
+    }
+
+    const newConf = {
+      month: newConfigMonth,
+      salaryType: newConfigSalaryType,
+      fixedAmount: parseFloat(newConfigFixedAmount || 0),
+      kpiPercentage: parseFloat(newConfigKpiPercentage || 0)
+    };
+
+    const updatedConfigs = [...editFormData.salaryConfigs, newConf].sort((a, b) => a.month.localeCompare(b.month));
+
+    setEditFormData({
+      ...editFormData,
+      salaryConfigs: updatedConfigs
+    });
+
+    // Reset input fields
+    setNewConfigMonth('');
+    setNewConfigSalaryType('FIXED');
+    setNewConfigFixedAmount('0');
+    setNewConfigKpiPercentage('0');
+    toast.success("Yangi maosh davri ro'yxatga qo'shildi!");
+  };
+
+  const handleDeleteSalaryConfig = (indexToDelete) => {
+    const configToDelete = editFormData.salaryConfigs[indexToDelete];
+    if (configToDelete.month === '2000-01') {
+      toast.error("Boshlang'ich (baseline) sozlamani o'chirib bo'lmaydi!");
+      return;
+    }
+
+    const updatedConfigs = editFormData.salaryConfigs.filter((_, idx) => idx !== indexToDelete);
+    setEditFormData({
+      ...editFormData,
+      salaryConfigs: updatedConfigs
+    });
+    toast.success("Maosh davri o'chirildi. Saqlash tugmasini bossangiz, o'zgarishlar saqlanadi.");
   };
 
   const handleMonthChange = (direction) => {
@@ -1251,59 +1321,117 @@ const StaffDetail = () => {
               </div>
 
               <div className="pt-2 border-t border-gray-100 dark:border-white/5">
-                <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-2">MAOSH SOZLAMALARI</label>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-lg border border-black/5 dark:border-white/10">
-                    {['FIXED', 'KPI', 'MIXED'].map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setEditFormData({ ...editFormData, salaryType: type })}
-                        className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all ${editFormData.salaryType === type
-                          ? 'bg-white dark:bg-[#636366] text-black dark:text-white shadow-sm'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                          }`}
+                <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2">MAOSH SOZLAMALARI TARIXI</label>
+                
+                {/* Config List */}
+                <div className="space-y-2 mb-3">
+                  {editFormData.salaryConfigs && editFormData.salaryConfigs.map((config, index) => (
+                    <div 
+                      key={index} 
+                      className="p-3 bg-gray-50 dark:bg-black/20 border border-gray-200/60 dark:border-white/5 rounded-xl flex items-center justify-between gap-3 text-[12px]"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#1d1d1f] dark:text-white">
+                            {config.month === '2000-01' ? "Boshlang'ich davr (tizim boshidan)" : `${config.month} dan boshlab`}
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                            config.salaryType === 'FIXED' 
+                              ? 'bg-blue-50 dark:bg-blue-900/20 text-[#007aff] border border-blue-100 dark:border-blue-800/30' 
+                              : config.salaryType === 'KPI' 
+                              ? 'bg-purple-50 dark:bg-purple-900/20 text-[#af52de] border border-purple-100 dark:border-purple-800/30' 
+                              : 'bg-emerald-50 dark:bg-emerald-900/20 text-[#34c759] border border-emerald-100 dark:border-emerald-800/30'
+                          }`}>
+                            {config.salaryType === 'FIXED' ? 'Fiks' : config.salaryType === 'KPI' ? 'KPI' : 'Aralash'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-3 gap-y-1">
+                          {(config.salaryType === 'FIXED' || config.salaryType === 'MIXED') && (
+                            <span>Fiks: <strong className="text-gray-700 dark:text-gray-300">{Number(config.fixedAmount || 0).toLocaleString()} UZS</strong></span>
+                          )}
+                          {(config.salaryType === 'KPI' || config.salaryType === 'MIXED') && (
+                            <span>KPI: <strong className="text-gray-700 dark:text-gray-300">{config.kpiPercentage}%</strong></span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {config.month !== '2000-01' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSalaryConfig(index)}
+                          className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors"
+                          title="Ushbu maosh davrini o'chirish va oldingisiga qaytarish"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add New Config Sub-Form */}
+                <div className="p-3 bg-gray-50/50 dark:bg-white/[0.02] border border-dashed border-gray-200 dark:border-white/10 rounded-2xl space-y-3">
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Yangi amal qilish davrini qo'shish</span>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-400 mb-1">AMAL QILISH OYI</label>
+                      <input
+                        type="month"
+                        value={newConfigMonth}
+                        onChange={(e) => setNewConfigMonth(e.target.value)}
+                        className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[12px] text-[#1d1d1f] dark:text-[#f5f5f7] outline-none font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-400 mb-1">MAOSH TURI</label>
+                      <select
+                        value={newConfigSalaryType}
+                        onChange={(e) => setNewConfigSalaryType(e.target.value)}
+                        className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-md px-3 py-1.5 text-[12px] text-[#1d1d1f] dark:text-[#f5f5f7] outline-none font-medium"
                       >
-                        {type === 'FIXED' ? 'Fiks' : type === 'KPI' ? 'KPI' : 'Aralash'}
-                      </button>
-                    ))}
+                        <option value="FIXED">Fiks maosh</option>
+                        <option value="KPI">KPI maosh</option>
+                        <option value="MIXED">Aralash maosh (Fiks + KPI)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    {(editFormData.salaryType === 'FIXED' || editFormData.salaryType === 'MIXED') && (
+                    {(newConfigSalaryType === 'FIXED' || newConfigSalaryType === 'MIXED') && (
                       <div>
-                        <label className="block text-[10px] font-medium text-gray-400 mb-1">FIKS SUMMA</label>
+                        <label className="block text-[10px] font-medium text-gray-400 mb-1">FIKS SUMMA (UZS)</label>
                         <input
                           type="number"
-                          value={editFormData.fixedAmount}
-                          onChange={(e) => setEditFormData({ ...editFormData, fixedAmount: e.target.value })}
-                          className="w-full bg-[#007aff]/5 dark:bg-[#007aff]/10 border border-[#007aff]/10 rounded-md px-3 py-2 text-[13px] font-medium text-[#007aff] outline-none"
+                          placeholder="Summani kiriting..."
+                          value={newConfigFixedAmount}
+                          onChange={(e) => setNewConfigFixedAmount(e.target.value)}
+                          className="w-full bg-[#007aff]/5 dark:bg-[#007aff]/10 border border-[#007aff]/10 rounded-md px-3 py-1.5 text-[12px] font-medium text-[#007aff] outline-none"
                         />
                       </div>
                     )}
-                    {(editFormData.salaryType === 'KPI' || editFormData.salaryType === 'MIXED') && (
+                    {(newConfigSalaryType === 'KPI' || newConfigSalaryType === 'MIXED') && (
                       <div>
                         <label className="block text-[10px] font-medium text-gray-400 mb-1">KPI (%)</label>
                         <input
                           type="number"
-                          value={editFormData.kpiPercentage}
-                          onChange={(e) => setEditFormData({ ...editFormData, kpiPercentage: e.target.value })}
-                          className="w-full bg-[#af52de]/5 dark:bg-[#af52de]/10 border border-[#af52de]/10 rounded-md px-3 py-2 text-[13px] font-medium text-[#af52de] outline-none"
+                          placeholder="KPI % kiriting..."
+                          value={newConfigKpiPercentage}
+                          onChange={(e) => setNewConfigKpiPercentage(e.target.value)}
+                          className="w-full bg-[#af52de]/5 dark:bg-[#af52de]/10 border border-[#af52de]/10 rounded-md px-3 py-1.5 text-[12px] font-medium text-[#af52de] outline-none"
                         />
                       </div>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-400 mb-1">QAYSI OYDAN KUCHGA KIRADI?</label>
-                    <input
-                      type="month"
-                      value={editFormData.salaryStartMonth}
-                      onChange={(e) => setEditFormData({ ...editFormData, salaryStartMonth: e.target.value })}
-                      className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-md px-3 py-2 text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] focus:ring-2 focus:ring-[#007aff]/50 outline-none transition-all font-medium shadow-inner"
-                      required
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddSalaryConfig}
+                    className="w-full py-1.5 bg-[#007aff] hover:bg-[#007aff]/90 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <Calendar size={13} />
+                    <span>Ushbu oydan boshlab kuchga kiritish</span>
+                  </button>
                 </div>
               </div>
 

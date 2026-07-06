@@ -76,6 +76,16 @@ export class StaffController {
     return this.staffService.calculateSalary(+id, month);
   }
 
+  @Get(':id/salary-configs')
+  getSalaryConfigs(@Param('id') id: string) {
+    return this.staffService.getSalaryConfigs(+id);
+  }
+
+  @Delete(':id/salary-configs')
+  resetSalaryConfigs(@Param('id') id: string) {
+    return this.staffService.resetSalaryConfigs(+id);
+  }
+
   @Post(':id/payments')
   addPayment(@Param('id') id: string, @Body() data: any) {
     return this.staffService.addPayment(+id, data);

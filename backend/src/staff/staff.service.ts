@@ -247,61 +247,44 @@ export class StaffService {
     const staff = await this.staffRepository.findOne({ where: { id } });
     if (!staff) throw new NotFoundException('Staff not found');
     
-    const salaryStartMonth = (data as any).salaryStartMonth;
-    if (salaryStartMonth) {
-      // Check if this staff has any existing salary configs
-      const existingConfigs = await this.staffSalaryConfigRepo.find({
-        where: { staffId: id }
-      });
+    const salaryConfigs = (data as any).salaryConfigs;
 
-      // If no configs exist yet, create a baseline config with the CURRENT (old) values
-      // so that months before the new start month will still use the old salary settings
-      if (existingConfigs.length === 0) {
-        const baseline = new StaffSalaryConfig();
-        baseline.staffId = id;
-        baseline.month = '2000-01'; // earliest possible baseline
-        baseline.salaryType = staff.salaryType;
-        baseline.fixedAmount = Number(staff.fixedAmount) || 0;
-        baseline.kpiPercentage = Number(staff.kpiPercentage) || 0;
-        await this.staffSalaryConfigRepo.save(baseline);
+    // ALWAYS remove salary fields and configs from data so Object.assign never writes them to Staff directly.
+    delete (data as any).salaryConfigs;
+    delete (data as any).salaryStartMonth;
+    delete (data as any).salaryType;
+    delete (data as any).fixedAmount;
+    delete (data as any).kpiPercentage;
+
+    if (salaryConfigs && Array.isArray(salaryConfigs)) {
+      // 1. Delete all existing salary configs for this staff member
+      await this.staffSalaryConfigRepo.delete({ staffId: id });
+
+      // 2. Re-create configs from the sent list
+      for (const conf of salaryConfigs) {
+        const newConfig = new StaffSalaryConfig();
+        newConfig.staffId = id;
+        newConfig.month = conf.month || '2000-01';
+        newConfig.salaryType = conf.salaryType || 'FIXED';
+        newConfig.fixedAmount = Number(conf.fixedAmount) || 0;
+        newConfig.kpiPercentage = Number(conf.kpiPercentage) || 0;
+        await this.staffSalaryConfigRepo.save(newConfig);
       }
 
-      let config = await this.staffSalaryConfigRepo.findOne({
-        where: { staffId: id, month: salaryStartMonth }
-      });
-      if (!config) {
-        config = new StaffSalaryConfig();
-        config.staffId = id;
-        config.month = salaryStartMonth;
-      }
-      config.salaryType = data.salaryType !== undefined ? data.salaryType : staff.salaryType;
-      config.fixedAmount = data.fixedAmount !== undefined ? Number(data.fixedAmount) : staff.fixedAmount;
-      config.kpiPercentage = data.kpiPercentage !== undefined ? Number(data.kpiPercentage) : staff.kpiPercentage;
-      await this.staffSalaryConfigRepo.save(config);
-
-      // Determine if this month is the latest config month
+      // 3. Keep Staff columns in sync with the latest (most recent month) config values
       const allConfigs = await this.staffSalaryConfigRepo.find({
-        where: { staffId: id }
+        where: { staffId: id },
+        order: { month: 'DESC' }
       });
-      const isLatest = allConfigs.every(c => c.month <= salaryStartMonth);
-      if (isLatest) {
-        // Keep Staff columns in sync with the latest config
-        staff.salaryType = config.salaryType;
-        staff.fixedAmount = config.fixedAmount;
-        staff.kpiPercentage = config.kpiPercentage;
-      }
-
-      delete (data as any).salaryStartMonth;
-      // Remove salary settings from data so Object.assign doesn't overwrite the staff record
-      // if it's NOT the latest config!
-      if (!isLatest) {
-        delete (data as any).salaryType;
-        delete (data as any).fixedAmount;
-        delete (data as any).kpiPercentage;
+      const latestConfig = allConfigs[0];
+      if (latestConfig) {
+        staff.salaryType = latestConfig.salaryType;
+        staff.fixedAmount = latestConfig.fixedAmount;
+        staff.kpiPercentage = latestConfig.kpiPercentage;
       }
     }
 
-    // Merge new data and save
+    // Merge remaining (non-salary) data and save
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
@@ -314,6 +297,18 @@ export class StaffService {
       description: `Xodim ma'lumotlari yangilandi: ${staff.name}`,
     });
     return updated;
+  }
+
+  async getSalaryConfigs(staffId: number) {
+    return this.staffSalaryConfigRepo.find({
+      where: { staffId },
+      order: { month: 'ASC' }
+    });
+  }
+
+  async resetSalaryConfigs(staffId: number) {
+    await this.staffSalaryConfigRepo.delete({ staffId });
+    return { message: 'Salary configs reset successfully' };
   }
 
   async remove(id: number): Promise<void> {
