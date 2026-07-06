@@ -249,6 +249,23 @@ export class StaffService {
     
     const salaryStartMonth = (data as any).salaryStartMonth;
     if (salaryStartMonth) {
+      // Check if this staff has any existing salary configs
+      const existingConfigs = await this.staffSalaryConfigRepo.find({
+        where: { staffId: id }
+      });
+
+      // If no configs exist yet, create a baseline config with the CURRENT (old) values
+      // so that months before the new start month will still use the old salary settings
+      if (existingConfigs.length === 0) {
+        const baseline = new StaffSalaryConfig();
+        baseline.staffId = id;
+        baseline.month = '2000-01'; // earliest possible baseline
+        baseline.salaryType = staff.salaryType;
+        baseline.fixedAmount = Number(staff.fixedAmount) || 0;
+        baseline.kpiPercentage = Number(staff.kpiPercentage) || 0;
+        await this.staffSalaryConfigRepo.save(baseline);
+      }
+
       let config = await this.staffSalaryConfigRepo.findOne({
         where: { staffId: id, month: salaryStartMonth }
       });
