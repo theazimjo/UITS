@@ -82,11 +82,6 @@ fun StudentDetailScreen(
                             Icon(Icons.Default.ChevronLeft, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.size(32.dp))
                         }
                     },
-                    actions = {
-                        IconButton(onClick = { /* More options */ }) {
-                            Icon(Icons.Default.MoreHoriz, contentDescription = null, tint = Color(0xFF007AFF))
-                        }
-                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = Color(0xFFF2F2F7).copy(alpha = 0.9f)
                     )

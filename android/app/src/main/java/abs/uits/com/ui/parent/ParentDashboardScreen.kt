@@ -16,8 +16,8 @@ import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material.icons.automirrored.rounded.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -107,7 +107,7 @@ fun ParentDashboardScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF9FAFC))
+                .background(IosBackground)
         ) {
             // Tab Content
             Box(
@@ -171,10 +171,10 @@ fun ParentDashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val tabs = listOf(
-                        NavigationTabInfo(0, Icons.Rounded.Home, "Asosiy"),
-                        NavigationTabInfo(1, Icons.Rounded.CheckCircleOutline, "Davomat"),
-                        NavigationTabInfo(2, Icons.Rounded.Newspaper, "Yangiliklar"),
-                        NavigationTabInfo(3, Icons.Rounded.Person, "Profil")
+                        NavigationTabInfo(0, Icons.Outlined.Home, Icons.Filled.Home, "Asosiy"),
+                        NavigationTabInfo(1, Icons.Outlined.CheckCircle, Icons.Filled.CheckCircle, "Davomat"),
+                        NavigationTabInfo(2, Icons.Outlined.Newspaper, Icons.Filled.Newspaper, "Yangiliklar"),
+                        NavigationTabInfo(3, Icons.Outlined.Person, Icons.Filled.Person, "Profil")
                     )
 
                     tabs.forEach { tab ->
@@ -186,11 +186,11 @@ fun ParentDashboardScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { selectedTab = tab.id }
+                                .iosPressable { selectedTab = tab.id }
                                 .padding(horizontal = 12.dp, vertical = 4.dp)
                         ) {
                             Icon(
-                                imageVector = tab.icon,
+                                imageVector = if (isSelected) tab.filledIcon else tab.outlinedIcon,
                                 contentDescription = tab.label,
                                 tint = color,
                                 modifier = Modifier.size(22.dp)
@@ -212,7 +212,8 @@ fun ParentDashboardScreen(
 
 data class NavigationTabInfo(
     val id: Int,
-    val icon: ImageVector,
+    val outlinedIcon: ImageVector,
+    val filledIcon: ImageVector,
     val label: String
 )
 
@@ -319,7 +320,7 @@ fun HomeMockupTab(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable(enabled = children.size > 1) { showChildDropdown = true },
+                            .iosPressable(enabled = children.size > 1) { showChildDropdown = true },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Circular Child Photo
@@ -362,7 +363,7 @@ fun HomeMockupTab(
                                 if (children.size > 1) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Icon(
-                                        imageVector = Icons.Rounded.ExpandMore,
+                                        imageVector = Icons.Outlined.ExpandMore,
                                         contentDescription = null,
                                         tint = Color.Black,
                                         modifier = Modifier.size(20.dp)
@@ -378,54 +379,49 @@ fun HomeMockupTab(
                         }
                     }
  
-                    // Dropdown menu definition
-                    DropdownMenu(
-                        expanded = showChildDropdown,
-                        onDismissRequest = { showChildDropdown = false },
-                        modifier = Modifier
-                            .background(Color.White)
-                            .border(0.5.dp, Color(0xFFE5E5EA), RoundedCornerShape(16.dp))
-                    ) {
-                        children.forEach { child ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(28.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFFF2F2F7)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            val pUrl = child.photo?.let {
-                                                if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
-                                            }
-                                            if (pUrl != null) {
-                                                AsyncImage(
-                                                    model = pUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = Icons.Default.Person,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFF8E8E93),
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(child.name, fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+                IosActionSheet(
+                    visible = showChildDropdown,
+                    onDismiss = { showChildDropdown = false },
+                    title = "Farzandingizni tanlang"
+                ) {
+                    children.forEachIndexed { idx, child ->
+                        IosActionSheetRow(
+                            label = child.name,
+                            isLast = idx == children.lastIndex,
+                            leading = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFF2F2F7)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val pUrl = child.photo?.let {
+                                        if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
                                     }
-                                },
-                                onClick = {
-                                    onChildSelected(child.id)
-                                    showChildDropdown = false
+                                    if (pUrl != null) {
+                                        AsyncImage(
+                                            model = pUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = Color(0xFF8E8E93),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
-                            )
-                        }
+                            },
+                            onClick = {
+                                onChildSelected(child.id)
+                                showChildDropdown = false
+                            }
+                        )
                     }
                 }
  
@@ -436,11 +432,11 @@ fun HomeMockupTab(
                         .size(40.dp)
                         .background(Color.White, CircleShape)
                         .border(0.5.dp, Color(0xFFE5E5EA), CircleShape)
-                        .clickable { onShowNotifications() },
+                        .iosPressable { onShowNotifications() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.NotificationsNone,
+                        imageVector = Icons.Outlined.NotificationsNone,
                         contentDescription = "Bildirishnomalar",
                         tint = Color.Black,
                         modifier = Modifier.size(20.dp)
@@ -496,7 +492,7 @@ fun HomeMockupTab(
                             .clip(RoundedCornerShape(18.dp))
                             .background(capsuleBg)
                             .then(if (borderStroke != null) Modifier.border(borderStroke, RoundedCornerShape(18.dp)) else Modifier)
-                            .clickable { selectedDateStr = day.dateStr }
+                            .iosPressable { selectedDateStr = day.dateStr }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -515,7 +511,7 @@ fun HomeMockupTab(
                             Text(
                                 text = day.dayOfMonth,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Black,
+                                fontWeight = FontWeight.Bold,
                                 color = dateColor,
                                 maxLines = 1,
                                 softWrap = false
@@ -555,14 +551,11 @@ fun HomeMockupTab(
                 }
             }
  
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+            IosCard(
+                cornerRadius = 20.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    .padding(horizontal = 20.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
@@ -596,7 +589,7 @@ fun HomeMockupTab(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.WorkOutline,
+                                imageVector = Icons.Outlined.WorkOutline,
                                 contentDescription = null,
                                 tint = Color(0xFF0056C6),
                                 modifier = Modifier.size(16.dp)
@@ -638,7 +631,7 @@ fun HomeMockupTab(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.AccessTime,
+                                imageVector = Icons.Outlined.AccessTime,
                                 contentDescription = null,
                                 tint = Color(0xFF5856D6),
                                 modifier = Modifier.size(16.dp)
@@ -660,14 +653,11 @@ fun HomeMockupTab(
         item {
             val selectedRecord = attendance.recent_attendance.find { it.date == selectedDateStr }
  
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+            IosCard(
+                cornerRadius = 20.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    .padding(horizontal = 20.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
@@ -686,21 +676,21 @@ fun HomeMockupTab(
                         AttendanceStatItem(
                             label = "Kirish vaqti",
                             value = selectedRecord?.arrived_at ?: "- : -",
-                            icon = Icons.Rounded.Login,
+                            icon = Icons.AutoMirrored.Outlined.Login,
                             color = Color(0xFF0056C6)
                         )
                         // Check out
                         AttendanceStatItem(
                             label = "Chiqish vaqti",
                             value = selectedRecord?.left_at ?: "- : -",
-                            icon = Icons.Rounded.Logout,
+                            icon = Icons.AutoMirrored.Outlined.Logout,
                             color = Color(0xFF5856D6)
                         )
                         // Total hrs
                         AttendanceStatItem(
                             label = "Jami soat",
                             value = calculateTotalHours(selectedRecord?.arrived_at, selectedRecord?.left_at),
-                            icon = Icons.Rounded.CheckCircleOutline,
+                            icon = Icons.Outlined.CheckCircleOutline,
                             color = Color(0xFF007AFF)
                         )
                     }
@@ -726,7 +716,7 @@ fun HomeMockupTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
+                        imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
                         contentDescription = null,
                         tint = Color(0xFF34C759),
                         modifier = Modifier.size(20.dp)
@@ -748,10 +738,8 @@ fun HomeMockupTab(
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 } else {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
+                    IosCard(
+                        cornerRadius = 20.dp,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(vertical = 4.dp)) {
@@ -770,7 +758,7 @@ fun HomeMockupTab(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
+                                            imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
                                             contentDescription = null,
                                             tint = Color(0xFF34C759),
                                             modifier = Modifier.size(16.dp)
@@ -802,29 +790,22 @@ fun HomeMockupTab(
         // 5. "Umumiy" Button
         item {
             Spacer(modifier = Modifier.height(10.dp))
-            Button(
+            IosFilledButton(
+                text = "Umumiy ma'lumotlar",
                 onClick = onShowGeneralReport,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0056C6)),
+                containerColor = Color(0xFF0056C6),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .height(54.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Dashboard,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "Umumiy ma'lumotlar",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
+                    .padding(horizontal = 20.dp),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Dashboard,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -908,7 +889,7 @@ fun RequestStatusBox(
             Text(
                 text = count,
                 fontSize = 20.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 color = textColor
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -952,51 +933,48 @@ fun AttendanceTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Davomat tahlili",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
+                IosLargeTitle("Davomat tahlili")
                 if (children.size > 1) {
-                    Box {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFE8F0FE))
-                                .clickable { showChildDropdown = true }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = selectedChild?.name?.split(" ")?.take(2)?.joinToString(" ") ?: "Farzand",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0056C6)
-                            )
-                            Icon(
-                                imageVector = Icons.Rounded.ExpandMore,
-                                contentDescription = null,
-                                tint = Color(0xFF0056C6),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showChildDropdown,
-                            onDismissRequest = { showChildDropdown = false },
-                            modifier = Modifier.background(Color.White)
-                        ) {
-                            children.forEach { child ->
-                                DropdownMenuItem(
-                                    text = { Text(child.name, fontWeight = FontWeight.Bold) },
-                                    onClick = {
-                                        onChildSelected(child.id)
-                                        showChildDropdown = false
-                                    }
-                                )
-                            }
-                        }
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFE8F0FE))
+                            .iosPressable { showChildDropdown = true }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = selectedChild?.name?.split(" ")?.take(2)?.joinToString(" ") ?: "Farzand",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0056C6)
+                        )
+                        Icon(
+                            imageVector = Icons.Outlined.ExpandMore,
+                            contentDescription = null,
+                            tint = Color(0xFF0056C6),
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
+                }
+            }
+        }
+
+        item {
+            IosActionSheet(
+                visible = showChildDropdown,
+                onDismiss = { showChildDropdown = false },
+                title = "Farzandingizni tanlang"
+            ) {
+                children.forEachIndexed { idx, child ->
+                    IosActionSheetRow(
+                        label = child.name,
+                        isLast = idx == children.lastIndex,
+                        onClick = {
+                            onChildSelected(child.id)
+                            showChildDropdown = false
+                        }
+                    )
                 }
             }
         }
@@ -1010,7 +988,7 @@ fun AttendanceTab(
 
         val comments = attendance.grades.filter { !it.comment.isNullOrBlank() }
         if (comments.isNotEmpty()) {
-            item { SectionHeader("Izohlar va Fikrlar", Icons.Rounded.HistoryEdu) }
+            item { SectionHeader("Izohlar va Fikrlar", Icons.Outlined.HistoryEdu) }
             items(comments) { grade ->
                 GlassTeacherComment(grade)
             }
@@ -1059,7 +1037,7 @@ fun ScheduleTab(
                     Text(
                         text = "Dars jadvalim",
                         fontSize = 26.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                     if (children.size > 1) {
@@ -1080,7 +1058,7 @@ fun ScheduleTab(
                                     color = Color(0xFF0056C6)
                                 )
                                 Icon(
-                                    imageVector = Icons.Rounded.ExpandMore,
+                                    imageVector = Icons.Outlined.ExpandMore,
                                     contentDescription = null,
                                     tint = Color(0xFF0056C6),
                                     modifier = Modifier.size(16.dp)
@@ -1111,7 +1089,7 @@ fun ScheduleTab(
                         .border(0.5.dp, Color(0xFFE5E5EA), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -1146,7 +1124,7 @@ fun ScheduleTab(
                         ) {
                             Text(text = day.first, fontSize = 10.sp, color = dayTextColor, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(text = day.second, fontSize = 16.sp, color = numColor, fontWeight = FontWeight.Black)
+                            Text(text = day.second, fontSize = 16.sp, color = numColor, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1288,7 +1266,7 @@ fun ScheduleTab(
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Icon(
-                                                    Icons.Rounded.Person,
+                                                    Icons.Outlined.Person,
                                                     contentDescription = null,
                                                     tint = Color(0xFF8E8E93),
                                                     modifier = Modifier.size(14.dp)
@@ -1330,13 +1308,7 @@ fun NewsTab(
             Spacer(modifier = Modifier.statusBarsPadding())
         }
         item {
-            Text(
-                text = "Yangiliklar va E'lonlar",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
+            IosLargeTitle("Yangiliklar va E'lonlar", modifier = Modifier.padding(horizontal = 20.dp))
         }
 
         if (notifications.isEmpty()) {
@@ -1360,19 +1332,18 @@ fun NewsTab(
                 val borderCol = if (notification.isRead) Color(0xFFE5E5EA) else Color(0xFF0056C6).copy(alpha = 0.3f)
                 val badgeColor = Color(0xFF0056C6)
 
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                IosCard(
+                    cornerRadius = 20.dp,
+                    containerColor = cardBg,
+                    borderColor = borderCol,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .clickable {
+                        .iosPressable {
                             if (!notification.isRead) {
                                 onMarkAsRead(notification.id)
                             }
-                        },
-                    border = BorderStroke(0.5.dp, borderCol),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        }
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -1386,7 +1357,7 @@ fun NewsTab(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Campaign,
+                                imageVector = Icons.Outlined.Campaign,
                                 contentDescription = null,
                                 tint = if (notification.isRead) Color(0xFF8E8E93) else Color(0xFF0056C6),
                                 modifier = Modifier.size(20.dp)
@@ -1462,7 +1433,7 @@ fun ProfileTab(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF2F2F7)),
+            .background(IosBackground),
         contentPadding = PaddingValues(bottom = 36.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
@@ -1482,18 +1453,15 @@ fun ProfileTab(
                 )
             }
             item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                IosCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        .padding(horizontal = 16.dp)
                 ) {
                     Column(modifier = Modifier.padding(vertical = 2.dp)) {
                         // Ism
                         ProfileInfoRow(
-                            icon = Icons.Rounded.Person,
+                            icon = Icons.Outlined.Person,
                             iconBg = Color(0xFF007AFF).copy(alpha = 0.1f),
                             iconTint = Color(0xFF007AFF),
                             label = "To'liq ismi",
@@ -1503,7 +1471,7 @@ fun ProfileTab(
                         // ID
                         if (!selectedChild.externalId.isNullOrBlank()) {
                             ProfileInfoRow(
-                                icon = Icons.Rounded.Badge,
+                                icon = Icons.Outlined.Badge,
                                 iconBg = Color(0xFF5856D6).copy(alpha = 0.1f),
                                 iconTint = Color(0xFF5856D6),
                                 label = "O'quvchi ID",
@@ -1535,7 +1503,7 @@ fun ProfileTab(
                                     .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Rounded.VerifiedUser, null, tint = statusColor, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Outlined.VerifiedUser, null, tint = statusColor, modifier = Modifier.size(18.dp))
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -1563,13 +1531,10 @@ fun ProfileTab(
                 items(selectedChild.enrollments.filter { it.group != null }) { enrollment ->
                     val group = enrollment.group!!
                     val isActive = enrollment.status == "ACTIVE"
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                    IosCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -1584,7 +1549,7 @@ fun ProfileTab(
                                     .background(Color(0xFF007AFF).copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Rounded.School, null, tint = Color(0xFF007AFF), modifier = Modifier.size(22.dp))
+                                Icon(Icons.Outlined.School, null, tint = Color(0xFF007AFF), modifier = Modifier.size(22.dp))
                             }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(group.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1C1C1E))
@@ -1632,16 +1597,13 @@ fun ProfileTab(
             )
         }
         item {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+            IosCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 Column(modifier = Modifier.padding(vertical = 2.dp)) {
-                    // Til
+                    // Til (informational — no in-app language switch, so no chevron affordance)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1654,19 +1616,18 @@ fun ProfileTab(
                                 .background(Color(0xFFFF9500).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Rounded.Language, null, tint = Color(0xFFFF9500), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.Language, null, tint = Color(0xFFFF9500), modifier = Modifier.size(18.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Til", fontSize = 12.sp, color = Color(0xFF8E8E93))
                             Text("O'zbek tili", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
                         }
-                        Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFFC7C7CC), modifier = Modifier.size(16.dp))
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
 
-                    // Bildirishnomalar
+                    // Bildirishnomalar (informational — no in-app toggle, so no chevron affordance)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1679,14 +1640,13 @@ fun ProfileTab(
                                 .background(Color(0xFFFF3B30).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Rounded.NotificationsNone, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.NotificationsNone, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Bildirishnomalar", fontSize = 12.sp, color = Color(0xFF8E8E93))
                             Text("Yoqilgan", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
                         }
-                        Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFFC7C7CC), modifier = Modifier.size(16.dp))
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
@@ -1704,7 +1664,7 @@ fun ProfileTab(
                                 .background(Color(0xFF34C759).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Rounded.Info, null, tint = Color(0xFF34C759), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.Info, null, tint = Color(0xFF34C759), modifier = Modifier.size(18.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -1719,18 +1679,15 @@ fun ProfileTab(
         // ── CHIQISH TUGMASI ──────────────────────────────────────
         item {
             Spacer(modifier = Modifier.height(20.dp))
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+            IosCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onLogout() }
+                        .iosPressable { onLogout() }
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1740,7 +1697,7 @@ fun ProfileTab(
                             .background(Color(0xFFFF3B30).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.Logout, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Outlined.Logout, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
@@ -1750,7 +1707,7 @@ fun ProfileTab(
                         color = Color(0xFFFF3B30),
                         modifier = Modifier.weight(1f)
                     )
-                    Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFFFF3B30).copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.ChevronRight, null, tint = Color(0xFFFF3B30).copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -1895,27 +1852,18 @@ fun SectionHeader(title: String, icon: ImageVector) {
             .padding(horizontal = 20.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFE5E5EA).copy(alpha = 0.5f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = Color(0xFF48484A)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color(0xFF0056C6),
+            modifier = Modifier.size(20.dp)
+        )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = title,
-            fontSize = 13.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1C1C1E),
-            letterSpacing = (-0.2).sp
+            color = Color.Black
         )
     }
 }
@@ -1954,14 +1902,11 @@ fun InteractiveAttendanceCalendar(
     val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
     val totalCells = firstDayOfWeek + daysInMonth
 
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+    IosCard(
+        cornerRadius = 20.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(horizontal = 20.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -1969,13 +1914,13 @@ fun InteractiveAttendanceCalendar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = {
+                IosIconButton(onClick = {
                     calendarState = (calendarState.clone() as Calendar).apply {
                         add(Calendar.MONTH, -1)
                     }
                     onMonthChanged(calendarState.get(Calendar.YEAR), calendarState.get(Calendar.MONTH) + 1)
                 }) {
-                    Icon(Icons.Rounded.ChevronLeft, contentDescription = "Oldingi oy", tint = Color.Black)
+                    Icon(Icons.Outlined.ChevronLeft, contentDescription = "Oldingi oy", tint = IosBlue)
                 }
 
                 Text(
@@ -1985,13 +1930,13 @@ fun InteractiveAttendanceCalendar(
                     color = Color.Black
                 )
 
-                IconButton(onClick = {
+                IosIconButton(onClick = {
                     calendarState = (calendarState.clone() as Calendar).apply {
                         add(Calendar.MONTH, 1)
                     }
                     onMonthChanged(calendarState.get(Calendar.YEAR), calendarState.get(Calendar.MONTH) + 1)
                 }) {
-                    Icon(Icons.Rounded.ChevronRight, contentDescription = "Keyingi oy", tint = Color.Black)
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = "Keyingi oy", tint = IosBlue)
                 }
             }
 
@@ -2060,7 +2005,7 @@ fun InteractiveAttendanceCalendar(
                                     .padding(3.dp)
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(cellBg)
-                                    .clickable {
+                                    .iosPressable {
                                         selectedDateState = Calendar.getInstance().apply {
                                             set(Calendar.YEAR, currentYear)
                                             set(Calendar.MONTH, currentMonth)
@@ -2115,14 +2060,11 @@ fun InteractiveAttendanceCalendar(
     val selectedRecord = recentAttendance.find { it.date == selDateQuery }
     val isPresent = selectedRecord?.status_display == "Kelgan"
 
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+    IosCard(
+        cornerRadius = 20.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(horizontal = 20.dp)
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(
@@ -2167,19 +2109,19 @@ fun InteractiveAttendanceCalendar(
                 AttendanceStatItem(
                     label = "Kirish vaqti",
                     value = selectedRecord?.arrived_at ?: "- : -",
-                    icon = Icons.Rounded.Login,
+                    icon = Icons.AutoMirrored.Outlined.Login,
                     color = Color(0xFF0056C6)
                 )
                 AttendanceStatItem(
                     label = "Chiqish vaqti",
                     value = selectedRecord?.left_at ?: "- : -",
-                    icon = Icons.Rounded.Logout,
+                    icon = Icons.AutoMirrored.Outlined.Logout,
                     color = Color(0xFF5856D6)
                 )
                 AttendanceStatItem(
                     label = "Jami soat",
                     value = calculateTotalHours(selectedRecord?.arrived_at, selectedRecord?.left_at),
-                    icon = Icons.Rounded.CheckCircleOutline,
+                    icon = Icons.Outlined.CheckCircleOutline,
                     color = Color(0xFF007AFF)
                 )
             }
@@ -2331,14 +2273,11 @@ fun LegendItem(label: String, color: Color) {
 
 @Composable
 fun GlassTeacherComment(grade: GradeResponse) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+    IosCard(
+        cornerRadius = 20.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .padding(horizontal = 20.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -2408,7 +2347,7 @@ fun GlassTeacherComment(grade: GradeResponse) {
             ) {
                 Column {
                     Icon(
-                        imageVector = Icons.Rounded.FormatQuote,
+                        imageVector = Icons.Outlined.FormatQuote,
                         contentDescription = null,
                         tint = Color(0xFF5856D6).copy(alpha = 0.2f),
                         modifier = Modifier.size(24.dp)
@@ -2459,41 +2398,9 @@ fun NotificationsFullScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFC))
+            .background(IosBackground)
     ) {
-        // Top Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.White,
-            shadowElevation = 0.5.dp,
-            tonalElevation = 0.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowBackIos,
-                        contentDescription = "Orqaga",
-                        tint = Color(0xFF007AFF),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Text(
-                    text = "Bildirishnomalar",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1C1C1E),
-                    modifier = Modifier.weight(1f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-                Box(modifier = Modifier.size(48.dp)) // Spacer to center title
-            }
-        }
+        IosNavBar(title = "Bildirishnomalar", onBack = onClose)
 
         if (notifications.isEmpty()) {
             Box(
@@ -2505,7 +2412,7 @@ fun NotificationsFullScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.NotificationsNone,
+                        imageVector = Icons.Outlined.NotificationsNone,
                         contentDescription = null,
                         tint = Color(0xFFD1D1D6),
                         modifier = Modifier.size(56.dp)
@@ -2535,16 +2442,15 @@ fun NotificationsFullScreen(
                     val cardBg = if (isRead) Color.White else Color(0xFFE8F0FE).copy(alpha = 0.5f)
                     val borderCol = if (isRead) Color(0xFFE5E5EA) else Color(0xFF007AFF).copy(alpha = 0.3f)
 
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = cardBg),
-                        border = BorderStroke(0.5.dp, borderCol),
+                    IosCard(
+                        cornerRadius = 16.dp,
+                        containerColor = cardBg,
+                        borderColor = borderCol,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .iosPressable {
                                 if (!isRead) onMarkAsRead(notification.id)
-                            },
-                        elevation = CardDefaults.cardElevation(defaultElevation = if (isRead) 0.dp else 1.dp)
+                            }
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -2561,7 +2467,7 @@ fun NotificationsFullScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.NotificationsNone,
+                                    imageVector = Icons.Outlined.NotificationsNone,
                                     contentDescription = null,
                                     tint = if (isRead) Color(0xFF8E8E93) else Color(0xFF007AFF),
                                     modifier = Modifier.size(20.dp)

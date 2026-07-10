@@ -1,0 +1,53 @@
+# Ignore generated and build artifacts
+**/node_modules/
+**/dist/
+**/build/
+**/android/.gradle/
+**/android/app/build/
+**/android/build/
+**/android/GeneratedPluginRegistrant.java
+**/android/app/src/main/res/drawable-*/
+**/android/app/src/main/res/mipmap-*/
+**/dist-test
+**/.nest
+**/.vite
+
+# Ignore environment and secret files
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.jks
+**/*.keystore
+**/web-sertificate/data/*.json
+
+# Ignore editor/OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Ignore Python and test artifacts
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.tox/
+**/.coverage
+**/htmlcov/
+
+# Ignore local and generated app media
+**/web-sertificate/media/
+**/web-sertificate/static/CACHE/
+
+# Ignore Docker files generated at runtime
+.docker-compose.lock
+.docker-config.json
+
+# Ignore database files
+**/*.sqlite3

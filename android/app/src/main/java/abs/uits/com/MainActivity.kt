@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -173,7 +175,19 @@ class MainActivity : ComponentActivity() {
                                     enterTransition = {
                                         slideInVertically(initialOffsetY = { it }, animationSpec = tween(800, easing = EaseOutQuart)) + fadeIn(tween(800))
                                     }
-                                ) { DashboardPlaceholder("Admin") }
+                                ) {
+                                    DashboardPlaceholder(
+                                        role = "Admin",
+                                        onLogout = {
+                                            lifecycleScope.launch {
+                                                tokenManager.clear()
+                                                navController.navigate(Screen.Login.route) {
+                                                    popUpTo(0) { inclusive = true }
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
                                 
                                 composable(
                                     route = Screen.TeacherDashboard.route,
@@ -267,8 +281,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DashboardPlaceholder(role: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "$role Dashboardi (Tez orada...)")
+fun DashboardPlaceholder(role: String, onLogout: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "$role paneli mobil ilovada mavjud emas")
+            Text(text = "Iltimos, veb-sayt orqali kiring")
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onLogout, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))) {
+                Text("Chiqish")
+            }
+        }
     }
 }

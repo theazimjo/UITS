@@ -10,10 +10,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import abs.uits.com.data.model.*
+import abs.uits.com.ui.theme.*
 import coil.compose.AsyncImage
 
 @Composable
@@ -37,44 +37,9 @@ fun StudentGeneralReportScreen(
 ) {
     Scaffold(
         topBar = {
-            Surface(
-                color = Color.White,
-                tonalElevation = 2.dp,
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFF2F2F7))
-                            .clickable { onBack() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Orqaga",
-                            tint = Color.Black,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Umumiy Ma'lumotlar",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.Black
-                    )
-                }
-            }
+            IosNavBar(title = "Umumiy Ma'lumotlar", onBack = onBack)
         },
-        containerColor = Color(0xFFF9FAFC)
+        containerColor = IosBackground
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
@@ -85,12 +50,7 @@ fun StudentGeneralReportScreen(
         ) {
             // 1. Personal Profile Card
             item {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
+                IosCard(cornerRadius = 20.dp) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -127,7 +87,7 @@ fun StudentGeneralReportScreen(
                         Text(
                             text = child.name,
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             color = Color.Black
                         )
                         if (child.status == "ACTIVE") {
@@ -149,20 +109,20 @@ fun StudentGeneralReportScreen(
                         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFFE5E5EA), thickness = 0.5.dp)
                         
                         // Details list
-                        ProfileDetailRow(Icons.Rounded.Fingerprint, "O'quvchi ID", child.externalId ?: "Mavjud emas")
+                        ProfileDetailRow(Icons.Outlined.Fingerprint, "O'quvchi ID", child.externalId ?: "Mavjud emas")
                         Spacer(modifier = Modifier.height(12.dp))
-                        ProfileDetailRow(Icons.Rounded.Phone, "Telefon raqami", child.phone ?: "Mavjud emas")
+                        ProfileDetailRow(Icons.Outlined.Phone, "Telefon raqami", child.phone ?: "Mavjud emas")
                         Spacer(modifier = Modifier.height(12.dp))
-                        ProfileDetailRow(Icons.Rounded.SupervisorAccount, "Ota-ona telefoni", child.parentPhone ?: "Mavjud emas")
+                        ProfileDetailRow(Icons.Outlined.SupervisorAccount, "Ota-ona telefoni", child.parentPhone ?: "Mavjud emas")
                         Spacer(modifier = Modifier.height(12.dp))
-                        ProfileDetailRow(Icons.Rounded.CalendarToday, "Ro'yxatdan o'tgan sana", child.createdAt?.split("T")?.firstOrNull() ?: "Mavjud emas")
+                        ProfileDetailRow(Icons.Outlined.CalendarToday, "Ro'yxatdan o'tgan sana", child.createdAt?.split("T")?.firstOrNull() ?: "Mavjud emas")
                     }
                 }
             }
 
             // 2. Enrolled Groups Section
             item {
-                SectionHeaderRow(Icons.Rounded.Class, "O'qiyotgan Guruhlari")
+                SectionHeaderRow(Icons.Outlined.Class, "O'qiyotgan Guruhlari")
             }
             if (child.enrollments.isEmpty()) {
                 item {
@@ -171,12 +131,7 @@ fun StudentGeneralReportScreen(
             } else {
                 items(child.enrollments) { enrollment ->
                     val grp = enrollment.group
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    IosCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
                                 text = grp?.course?.name ?: "Kurs",
@@ -185,12 +140,12 @@ fun StudentGeneralReportScreen(
                                 color = Color.Black
                             )
                             Spacer(modifier = Modifier.height(10.dp))
-                            ProfileDetailRow(Icons.Rounded.Group, "Guruh nomi", grp?.name ?: "Mavjud emas")
+                            ProfileDetailRow(Icons.Outlined.Group, "Guruh nomi", grp?.name ?: "Mavjud emas")
                             Spacer(modifier = Modifier.height(8.dp))
-                            ProfileDetailRow(Icons.Rounded.Person, "O'qituvchi", grp?.teacher?.name ?: "Tayinlanmagan")
+                            ProfileDetailRow(Icons.Outlined.Person, "O'qituvchi", grp?.teacher?.name ?: "Tayinlanmagan")
                             Spacer(modifier = Modifier.height(8.dp))
                             ProfileDetailRow(
-                                Icons.Rounded.Schedule, 
+                                Icons.Outlined.Schedule, 
                                 "Dars vaqti", 
                                 if (!grp?.startTime.isNullOrBlank() && !grp?.endTime.isNullOrBlank()) "${grp?.startTime} - ${grp?.endTime}" else "Noma'lum"
                             )
@@ -202,7 +157,7 @@ fun StudentGeneralReportScreen(
 
             // 4. Payments Section
             item {
-                SectionHeaderRow(Icons.AutoMirrored.Rounded.ReceiptLong, "Umumiy To'lovlar Tarixi")
+                SectionHeaderRow(Icons.AutoMirrored.Outlined.ReceiptLong, "Umumiy To'lovlar Tarixi")
             }
             if (payments.isEmpty()) {
                 item {
@@ -210,12 +165,7 @@ fun StudentGeneralReportScreen(
                 }
             } else {
                 item {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    IosCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(vertical = 4.dp)) {
                             payments.forEachIndexed { idx, p ->
                                 Row(
@@ -232,7 +182,7 @@ fun StudentGeneralReportScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
+                                            imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
                                             contentDescription = null,
                                             tint = Color(0xFF34C759),
                                             modifier = Modifier.size(16.dp)
@@ -267,7 +217,7 @@ fun StudentGeneralReportScreen(
 
             // 5. Exam Results Section
             item {
-                SectionHeaderRow(Icons.Rounded.Star, "Barcha Imtihon Natijalari")
+                SectionHeaderRow(Icons.Outlined.Star, "Barcha Imtihon Natijalari")
             }
             if (exams.isEmpty()) {
                 item {
@@ -275,12 +225,7 @@ fun StudentGeneralReportScreen(
                 }
             } else {
                 item {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    IosCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(vertical = 4.dp)) {
                             exams.forEachIndexed { idx, exam ->
                                 Row(
@@ -297,7 +242,7 @@ fun StudentGeneralReportScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Star,
+                                            imageVector = Icons.Outlined.Star,
                                             contentDescription = null,
                                             tint = Color(0xFFFFCC00),
                                             modifier = Modifier.size(16.dp)
@@ -318,7 +263,7 @@ fun StudentGeneralReportScreen(
                                     }
                                     Text(
                                         text = "${exam.totalScore ?: 0.0} (${exam.percentage?.toInt() ?: 0}%)",
-                                        fontWeight = FontWeight.Black,
+                                        fontWeight = FontWeight.Bold,
                                         color = Color(0xFF0056C6),
                                         fontSize = 14.sp
                                     )
@@ -338,7 +283,7 @@ fun StudentGeneralReportScreen(
 
             // 6. Certificates Section
             item {
-                SectionHeaderRow(Icons.Rounded.WorkspacePremium, "Sertifikatlar")
+                SectionHeaderRow(Icons.Outlined.WorkspacePremium, "Sertifikatlar")
             }
             item {
                 EmptySectionCard("O'quvchining sertifikatlari mavjud emas")
@@ -402,7 +347,7 @@ fun SectionHeaderRow(icon: androidx.compose.ui.graphics.vector.ImageVector, titl
 @Composable
 fun StatCounter(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, fontSize = 22.sp, fontWeight = FontWeight.Black, color = color)
+        Text(text = value, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = color)
         Spacer(modifier = Modifier.height(2.dp))
         Text(text = label, fontSize = 11.sp, color = Color(0xFF8E8E93), fontWeight = FontWeight.Bold)
     }
@@ -410,12 +355,7 @@ fun StatCounter(label: String, value: String, color: Color) {
 
 @Composable
 fun EmptySectionCard(message: String) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    IosCard(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
