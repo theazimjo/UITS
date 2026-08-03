@@ -1189,19 +1189,23 @@ const TeacherReport = () => {
 
                                  const handleScoreChange = (sid, type, val) => {
                                    const floatVal = parseFloat(val) || 0;
-                                   
+
                                    let curTheory = parseFloat(theoryScores[sid]) || 0;
                                    let curPractice = parseFloat(practiceScores[sid]) || 0;
-                                   
+                                   let curJoriy = parseFloat(currentAverages[sid]) || 0;
+
                                    if (type === 'theory') {
                                      setTheoryScores(prev => ({ ...prev, [sid]: val }));
                                      curTheory = floatVal;
-                                   } else {
+                                   } else if (type === 'practice') {
                                      setPracticeScores(prev => ({ ...prev, [sid]: val }));
                                      curPractice = floatVal;
+                                   } else {
+                                     setCurrentAverages(prev => ({ ...prev, [sid]: val }));
+                                     curJoriy = floatVal;
                                    }
 
-                                   const joriy = parseFloat(currentAverages[sid]) || 0;
+                                   const joriy = curJoriy;
                                    const totalVal = parseFloat((joriy + curTheory + curPractice).toFixed(2));
 
                                    let commentVal = "O'qishi yaxshi emas";
@@ -1230,9 +1234,10 @@ const TeacherReport = () => {
                                      <td className="p-0 border-r border-gray-250 dark:border-white/10 bg-blue-500/[0.02] dark:bg-blue-500/[0.01]">
                                        <input
                                          type="number"
-                                         readOnly
-                                         value={avg}
-                                         className="w-full h-9 bg-transparent border-none text-center font-bold text-blue-600 dark:text-blue-400 outline-none cursor-default text-[13px]"
+                                         placeholder="0"
+                                         value={currentAverages[s.id] ?? ''}
+                                         onChange={(e) => handleScoreChange(s.id, 'current', e.target.value)}
+                                         className="w-full h-9 bg-transparent border-none text-center font-bold text-blue-600 dark:text-blue-400 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-[13px]"
                                        />
                                      </td>
                                      <td className="p-0 border-r border-gray-250 dark:border-white/10">
