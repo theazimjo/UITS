@@ -395,15 +395,18 @@ const TeacherReport = () => {
       const theory = parseFloat(theoryScores[s.id]) || 0;
       const practice = parseFloat(practiceScores[s.id]) || 0;
       const total = parseFloat((avg + theory + practice).toFixed(2));
-      
+      const percentage = percentages[s.id] !== undefined && percentages[s.id] !== ''
+        ? (parseFloat(percentages[s.id]) || 0)
+        : total;
+
       finalTotals[s.id] = total;
-      finalPercentages[s.id] = total;
-      finalStatuses[s.id] = total >= 70 ? "O'tdi" : "O'tmadi";
+      finalPercentages[s.id] = percentage;
+      finalStatuses[s.id] = percentage >= 70 ? "O'tdi" : "O'tmadi";
 
       let defaultComment = "O'qishi yaxshi emas";
-      if (total >= 85) {
+      if (percentage >= 85) {
         defaultComment = "Zo'r o'qiyapti";
-      } else if (total >= 70) {
+      } else if (percentage >= 70) {
         defaultComment = "Yaxshi o'qiyapti";
       }
       finalComments[s.id] = examComments[s.id] !== undefined ? examComments[s.id] : defaultComment;
@@ -1176,7 +1179,9 @@ const TeacherReport = () => {
                                  const theory = parseFloat(theoryScores[s.id]) || 0;
                                  const practice = parseFloat(practiceScores[s.id]) || 0;
                                  const total = parseFloat((avg + theory + practice).toFixed(2));
-                                 const percentage = total;
+                                 const percentage = percentages[s.id] !== undefined && percentages[s.id] !== ''
+                                   ? (parseFloat(percentages[s.id]) || 0)
+                                   : total;
                                  const status = percentage >= 70 ? "O'tdi" : "O'tmadi";
                                  
                                  let defaultComment = "O'qishi yaxshi emas";
@@ -1212,6 +1217,20 @@ const TeacherReport = () => {
                                    if (totalVal >= 85) {
                                      commentVal = "Zo'r o'qiyapti";
                                    } else if (totalVal >= 70) {
+                                     commentVal = "Yaxshi o'qiyapti";
+                                   }
+
+                                   setExamComments(prev => ({ ...prev, [sid]: commentVal }));
+                                 };
+
+                                 const handlePercentageChange = (sid, val) => {
+                                   setPercentages(prev => ({ ...prev, [sid]: val }));
+
+                                   const floatVal = parseFloat(val) || 0;
+                                   let commentVal = "O'qishi yaxshi emas";
+                                   if (floatVal >= 85) {
+                                     commentVal = "Zo'r o'qiyapti";
+                                   } else if (floatVal >= 70) {
                                      commentVal = "Yaxshi o'qiyapti";
                                    }
 
@@ -1261,8 +1280,17 @@ const TeacherReport = () => {
                                      <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-extrabold text-gray-900 dark:text-white text-[13px] bg-gray-50/50 dark:bg-white/[0.01]">
                                        {total}
                                      </td>
-                                     <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-bold text-emerald-600 dark:text-emerald-400 text-[13px] bg-emerald-500/[0.01]">
-                                       {percentage}%
+                                     <td className="p-0 border-r border-gray-250 dark:border-white/10 bg-emerald-500/[0.01]">
+                                       <div className="relative flex items-center justify-center">
+                                         <input
+                                           type="number"
+                                           placeholder="0"
+                                           value={percentages[s.id] ?? total}
+                                           onChange={(e) => handlePercentageChange(s.id, e.target.value)}
+                                           className="w-full h-9 bg-transparent border-none text-center font-bold text-emerald-600 dark:text-emerald-400 outline-none focus:bg-gray-100/50 dark:focus:bg-white/5 text-[13px] pr-3"
+                                         />
+                                         <span className="pointer-events-none absolute right-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">%</span>
+                                       </div>
                                      </td>
                                      <td className="px-3 py-2 text-center border-r border-gray-250 dark:border-white/10 font-bold text-[12px] bg-gray-50/30 dark:bg-white/[0.01]">
                                        <span className={
