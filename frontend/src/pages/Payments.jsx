@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   CreditCard, Search, Plus, Trash2, Calendar,
   BookOpen, DollarSign, ChevronLeft, ChevronRight,
-  Filter, User, Percent, AlertTriangle, X, CheckCircle, Edit3
+  Filter, User, Percent, AlertTriangle, X, CheckCircle, Edit3, Printer
 } from 'lucide-react';
 import { getPayments, createPayment, deletePayment, updatePayment } from '../services/api';
 import Modal from '../components/common/Modal'; // Ensure this uses a matching macOS design if possible
 
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
+import { printPaymentReceipt } from '../utils/printReceipt';
 
 const Payments = () => {
   const { students = [], groups = [], staff: staffList = [] } = useStore();
@@ -62,6 +63,32 @@ const Payments = () => {
     }
   };
 
+  const getCashierName = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      return user?.name || user?.username || '';
+    } catch {
+      return '';
+    }
+  };
+
+  const printReceiptForSavedPayment = (p) => {
+    printPaymentReceipt({
+      id: p.id,
+      studentName: p.student?.name,
+      groupName: p.group?.name,
+      teacherName: p.teacher?.name,
+      month: p.month,
+      amount: p.amount,
+      discount: p.discount,
+      penalty: p.penalty,
+      paymentType: p.paymentType,
+      paymentDate: p.paymentDate,
+      comment: p.comment,
+      cashierName: getCashierName(),
+    });
+  };
+
   const handleCreatePayment = async (e) => {
     e.preventDefault();
     try {
@@ -90,7 +117,12 @@ const Payments = () => {
           };
           return createPayment(payload);
         });
-        await Promise.all(requests);
+        const results = await Promise.all(requests);
+        // Har bir yaratilgan to'lov uchun chekni ketma-ket chop etish (bir vaqtda ochilgan
+        // bir nechta chop etish oynasi bir-biriga xalaqit bermasligi uchun)
+        results.forEach((res, index) => {
+          setTimeout(() => printReceiptForSavedPayment(res.data), index * 600);
+        });
       } else {
         // Single creation
         const payload = {
@@ -102,7 +134,8 @@ const Payments = () => {
           discount: parseFloat(formData.discount || 0),
           penalty: parseFloat(formData.penalty || 0)
         };
-        await createPayment(payload);
+        const res = await createPayment(payload);
+        printReceiptForSavedPayment(res.data);
       }
 
       await fetchPayments();
@@ -428,6 +461,13 @@ const Payments = () => {
                         </td>
                         <td className="px-5 py-3 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => printReceiptForSavedPayment(p)}
+                              className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#34c759]/10 text-gray-400 hover:text-[#34c759] rounded-md transition-colors"
+                              title="Chekni qayta chop etish"
+                            >
+                              <Printer size={14} />
+                            </button>
                             <button
                               onClick={() => handleEdit(p)}
                               className="inline-flex items-center justify-center w-7 h-7 bg-transparent hover:bg-[#007aff]/10 text-gray-400 hover:text-[#007aff] rounded-md transition-colors"

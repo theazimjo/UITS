@@ -1,15 +1,11 @@
 package abs.uits.com.ui.teacher
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,6 +17,14 @@ import abs.uits.com.ui.teacher.segments.*
 import androidx.compose.animation.*
 import androidx.navigation.NavController
 import abs.uits.com.ui.navigation.Screen
+import abs.uits.com.ui.theme.IosBackground
+import abs.uits.com.ui.theme.IosTabBar
+import abs.uits.com.ui.theme.IosTabItem
+import abs.uits.com.ui.theme.iosHazeSource
+import dev.chrisbanes.haze.HazeState
+
+private val teacherTabs = listOf(TeacherTab.Home, TeacherTab.Students, TeacherTab.Finance, TeacherTab.Settings)
+private val teacherTabItems = teacherTabs.map { IosTabItem(it.label, it.icon, it.filledIcon) }
 
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -44,61 +48,11 @@ fun TeacherDashboardScreen(
     }
 
     val selectedTab by teacherViewModel.selectedTab.collectAsState()
+    val hazeState = remember { HazeState() }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            Column(modifier = Modifier.navigationBarsPadding()) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column {
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), 
-                            thickness = 0.5.dp
-                        )
-                        NavigationBar(
-                            containerColor = Color.Transparent,
-                            tonalElevation = 0.dp,
-                            windowInsets = WindowInsets(0, 0, 0, 0)
-                        ) {
-                            val tabs = listOf(TeacherTab.Home, TeacherTab.Students, TeacherTab.Finance, TeacherTab.Settings)
-                            tabs.forEach { tab ->
-                                val isSelected = selectedTab == tab
-                                NavigationBarItem(
-                                    selected = isSelected,
-                                    onClick = { teacherViewModel.selectTab(tab) },
-                                    icon = { 
-                                        Icon(
-                                            tab.icon, 
-                                            contentDescription = tab.label,
-                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                        ) 
-                                    },
-                                    label = { 
-                                        Text(
-                                            tab.label,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontSize = 11.sp,
-                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                        ) 
-                                    },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        indicatorColor = Color.Transparent
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    ) { padding ->
-        Box(modifier = Modifier
-            .padding(padding)
-            .fillMaxSize()
-        ) {
+    Box(modifier = Modifier.fillMaxSize().background(IosBackground)) {
+        // Segment content extends full-height behind the glass tab bar so it has something to blur
+        Box(modifier = Modifier.fillMaxSize().iosHazeSource(hazeState)) {
             when (selectedTab) {
                 is TeacherTab.Home -> TeacherHomeSegment(teacherViewModel)
                 is TeacherTab.Students -> TeacherStudentsSegment(
@@ -111,6 +65,14 @@ fun TeacherDashboardScreen(
                 is TeacherTab.Settings -> TeacherSettingsSegment(teacherViewModel, onLogout)
             }
         }
+
+        IosTabBar(
+            items = teacherTabItems,
+            selectedIndex = teacherTabs.indexOf(selectedTab),
+            onSelect = { index -> teacherViewModel.selectTab(teacherTabs[index]) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+            hazeState = hazeState
+        )
     }
 }
 

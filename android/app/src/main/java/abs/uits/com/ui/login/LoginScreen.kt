@@ -5,10 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.Lock
+import com.adamglin.phosphoricons.regular.Person
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +20,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import abs.uits.com.ui.theme.IosBackground
+import abs.uits.com.ui.theme.IosBlue
+import abs.uits.com.ui.theme.IosFilledButton
+import abs.uits.com.ui.theme.IosLabel
+import abs.uits.com.ui.theme.IosRed
+import abs.uits.com.ui.theme.IosSecondaryLabel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -35,10 +42,10 @@ fun LoginScreen(
 
     // Professional iOS Palette (Light)
     val themeBg = Color.White
-    val iosSystemGray = Color(0xFFF2F2F7)
-    val iosSystemBlue = Color(0xFF007AFF)
-    val themeText = Color(0xFF1D1D1F)
-    val themeSecondaryText = Color(0xFF8E8E93)
+    val iosSystemGray = IosBackground
+    val iosSystemBlue = IosBlue
+    val themeText = IosLabel
+    val themeSecondaryText = IosSecondaryLabel
 
     // Coordinated Animation States
     val logoAlpha = remember { Animatable(0f) }
@@ -131,7 +138,7 @@ fun LoginScreen(
                             focusedTextColor = themeText,
                             unfocusedTextColor = themeText
                         ),
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = iosSystemBlue) },
+                        leadingIcon = { Icon(PhosphorIcons.Regular.Person, contentDescription = null, tint = iosSystemBlue) },
                         singleLine = true
                     )
                     
@@ -155,7 +162,7 @@ fun LoginScreen(
                             focusedTextColor = themeText,
                             unfocusedTextColor = themeText
                         ),
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = iosSystemBlue) },
+                        leadingIcon = { Icon(PhosphorIcons.Regular.Lock, contentDescription = null, tint = iosSystemBlue) },
                         singleLine = true
                     )
                 }
@@ -163,7 +170,7 @@ fun LoginScreen(
                 if (uiState is LoginUiState.Error) {
                     Text(
                         text = (uiState as LoginUiState.Error).message,
-                        color = Color.Red,
+                        color = IosRed,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(top = 16.dp),
                         fontWeight = FontWeight.Medium
@@ -173,34 +180,14 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Premium Action Button
-                Button(
+                IosFilledButton(
+                    text = "Kirish",
                     onClick = { viewModel.login(username, password) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = iosSystemBlue,
-                        disabledContainerColor = iosSystemBlue.copy(alpha = 0.4f)
-                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = iosSystemBlue,
                     enabled = uiState !is LoginUiState.Loading,
-                    elevation = null
-                ) {
-                    if (uiState is LoginUiState.Loading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            "Kirish",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
-                }
+                    loading = uiState is LoginUiState.Loading
+                )
             }
 
             // Footer

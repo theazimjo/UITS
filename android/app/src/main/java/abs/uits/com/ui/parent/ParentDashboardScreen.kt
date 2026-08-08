@@ -14,10 +14,35 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.automirrored.outlined.*
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Fill
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.fill.CheckCircle
+import com.adamglin.phosphoricons.fill.House
+import com.adamglin.phosphoricons.fill.Newspaper
+import com.adamglin.phosphoricons.fill.Person
+import com.adamglin.phosphoricons.regular.Bell
+import com.adamglin.phosphoricons.regular.Briefcase
+import com.adamglin.phosphoricons.regular.CaretDown
+import com.adamglin.phosphoricons.regular.CaretLeft
+import com.adamglin.phosphoricons.regular.CaretRight
+import com.adamglin.phosphoricons.regular.CheckCircle
+import com.adamglin.phosphoricons.regular.Clock
+import com.adamglin.phosphoricons.regular.Gauge
+import com.adamglin.phosphoricons.regular.GraduationCap
+import com.adamglin.phosphoricons.regular.Globe
+import com.adamglin.phosphoricons.regular.House
+import com.adamglin.phosphoricons.regular.IdentificationCard
+import com.adamglin.phosphoricons.regular.Info
+import com.adamglin.phosphoricons.regular.Megaphone
+import com.adamglin.phosphoricons.regular.Newspaper
+import com.adamglin.phosphoricons.regular.Notepad
+import com.adamglin.phosphoricons.regular.Person
+import com.adamglin.phosphoricons.regular.Quotes
+import com.adamglin.phosphoricons.regular.Receipt
+import com.adamglin.phosphoricons.regular.SealCheck
+import com.adamglin.phosphoricons.regular.SignIn
+import com.adamglin.phosphoricons.regular.SignOut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,6 +76,7 @@ import java.util.*
 import coil.compose.AsyncImage
 import androidx.compose.foundation.BorderStroke
 import abs.uits.com.ui.theme.*
+import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +108,7 @@ fun ParentDashboardScreen(
     var showNotificationsSheet by rememberSaveable { mutableStateOf(false) }
 
     val personalNotifications = notifications.filter { it.isGeneral != true }
+    val hazeState = remember { HazeState() }
 
     if (showGeneralReport && selectedChild != null) {
         androidx.activity.compose.BackHandler {
@@ -109,11 +136,11 @@ fun ParentDashboardScreen(
                 .fillMaxSize()
                 .background(IosBackground)
         ) {
-            // Tab Content
+            // Tab Content — extends full-height behind the glass tab bar so it has something to blur
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 84.dp)
+                    .iosHazeSource(hazeState)
             ) {
                 when (selectedTab) {
                     0 -> HomeMockupTab(
@@ -146,75 +173,23 @@ fun ParentDashboardScreen(
                 }
             }
 
-            // Flat White Bottom Navigation Bar matching mockup
-            Surface(
-                color = Color.White,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .drawBehind {
-                        // Top divider line
-                        drawLine(
-                            color = Color(0xFFE5E5EA),
-                            start = Offset(0f, 0f),
-                            end = Offset(size.width, 0f),
-                            strokeWidth = 1.dp.toPx()
-                        )
-                    }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val tabs = listOf(
-                        NavigationTabInfo(0, Icons.Outlined.Home, Icons.Filled.Home, "Asosiy"),
-                        NavigationTabInfo(1, Icons.Outlined.CheckCircle, Icons.Filled.CheckCircle, "Davomat"),
-                        NavigationTabInfo(2, Icons.Outlined.Newspaper, Icons.Filled.Newspaper, "Yangiliklar"),
-                        NavigationTabInfo(3, Icons.Outlined.Person, Icons.Filled.Person, "Profil")
-                    )
-
-                    tabs.forEach { tab ->
-                        val isSelected = selectedTab == tab.id
-                        val color = if (isSelected) Color(0xFF0056C6) else Color(0xFF8E8E93)
-                        val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .iosPressable { selectedTab = tab.id }
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isSelected) tab.filledIcon else tab.outlinedIcon,
-                                contentDescription = tab.label,
-                                tint = color,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = tab.label,
-                                fontSize = 11.sp,
-                                fontWeight = fontWeight,
-                                color = color
-                            )
-                        }
-                    }
-                }
-            }
+            // Bottom tab bar — shared with TeacherDashboardScreen so both apps look identical
+            IosTabBar(
+                items = parentTabItems,
+                selectedIndex = selectedTab,
+                onSelect = { selectedTab = it },
+                modifier = Modifier.align(Alignment.BottomCenter),
+                hazeState = hazeState
+            )
         }
     }
 }
 
-data class NavigationTabInfo(
-    val id: Int,
-    val outlinedIcon: ImageVector,
-    val filledIcon: ImageVector,
-    val label: String
+private val parentTabItems = listOf(
+    IosTabItem("Asosiy", PhosphorIcons.Regular.House, PhosphorIcons.Fill.House),
+    IosTabItem("Davomat", PhosphorIcons.Regular.CheckCircle, PhosphorIcons.Fill.CheckCircle),
+    IosTabItem("Yangiliklar", PhosphorIcons.Regular.Newspaper, PhosphorIcons.Fill.Newspaper),
+    IosTabItem("Profil", PhosphorIcons.Regular.Person, PhosphorIcons.Fill.Person)
 )
 
 // ==========================================
@@ -301,7 +276,7 @@ fun HomeMockupTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
@@ -328,7 +303,7 @@ fun HomeMockupTab(
                             modifier = Modifier
                                 .size(54.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFF2F2F7)),
+                                .background(IosBackground),
                             contentAlignment = Alignment.Center
                         ) {
                             val photoUrl = selectedChild?.photo?.let {
@@ -343,10 +318,10 @@ fun HomeMockupTab(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = Icons.Default.Person,
+                                    imageVector = PhosphorIcons.Regular.Person,
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp),
-                                    tint = Color(0xFF8E8E93)
+                                    tint = IosSecondaryLabel
                                 )
                             }
                         }
@@ -358,14 +333,14 @@ fun HomeMockupTab(
                                     text = selectedChild?.name ?: "Ismoil Kabulov",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.Black
+                                    color = IosLabel
                                 )
                                 if (children.size > 1) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Icon(
-                                        imageVector = Icons.Outlined.ExpandMore,
+                                        imageVector = PhosphorIcons.Regular.CaretDown,
                                         contentDescription = null,
-                                        tint = Color.Black,
+                                        tint = IosLabel,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -373,7 +348,7 @@ fun HomeMockupTab(
                             Text(
                                 text = "ID: ${selectedChild?.externalId ?: "N/A"}",
                                 fontSize = 12.sp,
-                                color = Color(0xFF8E8E93),
+                                color = IosSecondaryLabel,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -394,7 +369,7 @@ fun HomeMockupTab(
                                     modifier = Modifier
                                         .size(28.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFFF2F2F7)),
+                                        .background(IosBackground),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val pUrl = child.photo?.let {
@@ -409,9 +384,9 @@ fun HomeMockupTab(
                                         )
                                     } else {
                                         Icon(
-                                            imageVector = Icons.Default.Person,
+                                            imageVector = PhosphorIcons.Regular.Person,
                                             contentDescription = null,
-                                            tint = Color(0xFF8E8E93),
+                                            tint = IosSecondaryLabel,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -430,22 +405,22 @@ fun HomeMockupTab(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.White, CircleShape)
-                        .border(0.5.dp, Color(0xFFE5E5EA), CircleShape)
+                        .background(IosCard, CircleShape)
+                        .border(0.5.dp, IosSeparator, CircleShape)
                         .iosPressable { onShowNotifications() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
+                        imageVector = PhosphorIcons.Regular.Bell,
                         contentDescription = "Bildirishnomalar",
-                        tint = Color.Black,
+                        tint = IosLabel,
                         modifier = Modifier.size(20.dp)
                     )
                     if (unreadCount > 0) {
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
-                                .background(Color(0xFFFF3B30), CircleShape)
+                                .background(IosRed, CircleShape)
                                 .align(Alignment.TopEnd),
                             contentAlignment = Alignment.Center
                         ) {
@@ -474,17 +449,17 @@ fun HomeMockupTab(
                 items(weekDays) { day ->
                     val isDaySelected = selectedDateStr == day.dateStr
                     val capsuleBg = when {
-                        isDaySelected -> Color(0xFF0056C6)
-                        day.isToday -> Color(0xFF0056C6).copy(alpha = 0.08f)
+                        isDaySelected -> IosBlue
+                        day.isToday -> IosBlue.copy(alpha = 0.08f)
                         else -> Color.Transparent
                     }
                     val borderStroke = if (day.isToday && !isDaySelected) {
-                        BorderStroke(1.dp, Color(0xFF0056C6))
+                        BorderStroke(1.dp, IosBlue)
                     } else {
                         null
                     }
-                    val dayColor = if (isDaySelected) Color.White else Color(0xFF8E8E93)
-                    val dateColor = if (isDaySelected) Color.White else Color(0xFF1C1C1E)
+                    val dayColor = if (isDaySelected) Color.White else IosSecondaryLabel
+                    val dateColor = if (isDaySelected) Color.White else IosLabel
 
                     Box(
                         modifier = Modifier
@@ -522,7 +497,7 @@ fun HomeMockupTab(
                                     modifier = Modifier
                                         .size(4.dp)
                                         .clip(CircleShape)
-                                        .background(if (isDaySelected) Color.White else Color(0xFF0056C6))
+                                        .background(if (isDaySelected) Color.White else IosBlue)
                                 )
                             }
                         }
@@ -567,14 +542,14 @@ fun HomeMockupTab(
                             text = if (selectedDateStr == todayDateStr) "Bugungi dars jadvali" else "Dars jadvali ($selectedDateStr)",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = IosLabel
                         )
                         // Green / Gray Dot
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(CircleShape)
-                                .background(if (isSundaySelected) Color(0xFF8E8E93) else Color(0xFF34C759))
+                                .background(if (isSundaySelected) IosSecondaryLabel else IosGreen)
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -589,9 +564,9 @@ fun HomeMockupTab(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.WorkOutline,
+                                imageVector = PhosphorIcons.Regular.Briefcase,
                                 contentDescription = null,
-                                tint = Color(0xFF0056C6),
+                                tint = IosBlue,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -600,7 +575,7 @@ fun HomeMockupTab(
                             text = courseTitle,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = IosLabel,
                             modifier = Modifier.weight(1f)
                         )
                         if (!isSundaySelected) {
@@ -612,7 +587,7 @@ fun HomeMockupTab(
                                     text = roomName,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0056C6),
+                                    color = IosBlue,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
@@ -631,7 +606,7 @@ fun HomeMockupTab(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.AccessTime,
+                                imageVector = PhosphorIcons.Regular.Clock,
                                 contentDescription = null,
                                 tint = Color(0xFF5856D6),
                                 modifier = Modifier.size(16.dp)
@@ -642,7 +617,7 @@ fun HomeMockupTab(
                             text = timeSlot,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = IosLabel
                         )
                     }
                 }
@@ -664,7 +639,7 @@ fun HomeMockupTab(
                         text = if (selectedDateStr == todayDateStr) "Bugungi Davomat" else "Davomat ($selectedDateStr)",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = IosLabel
                     )
                     Spacer(modifier = Modifier.height(16.dp))
  
@@ -676,22 +651,22 @@ fun HomeMockupTab(
                         AttendanceStatItem(
                             label = "Kirish vaqti",
                             value = selectedRecord?.arrived_at ?: "- : -",
-                            icon = Icons.AutoMirrored.Outlined.Login,
-                            color = Color(0xFF0056C6)
+                            icon = PhosphorIcons.Regular.SignIn,
+                            color = IosBlue
                         )
                         // Check out
                         AttendanceStatItem(
                             label = "Chiqish vaqti",
                             value = selectedRecord?.left_at ?: "- : -",
-                            icon = Icons.AutoMirrored.Outlined.Logout,
+                            icon = PhosphorIcons.Regular.SignOut,
                             color = Color(0xFF5856D6)
                         )
                         // Total hrs
                         AttendanceStatItem(
                             label = "Jami soat",
                             value = calculateTotalHours(selectedRecord?.arrived_at, selectedRecord?.left_at),
-                            icon = Icons.Outlined.CheckCircleOutline,
-                            color = Color(0xFF007AFF)
+                            icon = PhosphorIcons.Regular.CheckCircle,
+                            color = IosBlue
                         )
                     }
                 }
@@ -716,9 +691,9 @@ fun HomeMockupTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
+                        imageVector = PhosphorIcons.Regular.Receipt,
                         contentDescription = null,
-                        tint = Color(0xFF34C759),
+                        tint = IosGreen,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -726,14 +701,14 @@ fun HomeMockupTab(
                         text = "To'lovlar Tarixi (Joriy oy)",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = IosLabel
                     )
                 }
  
                 if (currentMonthPayments.isEmpty()) {
                     Text(
                         text = "Joriy oyda to'lovlar tarixi yo'q",
-                        color = Color(0xFF8E8E93),
+                        color = IosSecondaryLabel,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
@@ -754,13 +729,13 @@ fun HomeMockupTab(
                                         modifier = Modifier
                                             .size(36.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFF34C759).copy(alpha = 0.08f)),
+                                            .background(IosGreen.copy(alpha = 0.08f)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
+                                            imageVector = PhosphorIcons.Regular.Receipt,
                                             contentDescription = null,
-                                            tint = Color(0xFF34C759),
+                                            tint = IosGreen,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -769,14 +744,14 @@ fun HomeMockupTab(
                                         val formatter = java.text.DecimalFormat("#,###")
                                         val amountStr = formatter.format(p.amount).replace(",", " ")
                                         Text("$amountStr UZS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text(p.paymentDate, color = Color(0xFF8E8E93), fontSize = 11.sp)
+                                        Text(p.paymentDate, color = IosSecondaryLabel, fontSize = 11.sp)
                                     }
-                                    Text("To'landi", color = Color(0xFF34C759), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text("To'landi", color = IosGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                                 if (idx < currentMonthPayments.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(horizontal = 16.dp),
-                                        color = Color(0xFFE5E5EA),
+                                        color = IosSeparator.copy(alpha = 0.5f),
                                         thickness = 0.5.dp
                                     )
                                 }
@@ -793,13 +768,13 @@ fun HomeMockupTab(
             IosFilledButton(
                 text = "Umumiy ma'lumotlar",
                 onClick = onShowGeneralReport,
-                containerColor = Color(0xFF0056C6),
+                containerColor = IosBlue,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.Dashboard,
+                        imageVector = PhosphorIcons.Regular.Gauge,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
@@ -857,49 +832,14 @@ fun AttendanceStatItem(
             text = value,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Black
+            color = IosLabel
         )
         Text(
             text = label,
             fontSize = 10.sp,
-            color = Color(0xFF8E8E93),
+            color = IosSecondaryLabel,
             fontWeight = FontWeight.Medium
         )
-    }
-}
-
-@Composable
-fun RequestStatusBox(
-    modifier: Modifier,
-    count: String,
-    label: String,
-    textColor: Color,
-    borderColor: Color,
-    bgColor: Color
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(bgColor)
-            .border(0.5.dp, borderColor, RoundedCornerShape(16.dp))
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = count,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = label,
-                fontSize = 10.sp,
-                color = textColor,
-                fontWeight = FontWeight.Bold
-            )
-        }
     }
 }
 
@@ -919,7 +859,7 @@ fun AttendanceTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -947,12 +887,12 @@ fun AttendanceTab(
                             text = selectedChild?.name?.split(" ")?.take(2)?.joinToString(" ") ?: "Farzand",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0056C6)
+                            color = IosBlue
                         )
                         Icon(
-                            imageVector = Icons.Outlined.ExpandMore,
+                            imageVector = PhosphorIcons.Regular.CaretDown,
                             contentDescription = null,
-                            tint = Color(0xFF0056C6),
+                            tint = IosBlue,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -988,304 +928,15 @@ fun AttendanceTab(
 
         val comments = attendance.grades.filter { !it.comment.isNullOrBlank() }
         if (comments.isNotEmpty()) {
-            item { SectionHeader("Izohlar va Fikrlar", Icons.Outlined.HistoryEdu) }
+            item {
+                IosSectionHeader(
+                    "Izohlar va Fikrlar",
+                    PhosphorIcons.Regular.Notepad,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                )
+            }
             items(comments) { grade ->
                 GlassTeacherComment(grade)
-            }
-        }
-    }
-}
-
-// ==========================================
-// TAB 2: SCHEDULE (Timed class listing tab)
-// ==========================================
-@Composable
-fun ScheduleTab(
-    selectedChild: StudentResponse?,
-    children: List<StudentResponse>,
-    selectedChildId: Int?,
-    onChildSelected: (Int) -> Unit
-) {
-    var showChildDropdown by remember { mutableStateOf(false) }
-    var selectedDayIndex by rememberSaveable { mutableIntStateOf(1) } // Default Tue (1) active
-
-    val weekDays = listOf(
-        Pair("Du", "18"),
-        Pair("Se", "19"),
-        Pair("Chor", "20"),
-        Pair("Pay", "21"),
-        Pair("Ju", "22")
-    )
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Spacer(modifier = Modifier.statusBarsPadding())
-        }
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Dars jadvalim",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                    if (children.size > 1) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFFE8F0FE))
-                                    .clickable { showChildDropdown = true }
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = selectedChild?.name?.split(" ")?.take(2)?.joinToString(" ") ?: "",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0056C6)
-                                )
-                                Icon(
-                                    imageVector = Icons.Outlined.ExpandMore,
-                                    contentDescription = null,
-                                    tint = Color(0xFF0056C6),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showChildDropdown,
-                                onDismissRequest = { showChildDropdown = false },
-                                modifier = Modifier.background(Color.White)
-                            ) {
-                                children.forEach { child ->
-                                    DropdownMenuItem(
-                                        text = { Text(child.name, fontWeight = FontWeight.Bold) },
-                                        onClick = {
-                                            onChildSelected(child.id)
-                                            showChildDropdown = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .background(Color.White, CircleShape)
-                        .border(0.5.dp, Color(0xFFE5E5EA), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
-                }
-            }
-        }
-
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                weekDays.forEachIndexed { index, day ->
-                    val isDayActive = selectedDayIndex == index
-                    val dayBg = if (isDayActive) Color(0xFF9E8FFF) else Color.White
-                    val dayTextColor = if (isDayActive) Color.White else Color(0xFF8E8E93)
-                    val numColor = if (isDayActive) Color.White else Color(0xFF1C1C1E)
-
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = dayBg),
-                        modifier = Modifier
-                            .width(56.dp)
-                            .clickable { selectedDayIndex = index }
-                            .border(0.5.dp, Color(0xFFE5E5EA), RoundedCornerShape(16.dp)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = if (isDayActive) 4.dp else 0.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(text = day.first, fontSize = 10.sp, color = dayTextColor, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(text = day.second, fontSize = 16.sp, color = numColor, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-
-        val enrollments = selectedChild?.enrollments?.filter { it.status == "ACTIVE" } ?: emptyList()
-
-        if (enrollments.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Jadval bo'sh", color = Color(0xFF8E8E93))
-                }
-            }
-        } else {
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    enrollments.forEachIndexed { idx, enrollment ->
-                        val courseName = enrollment.group?.course?.name ?: "Kurs"
-                        
-                        val pair = when (idx) {
-                            0 -> Triple("08:30 AM", "10:00 AM", "B3, Room 124") to Pair("Mrs. Goodman", false)
-                            1 -> Triple("10:30 AM", "12:00 PM", "B2, Room 158") to Pair("Mrs. Melton", true) // Active Now
-                            else -> Triple("12:15 PM", "01:45 PM", "B3, Room 310") to Pair("Mr. Hodge", false)
-                        }
-                        val (timeStart, timeEnd, room) = pair.first
-                        val (teacherName, isNow) = pair.second
-
-                        Column {
-                            if (isNow) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        "Now",
-                                        color = Color(0xFF8E8E93),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = Color(0xFFC7C7CC)
-                                    )
-                                }
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Column(
-                                    modifier = Modifier.width(68.dp),
-                                    horizontalAlignment = Alignment.Start
-                                ) {
-                                    Text(
-                                        text = timeStart,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1C1C1E)
-                                    )
-                                    Canvas(
-                                        modifier = Modifier
-                                            .padding(start = 16.dp, top = 6.dp, bottom = 6.dp)
-                                            .height(36.dp)
-                                            .width(2.dp)
-                                    ) {
-                                        val strokeVal = Stroke(
-                                            width = 1.dp.toPx(),
-                                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
-                                        )
-                                        drawLine(
-                                            color = Color(0xFFC7C7CC),
-                                            start = Offset(0f, 0f),
-                                            end = Offset(0f, size.height),
-                                            strokeWidth = 1.dp.toPx(),
-                                            pathEffect = strokeVal.pathEffect
-                                        )
-                                    }
-                                    Text(
-                                        text = timeEnd,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF8E8E93)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                val cardBg = if (isNow) Color(0xFFB4F3B4) else Color.White
-                                val textSubjectColor = if (isNow) Color(0xFF1B5E20) else Color.Black
-                                val textDescColor = if (isNow) Color(0xFF2E7D32) else Color(0xFF8E8E93)
-
-                                Card(
-                                    shape = RoundedCornerShape(22.dp),
-                                    colors = CardDefaults.cardColors(containerColor = cardBg),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .border(0.5.dp, Color(0xFFE5E5EA), RoundedCornerShape(22.dp)),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = if (isNow) 3.dp else 1.dp)
-                                ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                            text = courseName,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textSubjectColor
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = room,
-                                            fontSize = 11.sp,
-                                            color = textDescColor,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color.White.copy(alpha = 0.6f)),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    Icons.Outlined.Person,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFF8E8E93),
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = teacherName,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = textSubjectColor
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
@@ -1301,7 +952,7 @@ fun NewsTab(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -1321,16 +972,16 @@ fun NewsTab(
                 ) {
                     Text(
                         text = "Yangiliklar yoki e'lonlar mavjud emas",
-                        color = Color(0xFF8E8E93),
+                        color = IosSecondaryLabel,
                         fontSize = 14.sp
                     )
                 }
             }
         } else {
             items(notifications) { notification ->
-                val cardBg = if (notification.isRead) Color.White else Color(0xFFE8F0FE).copy(alpha = 0.4f)
-                val borderCol = if (notification.isRead) Color(0xFFE5E5EA) else Color(0xFF0056C6).copy(alpha = 0.3f)
-                val badgeColor = Color(0xFF0056C6)
+                val cardBg = if (notification.isRead) IosCard else Color(0xFFE8F0FE).copy(alpha = 0.4f)
+                val borderCol = if (notification.isRead) IosSeparator else IosBlue.copy(alpha = 0.3f)
+                val badgeColor = IosBlue
 
                 IosCard(
                     cornerRadius = 20.dp,
@@ -1353,13 +1004,13 @@ fun NewsTab(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(if (notification.isRead) Color(0xFFF2F2F7) else Color(0xFFE8F0FE)),
+                                .background(if (notification.isRead) IosBackground else Color(0xFFE8F0FE)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Campaign,
+                                imageVector = PhosphorIcons.Regular.Megaphone,
                                 contentDescription = null,
-                                tint = if (notification.isRead) Color(0xFF8E8E93) else Color(0xFF0056C6),
+                                tint = if (notification.isRead) IosSecondaryLabel else IosBlue,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -1376,7 +1027,7 @@ fun NewsTab(
                                     text = notification.title,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.Black,
+                                    color = IosLabel,
                                     modifier = Modifier.weight(1f)
                                 )
                                 if (!notification.isRead) {
@@ -1405,7 +1056,7 @@ fun NewsTab(
                             Text(
                                 text = notification.createdAt,
                                 fontSize = 11.sp,
-                                color = Color(0xFF8E8E93),
+                                color = IosSecondaryLabel,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -1434,7 +1085,7 @@ fun ProfileTab(
         modifier = Modifier
             .fillMaxSize()
             .background(IosBackground),
-        contentPadding = PaddingValues(bottom = 36.dp),
+        contentPadding = PaddingValues(bottom = 110.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item { Spacer(modifier = Modifier.statusBarsPadding()) }
@@ -1447,7 +1098,7 @@ fun ProfileTab(
                     text = "FARZAND MA'LUMOTLARI",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF8E8E93),
+                    color = IosSecondaryLabel,
                     letterSpacing = 0.8.sp,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                 )
@@ -1461,9 +1112,9 @@ fun ProfileTab(
                     Column(modifier = Modifier.padding(vertical = 2.dp)) {
                         // Ism
                         ProfileInfoRow(
-                            icon = Icons.Outlined.Person,
-                            iconBg = Color(0xFF007AFF).copy(alpha = 0.1f),
-                            iconTint = Color(0xFF007AFF),
+                            icon = PhosphorIcons.Regular.Person,
+                            iconBg = IosBlue.copy(alpha = 0.1f),
+                            iconTint = IosBlue,
                             label = "To'liq ismi",
                             value = selectedChild.name,
                             showDivider = true
@@ -1471,7 +1122,7 @@ fun ProfileTab(
                         // ID
                         if (!selectedChild.externalId.isNullOrBlank()) {
                             ProfileInfoRow(
-                                icon = Icons.Outlined.Badge,
+                                icon = PhosphorIcons.Regular.IdentificationCard,
                                 iconBg = Color(0xFF5856D6).copy(alpha = 0.1f),
                                 iconTint = Color(0xFF5856D6),
                                 label = "O'quvchi ID",
@@ -1487,9 +1138,9 @@ fun ProfileTab(
                             else -> selectedChild.status ?: "Noma'lum"
                         }
                         val statusColor = when (selectedChild.status) {
-                            "ACTIVE" -> Color(0xFF34C759)
+                            "ACTIVE" -> IosGreen
                             "INACTIVE" -> Color(0xFFFF9500)
-                            else -> Color(0xFF8E8E93)
+                            else -> IosSecondaryLabel
                         }
                         Row(
                             modifier = Modifier
@@ -1503,11 +1154,11 @@ fun ProfileTab(
                                     .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Outlined.VerifiedUser, null, tint = statusColor, modifier = Modifier.size(18.dp))
+                                Icon(PhosphorIcons.Regular.SealCheck, null, tint = statusColor, modifier = Modifier.size(18.dp))
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Holati", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                                Text("Holati", fontSize = 12.sp, color = IosSecondaryLabel)
                                 Text(statusLabel, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = statusColor)
                             }
                         }
@@ -1523,7 +1174,7 @@ fun ProfileTab(
                         text = "O'QIYOTGAN GURUHLAR",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF8E8E93),
+                        color = IosSecondaryLabel,
                         letterSpacing = 0.8.sp,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                     )
@@ -1546,27 +1197,27 @@ fun ProfileTab(
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
-                                    .background(Color(0xFF007AFF).copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+                                    .background(IosBlue.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Outlined.School, null, tint = Color(0xFF007AFF), modifier = Modifier.size(22.dp))
+                                Icon(PhosphorIcons.Regular.GraduationCap, null, tint = IosBlue, modifier = Modifier.size(22.dp))
                             }
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(group.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1C1C1E))
+                                Text(group.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = IosLabel)
                                 if (group.course != null) {
-                                    Text(group.course.name, fontSize = 12.sp, color = Color(0xFF8E8E93))
+                                    Text(group.course.name, fontSize = 12.sp, color = IosSecondaryLabel)
                                 }
                                 if (group.teacher != null) {
-                                    Text("O'qituvchi: ${group.teacher.name}", fontSize = 11.sp, color = Color(0xFF8E8E93))
+                                    Text("O'qituvchi: ${group.teacher.name}", fontSize = 11.sp, color = IosSecondaryLabel)
                                 }
                                 if (group.startTime != null && group.endTime != null) {
-                                    Text("${group.startTime} – ${group.endTime}", fontSize = 11.sp, color = Color(0xFF8E8E93))
+                                    Text("${group.startTime} – ${group.endTime}", fontSize = 11.sp, color = IosSecondaryLabel)
                                 }
                             }
                             Box(
                                 modifier = Modifier
                                     .background(
-                                        if (isActive) Color(0xFF34C759).copy(alpha = 0.12f) else Color(0xFF8E8E93).copy(alpha = 0.1f),
+                                        if (isActive) IosGreen.copy(alpha = 0.12f) else IosSecondaryLabel.copy(alpha = 0.1f),
                                         RoundedCornerShape(8.dp)
                                     )
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
@@ -1574,7 +1225,7 @@ fun ProfileTab(
                                 Text(
                                     text = if (isActive) "Faol" else "Nofaol",
                                     fontSize = 11.sp,
-                                    color = if (isActive) Color(0xFF34C759) else Color(0xFF8E8E93),
+                                    color = if (isActive) IosGreen else IosSecondaryLabel,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -1591,7 +1242,7 @@ fun ProfileTab(
                 text = "ILOVA SOZLAMALARI",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF8E8E93),
+                color = IosSecondaryLabel,
                 letterSpacing = 0.8.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
@@ -1616,16 +1267,16 @@ fun ProfileTab(
                                 .background(Color(0xFFFF9500).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Outlined.Language, null, tint = Color(0xFFFF9500), modifier = Modifier.size(18.dp))
+                            Icon(PhosphorIcons.Regular.Globe, null, tint = Color(0xFFFF9500), modifier = Modifier.size(18.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Til", fontSize = 12.sp, color = Color(0xFF8E8E93))
-                            Text("O'zbek tili", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+                            Text("Til", fontSize = 12.sp, color = IosSecondaryLabel)
+                            Text("O'zbek tili", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = IosLabel)
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
+                    HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = IosSeparator.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     // Bildirishnomalar (informational — no in-app toggle, so no chevron affordance)
                     Row(
@@ -1637,19 +1288,19 @@ fun ProfileTab(
                         Box(
                             modifier = Modifier
                                 .size(34.dp)
-                                .background(Color(0xFFFF3B30).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+                                .background(IosRed.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Outlined.NotificationsNone, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
+                            Icon(PhosphorIcons.Regular.Bell, null, tint = IosRed, modifier = Modifier.size(18.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Bildirishnomalar", fontSize = 12.sp, color = Color(0xFF8E8E93))
-                            Text("Yoqilgan", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+                            Text("Bildirishnomalar", fontSize = 12.sp, color = IosSecondaryLabel)
+                            Text("Yoqilgan", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = IosLabel)
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
+                    HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = IosSeparator.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     // Versiya
                     Row(
@@ -1661,15 +1312,15 @@ fun ProfileTab(
                         Box(
                             modifier = Modifier
                                 .size(34.dp)
-                                .background(Color(0xFF34C759).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+                                .background(IosGreen.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Outlined.Info, null, tint = Color(0xFF34C759), modifier = Modifier.size(18.dp))
+                            Icon(PhosphorIcons.Regular.Info, null, tint = IosGreen, modifier = Modifier.size(18.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Ilova versiyasi", fontSize = 12.sp, color = Color(0xFF8E8E93))
-                            Text("v$appVersion", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+                            Text("Ilova versiyasi", fontSize = 12.sp, color = IosSecondaryLabel)
+                            Text("v$appVersion", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = IosLabel)
                         }
                     }
                 }
@@ -1694,20 +1345,20 @@ fun ProfileTab(
                     Box(
                         modifier = Modifier
                             .size(34.dp)
-                            .background(Color(0xFFFF3B30).copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+                            .background(IosRed.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Outlined.Logout, null, tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
+                        Icon(PhosphorIcons.Regular.SignOut, null, tint = IosRed, modifier = Modifier.size(18.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         "Tizimdan chiqish",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFFF3B30),
+                        color = IosRed,
                         modifier = Modifier.weight(1f)
                     )
-                    Icon(Icons.Outlined.ChevronRight, null, tint = Color(0xFFFF3B30).copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                    Icon(PhosphorIcons.Regular.CaretRight, null, tint = IosRed.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -1740,131 +1391,12 @@ private fun ProfileInfoRow(
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontSize = 12.sp, color = Color(0xFF8E8E93))
-            Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1C1C1E))
+            Text(label, fontSize = 12.sp, color = IosSecondaryLabel)
+            Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = IosLabel)
         }
     }
     if (showDivider) {
-        HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = Color(0xFFF2F2F7), thickness = 0.8.dp)
-    }
-}
-
-
-// ==========================================
-// RESTORED COMPOSABLES
-// ==========================================
-
-@Composable
-fun IosSegmentedControl(
-    children: List<StudentResponse>,
-    selectedChildId: Int?,
-    onChildSelected: (Int) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-    ) {
-        Text(
-            text = "FARZANDLARINGIZ",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF8E8E93),
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(end = 20.dp)
-        ) {
-            items(children) { child ->
-                val isSelected = child.id == selectedChildId
-                val scale by animateFloatAsState(if (isSelected) 1.03f else 1.0f)
-                
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) Color.White else Color(0xFFE5E5EA).copy(alpha = 0.4f)
-                    ),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = if (isSelected) 4.dp else 0.dp
-                    ),
-                    border = if (isSelected) BorderStroke(
-                        1.5.dp,
-                        Brush.linearGradient(colors = listOf(Color(0xFF0056C6), Color(0xFF5856D6)))
-                    ) else null,
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                        .clickable { onChildSelected(child.id) }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFF2F2F7)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val photoUrl = child.photo?.let {
-                                if (it.startsWith("http")) it else "https://schoolmanage.uz/$it"
-                            }
-                            if (photoUrl != null) {
-                                AsyncImage(
-                                    model = photoUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = Color(0xFF8E8E93),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = child.name.split(" ").take(2).joinToString(" "),
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 13.sp,
-                            color = if (isSelected) Color.Black else Color(0xFF1C1C1E).copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SectionHeader(title: String, icon: ImageVector) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color(0xFF0056C6),
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = title,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
+        HorizontalDivider(modifier = Modifier.padding(start = 62.dp), color = IosSeparator.copy(alpha = 0.5f), thickness = 0.5.dp)
     }
 }
 
@@ -1920,14 +1452,14 @@ fun InteractiveAttendanceCalendar(
                     }
                     onMonthChanged(calendarState.get(Calendar.YEAR), calendarState.get(Calendar.MONTH) + 1)
                 }) {
-                    Icon(Icons.Outlined.ChevronLeft, contentDescription = "Oldingi oy", tint = IosBlue)
+                    Icon(PhosphorIcons.Regular.CaretLeft, contentDescription = "Oldingi oy", tint = IosBlue)
                 }
 
                 Text(
                     text = "${monthNamesCorrect[currentMonth]} $currentYear",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = IosLabel
                 )
 
                 IosIconButton(onClick = {
@@ -1936,7 +1468,7 @@ fun InteractiveAttendanceCalendar(
                     }
                     onMonthChanged(calendarState.get(Calendar.YEAR), calendarState.get(Calendar.MONTH) + 1)
                 }) {
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = "Keyingi oy", tint = IosBlue)
+                    Icon(PhosphorIcons.Regular.CaretRight, contentDescription = "Keyingi oy", tint = IosBlue)
                 }
             }
 
@@ -1952,7 +1484,7 @@ fun InteractiveAttendanceCalendar(
                         text = label,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF8E8E93),
+                        color = IosSecondaryLabel,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center
                     )
@@ -1981,9 +1513,9 @@ fun InteractiveAttendanceCalendar(
 
                             val isPresent = record?.status_display == "Kelgan"
                             val cellBg = when {
-                                isSelected -> Color(0xFF0056C6)
+                                isSelected -> IosBlue
                                 record != null -> {
-                                    if (isPresent) Color(0xFF34C759).copy(alpha = 0.15f) else Color(0xFFFF3B30).copy(alpha = 0.15f)
+                                    if (isPresent) IosGreen.copy(alpha = 0.15f) else IosRed.copy(alpha = 0.15f)
                                 }
                                 else -> Color.Transparent
                             }
@@ -1991,12 +1523,12 @@ fun InteractiveAttendanceCalendar(
                             val textColor = when {
                                 isSelected -> Color.White
                                 record != null -> {
-                                    if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30)
+                                    if (isPresent) IosGreen else IosRed
                                 }
-                                else -> Color.Black
+                                else -> IosLabel
                             }
 
-                            val borderStroke = if (isSelected) null else BorderStroke(0.5.dp, Color(0xFFF2F2F7))
+                            val borderStroke = if (isSelected) null else BorderStroke(0.5.dp, IosBackground)
 
                             Box(
                                 modifier = Modifier
@@ -2041,11 +1573,11 @@ fun InteractiveAttendanceCalendar(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LegendItem("Kelgan", Color(0xFF34C759))
+                LegendItem("Kelgan", IosGreen)
                 Spacer(modifier = Modifier.width(16.dp))
-                LegendItem("Kelmagan", Color(0xFFFF3B30))
+                LegendItem("Kelmagan", IosRed)
                 Spacer(modifier = Modifier.width(16.dp))
-                LegendItem("Dars yo'q", Color(0xFFE5E5EA))
+                LegendItem("Dars yo'q", IosSeparator)
             }
         }
     }
@@ -2076,22 +1608,22 @@ fun InteractiveAttendanceCalendar(
                     text = "$selDay-${monthNamesCorrect[selMonth]}, $selYear",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = IosLabel
                 )
                 Surface(
                     color = when {
-                        selectedRecord == null -> Color(0xFFE5E5EA)
-                        isPresent -> Color(0xFF34C759).copy(alpha = 0.1f)
-                        else -> Color(0xFFFF3B30).copy(alpha = 0.1f)
+                        selectedRecord == null -> IosSeparator
+                        isPresent -> IosGreen.copy(alpha = 0.1f)
+                        else -> IosRed.copy(alpha = 0.1f)
                     },
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = selectedRecord?.status_display ?: "Dars yo'q",
                         color = when {
-                            selectedRecord == null -> Color(0xFF8E8E93)
-                            isPresent -> Color(0xFF34C759)
-                            else -> Color(0xFFFF3B30)
+                            selectedRecord == null -> IosSecondaryLabel
+                            isPresent -> IosGreen
+                            else -> IosRed
                         },
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -2109,144 +1641,21 @@ fun InteractiveAttendanceCalendar(
                 AttendanceStatItem(
                     label = "Kirish vaqti",
                     value = selectedRecord?.arrived_at ?: "- : -",
-                    icon = Icons.AutoMirrored.Outlined.Login,
-                    color = Color(0xFF0056C6)
+                    icon = PhosphorIcons.Regular.SignIn,
+                    color = IosBlue
                 )
                 AttendanceStatItem(
                     label = "Chiqish vaqti",
                     value = selectedRecord?.left_at ?: "- : -",
-                    icon = Icons.AutoMirrored.Outlined.Logout,
+                    icon = PhosphorIcons.Regular.SignOut,
                     color = Color(0xFF5856D6)
                 )
                 AttendanceStatItem(
                     label = "Jami soat",
                     value = calculateTotalHours(selectedRecord?.arrived_at, selectedRecord?.left_at),
-                    icon = Icons.Outlined.CheckCircleOutline,
-                    color = Color(0xFF007AFF)
+                    icon = PhosphorIcons.Regular.CheckCircle,
+                    color = IosBlue
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun DetailedAttendanceGrid(records: List<AttendanceRecord>) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        border = BorderStroke(0.5.dp, Color(0xFFE5E5EA)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "DAVOMAT (OXIRGI 30 KUN)",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF8E8E93),
-                letterSpacing = 0.5.sp
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    (0 until 30).chunked(10).forEach { rowIndices ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            rowIndices.forEach { index ->
-                                val record = records.getOrNull(index)
-                                val status = record?.status_display
-                                val color = when (status) {
-                                    "Kelgan" -> Color(0xFF34C759)
-                                    null -> Color(0xFFE5E5EA)
-                                    else -> Color(0xFFFF3B30)
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(color)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LegendItem("Kelgan", Color(0xFF34C759))
-                Spacer(modifier = Modifier.width(16.dp))
-                LegendItem("Kelmagan", Color(0xFFFF3B30))
-                Spacer(modifier = Modifier.width(16.dp))
-                LegendItem("Dars yo'q", Color(0xFFE5E5EA))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color(0xFFF2F2F7), thickness = 1.dp)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "OXIRGI DAVOMAT YOZUVLARI",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF8E8E93),
-                letterSpacing = 0.5.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val recentRecords = records.take(3)
-            if (recentRecords.isEmpty()) {
-                Text(
-                    text = "Yozuvlar topilmadi",
-                    color = Color(0xFF8E8E93),
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            } else {
-                recentRecords.forEachIndexed { index, record ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val isPresent = record.status_display == "Kelgan"
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30))
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = record.date,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = record.status_display ?: "Yo'q",
-                            fontSize = 13.sp,
-                            color = if (isPresent) Color(0xFF34C759) else Color(0xFFFF3B30),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    if (index < recentRecords.lastIndex) {
-                        HorizontalDivider(color = Color(0xFFF2F2F7), thickness = 0.5.dp)
-                    }
-                }
             }
         }
     }
@@ -2265,7 +1674,7 @@ fun LegendItem(label: String, color: Color) {
         Text(
             text = label,
             fontSize = 11.sp,
-            color = Color(0xFF8E8E93),
+            color = IosSecondaryLabel,
             fontWeight = FontWeight.Medium
         )
     }
@@ -2311,12 +1720,12 @@ fun GlassTeacherComment(grade: GradeResponse) {
                         text = grade.teacher?.name ?: "O'qituvchi",
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
-                        color = Color.Black
+                        color = IosLabel
                     )
                     Text(
                         text = "${grade.date} • ${grade.group?.name ?: ""}",
                         fontSize = 11.sp,
-                        color = Color(0xFF8E8E93),
+                        color = IosSecondaryLabel,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -2342,12 +1751,12 @@ fun GlassTeacherComment(grade: GradeResponse) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF2F2F7).copy(alpha = 0.6f))
+                    .background(IosBackground.copy(alpha = 0.6f))
                     .padding(12.dp)
             ) {
                 Column {
                     Icon(
-                        imageVector = Icons.Outlined.FormatQuote,
+                        imageVector = PhosphorIcons.Regular.Quotes,
                         contentDescription = null,
                         tint = Color(0xFF5856D6).copy(alpha = 0.2f),
                         modifier = Modifier.size(24.dp)
@@ -2357,7 +1766,7 @@ fun GlassTeacherComment(grade: GradeResponse) {
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF1C1C1E),
+                        color = IosLabel,
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -2371,16 +1780,16 @@ fun getScoreBadgeColors(score: String): Pair<Color, Color> {
     val doubleVal = score.toDoubleOrNull()
     return when {
         score == "5" || (doubleVal != null && doubleVal >= 4.5) || score.lowercase().contains("a") -> {
-            Color(0xFF34C759).copy(alpha = 0.1f) to Color(0xFF34C759)
+            IosGreen.copy(alpha = 0.1f) to IosGreen
         }
         score == "4" || (doubleVal != null && doubleVal >= 3.5) || score.lowercase().contains("b") -> {
-            Color(0xFF007AFF).copy(alpha = 0.1f) to Color(0xFF007AFF)
+            IosBlue.copy(alpha = 0.1f) to IosBlue
         }
         score == "3" || (doubleVal != null && doubleVal >= 2.5) || score.lowercase().contains("c") -> {
             Color(0xFFFFCC00).copy(alpha = 0.15f) to Color(0xFFC9A200)
         }
         else -> {
-            Color(0xFFFF3B30).copy(alpha = 0.1f) to Color(0xFFFF3B30)
+            IosRed.copy(alpha = 0.1f) to IosRed
         }
     }
 }
@@ -2412,14 +1821,14 @@ fun NotificationsFullScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.NotificationsNone,
+                        imageVector = PhosphorIcons.Regular.Bell,
                         contentDescription = null,
                         tint = Color(0xFFD1D1D6),
                         modifier = Modifier.size(56.dp)
                     )
                     Text(
                         text = "Bildirishnomalar yo'q",
-                        color = Color(0xFF8E8E93),
+                        color = IosSecondaryLabel,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -2439,8 +1848,8 @@ fun NotificationsFullScreen(
             ) {
                 items(notifications) { notification ->
                     val isRead = notification.isRead
-                    val cardBg = if (isRead) Color.White else Color(0xFFE8F0FE).copy(alpha = 0.5f)
-                    val borderCol = if (isRead) Color(0xFFE5E5EA) else Color(0xFF007AFF).copy(alpha = 0.3f)
+                    val cardBg = if (isRead) IosCard else Color(0xFFE8F0FE).copy(alpha = 0.5f)
+                    val borderCol = if (isRead) IosSeparator else IosBlue.copy(alpha = 0.3f)
 
                     IosCard(
                         cornerRadius = 16.dp,
@@ -2461,15 +1870,15 @@ fun NotificationsFullScreen(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .background(
-                                        if (isRead) Color(0xFFF2F2F7) else Color(0xFF007AFF).copy(alpha = 0.1f),
+                                        if (isRead) IosBackground else IosBlue.copy(alpha = 0.1f),
                                         RoundedCornerShape(12.dp)
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.NotificationsNone,
+                                    imageVector = PhosphorIcons.Regular.Bell,
                                     contentDescription = null,
-                                    tint = if (isRead) Color(0xFF8E8E93) else Color(0xFF007AFF),
+                                    tint = if (isRead) IosSecondaryLabel else IosBlue,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -2483,14 +1892,14 @@ fun NotificationsFullScreen(
                                         text = notification.title,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF1C1C1E),
+                                        color = IosLabel,
                                         modifier = Modifier.weight(1f)
                                     )
                                     if (!isRead) {
                                         Box(
                                             modifier = Modifier
                                                 .size(8.dp)
-                                                .background(Color(0xFF007AFF), CircleShape)
+                                                .background(IosBlue, CircleShape)
                                         )
                                     }
                                 }

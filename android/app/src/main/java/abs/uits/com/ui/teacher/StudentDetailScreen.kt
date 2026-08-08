@@ -10,9 +10,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.Clock
+import com.adamglin.phosphoricons.regular.ClipboardText
+import com.adamglin.phosphoricons.regular.Equalizer
+import com.adamglin.phosphoricons.regular.House
+import com.adamglin.phosphoricons.regular.Phone
+import com.adamglin.phosphoricons.regular.Star
+import com.adamglin.phosphoricons.regular.UsersThree
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,7 +27,9 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,9 +37,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import abs.uits.com.data.model.*
+import abs.uits.com.ui.theme.*
+import dev.chrisbanes.haze.HazeState
 import java.util.*
 
-@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun StudentDetailScreen(
     studentId: Int,
@@ -40,7 +51,7 @@ fun StudentDetailScreen(
     teacherViewModel: TeacherViewModel
 ) {
     val context = LocalContext.current
-    
+
     // Data fetching
     LaunchedEffect(studentId) {
         teacherViewModel.fetchStudentDetails(studentId)
@@ -60,8 +71,8 @@ fun StudentDetailScreen(
     val currentStudent = detailedStudent ?: baseStudent
 
     if (currentStudent == null) {
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF2F2F7)), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Color(0xFF007AFF))
+        Box(modifier = Modifier.fillMaxSize().background(IosBackground), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = IosBlue)
         }
         return
     }
@@ -73,25 +84,14 @@ fun StudentDetailScreen(
     val successScore = if (examPercent > 0) (attendPercent * 0.4f + examPercent * 0.6f).coerceIn(0f, 100f) else attendPercent.coerceIn(0f, 100f)
 
     with(sharedTransitionScope) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Talaba Profili", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ChevronLeft, contentDescription = null, tint = Color(0xFF007AFF), modifier = Modifier.size(32.dp))
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(0xFFF2F2F7).copy(alpha = 0.9f)
-                    )
-                )
-            },
-            containerColor = Color(0xFFF2F2F7)
-        ) { paddingValue ->
+        val hazeState = remember { HazeState() }
+        var navBarHeight by remember { mutableStateOf(0.dp) }
+        val density = LocalDensity.current
+
+        Box(modifier = Modifier.fillMaxSize().background(IosBackground)) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(paddingValue),
-                contentPadding = PaddingValues(bottom = 32.dp)
+                modifier = Modifier.fillMaxSize().iosHazeSource(hazeState),
+                contentPadding = PaddingValues(top = navBarHeight, bottom = 32.dp)
             ) {
                 // HERO SECTION
                 item {
@@ -105,7 +105,7 @@ fun StudentDetailScreen(
                                 rememberSharedContentState(key = "photo-${currentStudent.id}"),
                                 animatedVisibilityScope = animatedVisibilityScope
                             ),
-                            color = Color.White,
+                            color = IosCard,
                             shadowElevation = 8.dp
                         ) {
                             if (currentStudent.photo != null) {
@@ -114,14 +114,14 @@ fun StudentDetailScreen(
                                     contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
                                 )
                             } else {
-                                Box(modifier = Modifier.fillMaxSize().background(Color(0xFFE5E5EA)), contentAlignment = Alignment.Center) {
-                                    Text(currentStudent.name.take(1), fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                Box(modifier = Modifier.fillMaxSize().background(IosSeparator), contentAlignment = Alignment.Center) {
+                                    Text(currentStudent.name.take(1), fontSize = 40.sp, fontWeight = FontWeight.Bold, color = IosSecondaryLabel)
                                 }
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         Text(
                             text = currentStudent.name,
                             style = MaterialTheme.typography.headlineSmall,
@@ -132,11 +132,11 @@ fun StudentDetailScreen(
                                 animatedVisibilityScope = animatedVisibilityScope
                             )
                         )
-                        
+
                         Text(
                             text = if (currentStudent.groups.isNotEmpty()) currentStudent.groups.first().name else "Guruhsiz",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
+                            color = IosSecondaryLabel,
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
@@ -146,22 +146,22 @@ fun StudentDetailScreen(
                 item {
                     val todayStr = remember { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date()) }
                     val dayOfMonth = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_MONTH).toString()
-                    
+
                     // Priority 1: Monthly journal from dashboard (most reliable)
                     val studentInJournal = teacherViewModel.todayAttendance.value?.students?.find { it.id == studentId }
                     val todayFromJournal = studentInJournal?.attendance?.get(dayOfMonth)
-                    
+
                     // Priority 2: Recent attendance list (fallback)
-                    val todayFromList = attendance?.recent_attendance?.find { 
-                        val normalized = normalizeDate(it.date)
-                        normalized != null && normalized.startsWith(todayStr) 
-                    }
-                    
-                    val todayGrade = attendance?.grades?.find { 
+                    val todayFromList = attendance?.recent_attendance?.find {
                         val normalized = normalizeDate(it.date)
                         normalized != null && normalized.startsWith(todayStr)
                     }
-                    
+
+                    val todayGrade = attendance?.grades?.find {
+                        val normalized = normalizeDate(it.date)
+                        normalized != null && normalized.startsWith(todayStr)
+                    }
+
                     val avgScore = remember(attendance) {
                         val g = attendance?.grades ?: emptyList()
                         if (g.isEmpty()) 0 else g.map { it.score ?: 0 }.average().toInt()
@@ -169,7 +169,7 @@ fun StudentDetailScreen(
 
                     Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            iOSMetricCard(
+                            IosStatCard(
                                 modifier = Modifier.weight(1f),
                                 label = "BUGUNGI DAVOMAT",
                                 value = when {
@@ -180,67 +180,81 @@ fun StudentDetailScreen(
                                     else -> "Kelmagan"
                                 },
                                 subValue = todayFromJournal?.left_at?.let { "Ch: $it" } ?: todayFromList?.left_at?.let { "Ch: $it" },
-                                color = Color(0xFF007AFF),
-                                icon = Icons.Default.AccessTime
+                                tint = IosBlue,
+                                icon = PhosphorIcons.Regular.Clock
                             )
-                            iOSMetricCard(
+                            IosStatCard(
                                 modifier = Modifier.weight(1f),
                                 label = "O'RTACHA BAHO",
                                 value = "$avgScore",
-                                color = Color(0xFF5856D6),
-                                icon = Icons.Default.Equalizer
+                                tint = Color(0xFF5856D6),
+                                icon = PhosphorIcons.Regular.Equalizer
                             )
                         }
-                        iOSMetricCard(
+                        IosStatCard(
                             modifier = Modifier.fillMaxWidth(),
                             label = "BUGUNGI BAHO",
                             value = todayGrade?.score?.toString() ?: "Baholanmagan",
                             subValue = todayGrade?.comment,
-                            color = Color(0xFFFF9500),
-                            icon = Icons.Default.Grade
+                            tint = Color(0xFFFF9500),
+                            icon = PhosphorIcons.Regular.Star
                         )
                     }
                 }
 
                 // INFO SECTION (iOS Grouped List Style)
                 item {
-                    Text("MA'LUMOTLAR", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp))
-                    Surface(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White
-                    ) {
+                    IosSectionHeader("MA'LUMOTLAR")
+                    IosCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                         Column {
-                            ListItemiOS(Icons.Default.Phone, "Telefon", currentStudent.phone ?: "Noma'lum", isLast = false) {
-                                currentStudent.phone?.let { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$it"))) }
-                            }
-                            ListItemiOS(Icons.Default.FamilyRestroom, "Ota-ona", currentStudent.parentPhone ?: "Noma'lum", isLast = false) {
-                                currentStudent.parentPhone?.let { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$it"))) }
-                            }
-                            ListItemiOS(Icons.Default.Home, "Manzil", currentStudent.address ?: "Kiritilmagan", isLast = true)
+                            IosListRow(
+                                icon = PhosphorIcons.Regular.Phone,
+                                label = "Telefon",
+                                value = currentStudent.phone ?: "Noma'lum",
+                                isLast = false,
+                                stacked = true,
+                                showChevron = currentStudent.phone != null,
+                                onClick = currentStudent.phone?.let { phone ->
+                                    { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) }
+                                }
+                            )
+                            IosListRow(
+                                icon = PhosphorIcons.Regular.UsersThree,
+                                label = "Ota-ona",
+                                value = currentStudent.parentPhone ?: "Noma'lum",
+                                isLast = false,
+                                stacked = true,
+                                showChevron = currentStudent.parentPhone != null,
+                                onClick = currentStudent.parentPhone?.let { phone ->
+                                    { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) }
+                                }
+                            )
+                            IosListRow(
+                                icon = PhosphorIcons.Regular.House,
+                                label = "Manzil",
+                                value = currentStudent.address ?: "Kiritilmagan",
+                                isLast = true,
+                                stacked = true
+                            )
                         }
                     }
                 }
 
                 // CALENDAR / ATTENDANCE
                 item {
-                    Text("DAVOMAT JURNALI", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp))
-                    Surface(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White
-                    ) {
+                    IosSectionHeader("DAVOMAT JURNALI")
+                    IosCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                         Box(modifier = Modifier.padding(16.dp)) {
                             if (isAttLoading) {
                                 Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(color = Color(0xFF007AFF), modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                    CircularProgressIndicator(color = IosBlue, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                                 }
                             } else {
                                 val cal = Calendar.getInstance()
                                 val year = cal.get(Calendar.YEAR)
                                 val month = cal.get(Calendar.MONTH)
                                 val daysInMonth = getDaysInMonth(year, month)
-                                
+
                                 // Source of truth: try to get from the monthly journal first (dashboard data)
                                 val monthlyJournal = teacherViewModel.todayAttendance.value?.students?.find { it.id == studentId }?.attendance
                                 val attendCount = monthlyJournal?.values?.count { it.status?.lowercase() == "present" || it.status_display?.lowercase()?.contains("kelgan") == true }
@@ -248,14 +262,14 @@ fun StudentDetailScreen(
 
                                     val calMonth = Calendar.getInstance().apply { set(year, month, 1) }
                                     val firstDayOfWeek = (calMonth.get(Calendar.DAY_OF_WEEK) + 5) % 7 // Align to Monday=0
-                                    
+
                                     Column {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                             Text("${cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale("uz"))} oyi", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                                            Text("$attendCount kunda kelgan", style = MaterialTheme.typography.bodySmall, color = Color(0xFF34C759))
+                                            Text("$attendCount kunda kelgan", style = MaterialTheme.typography.bodySmall, color = IosGreen)
                                         }
                                         Spacer(modifier = Modifier.height(16.dp))
-                                        
+
                                         // Weekday Headers
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             val weekdays = listOf("Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya")
@@ -265,7 +279,7 @@ fun StudentDetailScreen(
                                                     modifier = Modifier.weight(1f),
                                                     textAlign = TextAlign.Center,
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = Color.Gray.copy(alpha = 0.5f)
+                                                    color = IosSecondaryLabel.copy(alpha = 0.5f)
                                                 )
                                             }
                                         }
@@ -278,36 +292,36 @@ fun StudentDetailScreen(
                                                     for (col in 0..6) {
                                                         val dayIndex = row * 7 + col
                                                         val day = dayIndex - firstDayOfWeek + 1
-                                                        
+
                                                         if (day in 1..daysInMonth) {
                                                             val dayStr = day.toString()
                                                             val dateKey = String.format(java.util.Locale.US, "%d-%02d-%02d", year, month + 1, day)
-                                                            
+
                                                             val recordFromJournal = monthlyJournal?.get(dayStr)
-                                                            val recordFromList = attendance?.recent_attendance?.find { 
+                                                            val recordFromList = attendance?.recent_attendance?.find {
                                                                 val norm = normalizeDate(it.date)
                                                                 norm == dateKey || norm?.startsWith(dateKey) == true
                                                             }
-                                                            
-                                                            val isPresent = recordFromJournal?.status?.lowercase() == "present" || 
+
+                                                            val isPresent = recordFromJournal?.status?.lowercase() == "present" ||
                                                                            recordFromJournal?.status_display?.lowercase()?.contains("kelgan") == true ||
-                                                                           recordFromList?.status?.lowercase() == "present" || 
+                                                                           recordFromList?.status?.lowercase() == "present" ||
                                                                            recordFromList?.status_display?.lowercase()?.contains("kelgan") == true
-                                                                           
-                                                            val isAbsent = recordFromJournal?.status?.lowercase() == "absent" || 
+
+                                                            val isAbsent = recordFromJournal?.status?.lowercase() == "absent" ||
                                                                           recordFromList?.status?.lowercase() == "absent"
-                                                            
+
                                                             Box(
                                                                 modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(6.dp)).background(
                                                                     when {
-                                                                        isPresent -> Color(0xFF34C759)
-                                                                        isAbsent -> Color(0xFFFF3B30)
-                                                                        else -> Color(0xFFF2F2F7)
+                                                                        isPresent -> IosGreen
+                                                                        isAbsent -> IosRed
+                                                                        else -> IosBackground
                                                                     }
                                                                 ),
                                                                 contentAlignment = Alignment.Center
                                                             ) {
-                                                                Text("$day", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (isPresent || isAbsent) Color.White else Color.Black)
+                                                                Text("$day", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (isPresent || isAbsent) Color.White else IosLabel)
                                                             }
                                                         } else {
                                                             Spacer(modifier = Modifier.weight(1f).aspectRatio(1f))
@@ -321,23 +335,20 @@ fun StudentDetailScreen(
                         }
                     }
                 }
-                
+
                 // EXAM RESULTS
                 if (exams.isNotEmpty()) {
                     item {
-                        Text("IMTIHON NATIJALARI", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp))
-                        Surface(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color.White
-                        ) {
+                        IosSectionHeader("IMTIHON NATIJALARI")
+                        IosCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                             Column {
                                 exams.forEachIndexed { index, exam ->
-                                    ListItemiOS(
-                                        icon = Icons.Default.Assignment,
+                                    IosListRow(
+                                        icon = PhosphorIcons.Regular.ClipboardText,
                                         label = exam.month,
                                         value = "${exam.percentage?.toInt()}% Natija",
-                                        isLast = index == exams.size - 1
+                                        isLast = index == exams.size - 1,
+                                        stacked = true
                                     )
                                 }
                             }
@@ -345,48 +356,16 @@ fun StudentDetailScreen(
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun iOSMetricCard(modifier: Modifier, label: String, value: String, subValue: String? = null, color: Color, icon: ImageVector) {
-    Surface(
-        modifier = modifier.heightIn(min = 100.dp),
-        color = Color.White,
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.Center) {
-            Icon(icon, null, tint = color.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-            if (subValue != null) {
-                Text(subValue, style = MaterialTheme.typography.bodySmall, color = Color.Gray, fontWeight = FontWeight.Medium)
-            }
-        }
-    }
-}
-
-@Composable
-fun ListItemiOS(icon: ImageVector, label: String, value: String, isLast: Boolean, onClick: (() -> Unit)? = null) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(60.dp).clickable(enabled = onClick != null) { onClick?.invoke() }.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, null, tint = Color.Gray.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = if (onClick != null) Color(0xFF007AFF) else Color.Black)
-            }
-            if (onClick != null) {
-                Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray, modifier = Modifier.size(20.dp))
-            }
-        }
-        if (!isLast) {
-            Divider(modifier = Modifier.padding(start = 52.dp), color = Color(0xFFF2F2F7), thickness = 1.dp)
+            IosNavBar(
+                title = "Talaba Profili",
+                onBack = onBack,
+                backLabel = "Orqaga",
+                hazeState = hazeState,
+                modifier = Modifier.onGloballyPositioned { coordinates ->
+                    navBarHeight = with(density) { coordinates.size.height.toDp() }
+                }
+            )
         }
     }
 }

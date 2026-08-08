@@ -38,6 +38,9 @@ import abs.uits.com.ui.navigation.Screen
 import abs.uits.com.ui.theme.UITSTheme
 import abs.uits.com.ui.teacher.TeacherDashboardScreen
 import abs.uits.com.ui.parent.ParentDashboardScreen
+import abs.uits.com.ui.theme.IosBlue
+import abs.uits.com.ui.theme.IosFilledButton
+import abs.uits.com.ui.theme.IosLabel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -269,7 +272,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 fontSize = 72.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1D1D1F),
+                                color = IosLabel,
                                 letterSpacing = (-2).sp
                             )
                         }
@@ -287,9 +290,7 @@ fun DashboardPlaceholder(role: String, onLogout: () -> Unit) {
             Text(text = "$role paneli mobil ilovada mavjud emas")
             Text(text = "Iltimos, veb-sayt orqali kiring")
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onLogout, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007AFF))) {
-                Text("Chiqish")
-            }
+            IosFilledButton(text = "Chiqish", onClick = onLogout, containerColor = IosBlue, modifier = Modifier.width(160.dp))
         }
     }
 }

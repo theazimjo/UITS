@@ -48,7 +48,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material)
-    implementation(libs.androidx.compose.material.icons.extended)
 
     // Networking
     implementation(libs.retrofit)
@@ -61,6 +60,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.coil.compose)
+
+    // iOS-style visuals: background blur ("glass") + SF Symbols-like icon set
+    implementation("dev.chrisbanes.haze:haze:1.7.2")
+    implementation("com.adamglin:phosphor-icon-android:1.0.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

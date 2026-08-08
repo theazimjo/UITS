@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import abs.uits.com.data.local.TokenManager
+import abs.uits.com.ui.theme.IosLabel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
@@ -21,10 +22,8 @@ fun SplashScreen(
     tokenManager: TokenManager,
     onNavigateNext: (String) -> Unit
 ) {
-    val themeBg = Color(0xFFFFFFFF) // White
-    val themeText = Color(0xFF1D1D1F) // Deep black
-    val iosSystemBlue = Color(0xFF007AFF) // Official iOS Blue
-    
+    val themeText = IosLabel
+
     val logoAlpha = remember { Animatable(0f) }
     var showBranding by remember { mutableStateOf(false) }
     
@@ -61,7 +60,7 @@ fun SplashScreen(
                 text = "UITS",
                 fontSize = 72.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1D1D1F),
+                color = themeText,
                 letterSpacing = (-2).sp,
                 modifier = Modifier.alpha(logoAlpha.value)
             )

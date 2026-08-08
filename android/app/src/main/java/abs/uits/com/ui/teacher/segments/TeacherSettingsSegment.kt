@@ -3,21 +3,21 @@ package abs.uits.com.ui.teacher.segments
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.Bell
+import com.adamglin.phosphoricons.regular.Person
+import com.adamglin.phosphoricons.regular.Shield
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import abs.uits.com.ui.teacher.TeacherViewModel
 import abs.uits.com.ui.teacher.components.SettingsItem
-import abs.uits.com.ui.teacher.components.BoxShadowBorder
+import abs.uits.com.ui.theme.*
 
 @Composable
 fun TeacherSettingsSegment(viewModel: TeacherViewModel, onLogout: () -> Unit) {
@@ -25,72 +25,58 @@ fun TeacherSettingsSegment(viewModel: TeacherViewModel, onLogout: () -> Unit) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp)
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 100.dp)
     ) {
         item {
-            Text(
-                "Sozlamalar", 
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            IosLargeTitle("Sozlamalar")
             Spacer(modifier = Modifier.height(32.dp))
         }
-        
+
         item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 0.5.dp,
-                border = BoxShadowBorder()
-            ) {
+            IosCard(modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        shape = CircleShape, 
-                        modifier = Modifier.size(60.dp), 
-                        color = MaterialTheme.colorScheme.surfaceVariant
+                        shape = CircleShape,
+                        modifier = Modifier.size(60.dp),
+                        color = IosBackground
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                            Icon(PhosphorIcons.Regular.Person, contentDescription = null, tint = IosBlue, modifier = Modifier.size(32.dp))
                         }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(profile?.name ?: "Ustoz", style = MaterialTheme.typography.titleMedium)
-                        Text(profile?.phone ?: "Mavjud emas", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text(profile?.phone ?: "Mavjud emas", style = MaterialTheme.typography.labelSmall, color = IosSecondaryLabel)
                     }
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))
         }
-        
+
         item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 0.5.dp,
-                border = BoxShadowBorder()
-            ) {
+            IosCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
-                    SettingsItem(Icons.Default.Shield, "Xavfsizlik")
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.padding(start = 56.dp))
-                    SettingsItem(Icons.Default.Notifications, "Bildirishnomalar")
+                    SettingsItem(PhosphorIcons.Regular.Shield, "Xavfsizlik")
+                    HorizontalDivider(color = IosSeparator.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
+                    SettingsItem(PhosphorIcons.Regular.Bell, "Bildirishnomalar")
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))
         }
-        
+
         item {
-            TextButton(
-                onClick = onLogout,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            IosCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Tizimdan chiqish", 
-                    color = Color(0xFFFF3B30), 
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    "Tizimdan chiqish",
+                    color = IosRed,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .iosPressable(onClick = onLogout)
+                        .padding(vertical = 16.dp)
                 )
             }
         }
