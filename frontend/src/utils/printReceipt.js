@@ -50,26 +50,33 @@ export const printPaymentReceipt = (payment) => {
 <title>Chek</title>
 <style>
   @page { size: 80mm auto; margin: 0; }
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-scheme: only light;
+  }
+  html, body { background: #fff; }
   body {
     width: 72mm;
     margin: 0 auto;
     padding: 3mm 4mm 6mm;
     font-family: 'Courier New', Consolas, monospace;
-    font-size: 12px;
-    line-height: 1.45;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.5;
     color: #000;
+    -webkit-font-smoothing: none;
   }
   .center { text-align: center; }
-  .bold { font-weight: 700; }
-  .brand { font-size: 16px; letter-spacing: 1px; }
-  .sub { font-size: 11px; }
-  .divider { border-top: 1px dashed #000; margin: 6px 0; }
+  .bold { font-weight: 900; }
+  .brand { font-size: 18px; letter-spacing: 1px; }
+  .sub { font-size: 12px; }
+  .divider { border-top: 2px dashed #000; margin: 6px 0; }
   .row { display: flex; justify-content: space-between; gap: 8px; }
   .row .label { color: #000; }
-  .total-row { font-size: 14px; font-weight: 700; }
-  .footer { margin-top: 8px; font-size: 11px; }
-  .small { font-size: 10px; color: #333; }
+  .total-row { font-size: 15px; font-weight: 900; }
+  .footer { margin-top: 8px; font-size: 12px; }
+  .small { font-size: 11px; color: #000; }
 </style>
 </head>
 <body>
@@ -125,18 +132,12 @@ export const printPaymentReceipt = (payment) => {
   iframe.style.width = '0';
   iframe.style.height = '0';
   iframe.style.border = '0';
-  document.body.appendChild(iframe);
 
   const cleanup = () => {
     if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
   };
 
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  iframe.onload = () => {
+  const triggerPrint = () => {
     try {
       iframe.contentWindow.focus();
       iframe.contentWindow.onafterprint = cleanup;
@@ -146,4 +147,15 @@ export const printPaymentReceipt = (payment) => {
       setTimeout(cleanup, 5000);
     }
   };
+
+  // Handler doc.write'dan OLDIN o'rnatiladi — ba'zi brauzerlarda 'load'
+  // hodisasi write/close paytida darhol otilib ketishi mumkin, shu sabab
+  // keyin biriktirilgan handler ishlamay qolishi (va chek bo'sh chiqishi) mumkin edi.
+  iframe.onload = triggerPrint;
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
 };

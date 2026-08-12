@@ -95,7 +95,7 @@ export class PaymentsService {
       entityId: saved.id,
       description: `O'quvchi to'lovi qabul qilindi: ${p?.student?.name || 'Noma\'lum'} - ${saved.amount} so'm`,
     });
-    return saved;
+    return p;
   }
 
   async findAll() {
