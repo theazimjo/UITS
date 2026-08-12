@@ -46,6 +46,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isMaintenance, setIsMaintenance] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -53,15 +54,26 @@ function App() {
     const checkStatus = async () => {
       try {
         const baseUrl = import.meta.env.VITE_API_URL || '/api';
-        const res = await fetch(`${baseUrl}/system/status`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`${baseUrl}/system/status`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (!res.ok) {
-          setIsMaintenance(true);
+          // Server javob qaytardi, lekin xatolik statusi bilan — bu tizim
+          // yangilanishi emas, serverga yetib bo'lmayotganini bildiradi.
+          setIsMaintenance(false);
+          setIsOffline(true);
           return;
         }
         const data = await res.json();
         setIsMaintenance(!!data.maintenance);
+        setIsOffline(false);
       } catch (err) {
-        setIsMaintenance(true);
+        // fetch network xatosi (internet yo'q, uzilgan, timeout) — server
+        // yangilanishi bilan aralashtirmaslik uchun alohida holat sifatida belgilanadi.
+        setIsMaintenance(false);
+        setIsOffline(true);
       }
     };
 
@@ -151,6 +163,45 @@ function App() {
               </span>
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
                 Server holati tekshirilmoqda...
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Connection Problem Overlay */}
+      {!isMaintenance && isOffline && (
+        <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md px-4 text-center select-none animate-fade-in">
+          <div className="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-100/50 dark:border-gray-700/50 flex flex-col items-center animate-scale-up">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-red-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+              <svg
+                className="w-20 h-20 text-red-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3" />
+              </svg>
+            </div>
+
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">
+              Internetga ulanishda muammo
+            </h1>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+              Serverga ulanib bo'lmadi. Iltimos, internet aloqangizni tekshiring.
+              Aloqa tiklangach, dastur <strong>avtomatik ravishda</strong> davom etadi.
+            </p>
+
+            <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 px-4 py-2 rounded-full border border-gray-100 dark:border-gray-600">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                Qayta ulanishga urinilmoqda...
               </span>
             </div>
           </div>
