@@ -299,7 +299,12 @@ def api_certificates_bulk_generate(request):
     
     temp_folder = os.path.join(settings.MEDIA_ROOT, f"bulk_{temp_folder_name}")
     os.makedirs(temp_folder, exist_ok=True)
-    
+    # Oldingi urinish xato bilan to'xtab qolgan bo'lsa, undan qolgan
+    # rasmlar shu safar tayyorlanayotgan ZIP-ga aralashib ketmasligi uchun
+    # papkani har safar boshida tozalab olamiz.
+    for stale_file in os.listdir(temp_folder):
+        os.remove(os.path.join(temp_folder, stale_file))
+
     zip_filename_clean = f"bulk_{zip_filename}"
     zip_path = os.path.join(settings.MEDIA_ROOT, zip_filename_clean)
     if os.path.exists(zip_path):
@@ -309,17 +314,26 @@ def api_certificates_bulk_generate(request):
         full_name = s.get('fullName', '').strip()
         if not full_name:
             continue
-            
-        cert_id = generate_next_cert_id()
-        
-        # Save to DB
-        Certificate.objects.create(
-            full_name=full_name,
-            cert_id=cert_id,
-            date=date_str,
-            template=template_rel
-        )
-        
+
+        # Agar bu o'quvchiga shu shablon bo'yicha sertifikat allaqachon
+        # yaratilgan bo'lsa (masalan, oldingi urinish tarmoq xatosi bilan
+        # tugagan bo'lsa-da serverda muvaffaqiyatli yaratilgan bo'lsa),
+        # yangi dublikat yozuv yaratmasdan mavjudini qayta ishlatamiz.
+        existing = Certificate.objects.filter(
+            full_name=full_name, template=template_rel
+        ).order_by('-id').first()
+
+        if existing:
+            cert_id = existing.cert_id
+        else:
+            cert_id = generate_next_cert_id()
+            Certificate.objects.create(
+                full_name=full_name,
+                cert_id=cert_id,
+                date=date_str,
+                template=template_rel
+            )
+
         # OpenCV Render
         img = img_template.copy()
         

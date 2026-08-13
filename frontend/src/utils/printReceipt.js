@@ -17,6 +17,36 @@ const escapeHtml = (value) =>
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
+const UZBEK_MONTHS = [
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+  'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
+];
+
+const formatUzbekMonth = (monthStr) => {
+  if (!monthStr) return '';
+  const str = String(monthStr).trim();
+  
+  // Extract month number (1-12) and year if present
+  // Matches "2026-08", "2026-M08", "M08", "08", etc.
+  const match = str.match(/(?:(\d{4})[^\d]*)?(\d{1,2})/);
+  if (match) {
+    const year = match[1] || new Date().getFullYear();
+    const monthNum = parseInt(match[2], 10);
+    if (monthNum >= 1 && monthNum <= 12) {
+      return `${UZBEK_MONTHS[monthNum - 1]} ${year}`;
+    }
+  }
+
+  const dateObj = new Date(str.includes('-') ? str : `${str}-01`);
+  if (!isNaN(dateObj.getTime())) {
+    const monthIdx = dateObj.getMonth();
+    const yearVal = dateObj.getFullYear();
+    return `${UZBEK_MONTHS[monthIdx]} ${yearVal}`;
+  }
+
+  return str;
+};
+
 export const printPaymentReceipt = (payment) => {
   const {
     id,
@@ -40,9 +70,7 @@ export const printPaymentReceipt = (payment) => {
   const printedAt = now.toLocaleString('uz-UZ', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
-  const monthLabel = month
-    ? new Date(`${month}-01`).toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' })
-    : '';
+  const monthLabel = formatUzbekMonth(month);
 
   const html = `<!DOCTYPE html>
 <html>
@@ -70,7 +98,7 @@ export const printPaymentReceipt = (payment) => {
   }
   .center { text-align: center; }
   .bold { font-weight: 900; }
-  .brand { font-size: 18px; letter-spacing: 1px; }
+  .brand { font-size: 16px; letter-spacing: 0.5px; }
   .sub { font-size: 12px; }
   .divider { border-top: 2px dashed #000; margin: 6px 0; }
   .row { display: flex; justify-content: space-between; gap: 8px; }
@@ -81,7 +109,7 @@ export const printPaymentReceipt = (payment) => {
 </style>
 </head>
 <body>
-  <div class="center brand bold">UITS</div>
+  <div class="center brand bold">UCHKURGAN IT SCHOOL</div>
   <div class="center sub">O'quv markazi</div>
   <div class="center sub bold" style="margin-top:4px;">TO'LOV CHEKI</div>
   <div class="divider"></div>

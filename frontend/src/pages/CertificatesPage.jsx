@@ -3,7 +3,7 @@ import {
   getCertificateCourses, getCertificates, getCertificateStats,
   getCertificateImageUrl, createCertificate, deleteCertificate, generateCertificates,
   getNextCertificateId, getAllCertificateRequests, updateCertificateRequestStatus,
-  deleteCertificateRequest, generateBulkCertificates, downloadBulkCertificatesZip
+  generateBulkCertificates, downloadBulkCertificatesZip
 } from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -237,18 +237,6 @@ const CertificatesPage = () => {
     }
   };
 
-  const handleDeleteRequest = async (id) => {
-    if (!confirm('Ushbu so\'rovni o\'chirmoqchimisiz?')) return;
-    try {
-      await deleteCertificateRequest(id);
-      toast.success('So\'rov o\'chirildi');
-      fetchAll();
-    } catch (e) {
-      console.error(e);
-      toast.error('Xatolik yuz berdi');
-    }
-  };
-
   const openPreview = (certId) => {
     setPreviewCertId(certId);
     setIsPreviewOpen(true);
@@ -397,12 +385,12 @@ const CertificatesPage = () => {
   };
 
   const colorStyles = {
-    blue: { bg: 'bg-[#007aff]/10', text: 'text-[#007aff]', border: 'group-hover:border-[#007aff]/30' },
-    indigo: { bg: 'bg-[#5856d6]/10', text: 'text-[#5856d6]', border: 'group-hover:border-[#5856d6]/30' },
-    emerald: { bg: 'bg-[#34c759]/10', text: 'text-[#34c759]', border: 'group-hover:border-[#34c759]/30' },
-    purple: { bg: 'bg-[#af52de]/10', text: 'text-[#af52de]', border: 'group-hover:border-[#af52de]/30' },
-    rose: { bg: 'bg-[#ff3b30]/10', text: 'text-[#ff3b30]', border: 'group-hover:border-[#ff3b30]/30' },
-    orange: { bg: 'bg-[#ff9500]/10', text: 'text-[#ff9500]', border: 'group-hover:border-[#ff9500]/30' },
+    blue: { bg: 'bg-[#007aff]/10', solid: 'bg-[#007aff]', text: 'text-[#007aff]', border: 'group-hover:border-[#007aff]/30' },
+    indigo: { bg: 'bg-[#5856d6]/10', solid: 'bg-[#5856d6]', text: 'text-[#5856d6]', border: 'group-hover:border-[#5856d6]/30' },
+    emerald: { bg: 'bg-[#34c759]/10', solid: 'bg-[#34c759]', text: 'text-[#34c759]', border: 'group-hover:border-[#34c759]/30' },
+    purple: { bg: 'bg-[#af52de]/10', solid: 'bg-[#af52de]', text: 'text-[#af52de]', border: 'group-hover:border-[#af52de]/30' },
+    rose: { bg: 'bg-[#ff3b30]/10', solid: 'bg-[#ff3b30]', text: 'text-[#ff3b30]', border: 'group-hover:border-[#ff3b30]/30' },
+    orange: { bg: 'bg-[#ff9500]/10', solid: 'bg-[#ff9500]', text: 'text-[#ff9500]', border: 'group-hover:border-[#ff9500]/30' },
   };
 
   const statsList = [
@@ -465,10 +453,10 @@ const CertificatesPage = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Talaba ismi yoki ID..."
-              className="bg-transparent text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] outline-none border-none w-full placeholder-gray-450"
+              className="bg-transparent text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] outline-none border-none w-full placeholder-gray-400"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-650">
+              <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
                 <X size={12} />
               </button>
             )}
@@ -587,17 +575,16 @@ const CertificatesPage = () => {
                 {statsList.map((stat, i) => (
                   <div
                     key={i}
-                    className="bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm flex flex-col justify-between group hover:-translate-y-0.5 transition-all duration-300"
+                    className="relative bg-white/60 dark:bg-black/20 backdrop-blur-md p-4 pl-5 rounded-xl border border-gray-200/50 dark:border-white/10 shadow-sm flex items-center gap-3.5 group hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 overflow-hidden"
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
-                        {stat.icon}
-                      </div>
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorStyles[stat.color].solid}`} />
+                    <div className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${colorStyles[stat.color].bg} ${colorStyles[stat.color].text}`}>
+                      {stat.icon}
                     </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-gray-555 dark:text-gray-400 uppercase tracking-tight truncate">{stat.label}</p>
-                      <h3 className="text-xl font-bold text-[#1d1d1f] dark:text-white tracking-tight mt-0.5">{stat.value}</h3>
-                      <p className="text-[9px] text-gray-400 mt-1 line-clamp-1">{stat.sub}</p>
+                    <div className="min-w-0">
+                      <p className="text-[10.5px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">{stat.label}</p>
+                      <h3 className="text-[20px] font-bold text-[#1d1d1f] dark:text-white tracking-tight mt-0.5 leading-tight truncate">{stat.value}</h3>
+                      <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{stat.sub}</p>
                     </div>
                   </div>
                 ))}
@@ -609,10 +596,10 @@ const CertificatesPage = () => {
                   <table className="w-full text-left text-[13px]">
                     <thead className="bg-gray-100/50 dark:bg-black/40 text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10 sticky top-0 backdrop-blur-xl z-10">
                       <tr>
-                        <th className="px-5 py-2.5 font-medium">Talaba ma'lumotlari</th>
-                        <th className="px-5 py-2.5 font-medium">Sertifikat ID</th>
-                        <th className="px-5 py-2.5 font-medium">Berilgan sana</th>
-                        <th className="px-5 py-2.5 font-medium text-right"></th>
+                        <th className="px-5 py-3 font-bold text-[10.5px] uppercase tracking-wide">Talaba ma'lumotlari</th>
+                        <th className="px-5 py-3 font-bold text-[10.5px] uppercase tracking-wide">Sertifikat ID</th>
+                        <th className="px-5 py-3 font-bold text-[10.5px] uppercase tracking-wide">Berilgan sana</th>
+                        <th className="px-5 py-3 font-bold text-[10.5px] uppercase tracking-wide text-right">Amallar</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
@@ -639,7 +626,7 @@ const CertificatesPage = () => {
                             key={cert.id}
                             className="hover:bg-[#007aff]/5 dark:hover:bg-white/5 transition-colors group"
                           >
-                            <td className="px-5 py-3">
+                            <td className="px-5 py-3.5">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-[12px] shadow-sm shrink-0">
                                   {(cert.fullName || 'S').substring(0, 1).toUpperCase()}
@@ -648,23 +635,25 @@ const CertificatesPage = () => {
                                   <p className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7] group-hover:text-[#007aff] transition-colors">
                                     {cert.fullName}
                                   </p>
-                                  <p className="text-[11px] text-gray-505 dark:text-gray-400 mt-0.5">
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                                     {getCourseName(cert.template)}
                                   </p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                              {cert.certId}
+                            <td className="px-5 py-3.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-white/10 font-semibold text-gray-700 dark:text-gray-300 tabular-nums text-[12px]">
+                                {cert.certId}
+                              </span>
                             </td>
-                            <td className="px-5 py-3 text-gray-600 dark:text-gray-450 font-medium text-[12px]">
+                            <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 font-medium text-[12px]">
                               {cert.date}
                             </td>
-                            <td className="px-5 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <td className="px-5 py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={() => openPreview(cert.certId)}
-                                  className="p-1 text-gray-450 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded transition-all cursor-pointer"
+                                  className="p-1.5 text-gray-400 hover:text-[#007aff] hover:bg-[#007aff]/10 rounded-lg transition-all cursor-pointer"
                                   title="Ko'rish"
                                 >
                                   <Eye size={15} />
@@ -673,14 +662,14 @@ const CertificatesPage = () => {
                                   href={getCertificateImageUrl(cert.certId) + '?download=true'}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-1 text-gray-450 hover:text-[#34c759] hover:bg-[#34c759]/10 rounded transition-all cursor-pointer"
+                                  className="p-1.5 text-gray-400 hover:text-[#34c759] hover:bg-[#34c759]/10 rounded-lg transition-all cursor-pointer"
                                   title="Yuklab olish"
                                 >
                                   <Download size={15} />
                                 </a>
                                 <button
                                   onClick={() => handleDelete(cert.id, cert.fullName)}
-                                  className="p-1 text-gray-450 hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded transition-all cursor-pointer"
+                                  className="p-1.5 text-gray-400 hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded-lg transition-all cursor-pointer"
                                   title="O'chirish"
                                 >
                                   <Trash2 size={15} />
@@ -705,6 +694,13 @@ const CertificatesPage = () => {
                     </tbody>
                   </table>
                 </div>
+                {!loading && filteredCertificates.length > 0 && (
+                  <div className="px-5 py-2 border-t border-gray-200/50 dark:border-white/10 bg-gray-100/40 dark:bg-black/30 shrink-0">
+                    <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                      {filteredCertificates.length} ta natija ko'rsatilmoqda
+                    </p>
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -721,37 +717,51 @@ const CertificatesPage = () => {
                   <p className="text-[12px] text-gray-500 mt-1">Hozircha o'qituvchilar tomonidan yuborilgan sertifikat so'rovlari yo'q.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {requests.map((req) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {requests.map((req) => {
+                    const statusMap = {
+                      PENDING: { label: 'Kutilmoqda', chip: 'bg-amber-500/10 text-amber-600', bar: 'bg-amber-500' },
+                      APPROVED: { label: 'Tasdiqlangan', chip: 'bg-emerald-500/10 text-emerald-600', bar: 'bg-emerald-500' },
+                      REJECTED: { label: 'Rad etilgan', chip: 'bg-rose-500/10 text-rose-600', bar: 'bg-rose-500' },
+                    };
+                    const st = statusMap[req.status] || statusMap.PENDING;
+                    return (
                     <div
                       key={req.id}
-                      className="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[24px] border border-gray-200/50 dark:border-white/10 shadow-sm p-6 flex flex-col justify-between"
+                      className="relative bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-[20px] border border-gray-200/50 dark:border-white/10 shadow-sm p-5 pl-6 flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow duration-300"
                     >
+                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${st.bar}`} />
                       <div>
                         <div className="flex justify-between items-start mb-3 gap-2">
-                          <div>
-                            <h4 className="text-[15px] font-bold text-[#1d1d1f] dark:text-white leading-tight">
+                          <div className="min-w-0">
+                            <h4 className="text-[15px] font-bold text-[#1d1d1f] dark:text-white leading-tight truncate">
                               {req.groupName}
                             </h4>
-                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                              Kurs: <span className="font-semibold text-gray-700 dark:text-gray-300">{req.courseName}</span>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                              <BookOpen size={11} className="shrink-0" />
+                              <span className="font-semibold text-gray-700 dark:text-gray-300 truncate">{req.courseName}</span>
                             </p>
                           </div>
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase ${
-                            req.status === 'PENDING' ? 'bg-amber-500/10 text-amber-600' :
-                            req.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
-                            'bg-rose-500/10 text-rose-600'
-                          }`}>
-                            {req.status === 'PENDING' ? 'Kutilmoqda' : req.status === 'APPROVED' ? 'Tasdiqlangan' : 'Rad etilgan'}
+                          <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase ${st.chip}`}>
+                            {st.label}
                           </span>
                         </div>
 
-                        <div className="text-[12px] text-gray-555 dark:text-gray-400 space-y-1 mb-4 border-t border-b border-gray-150/40 dark:border-white/5 py-2.5">
-                          <p>Yuboruvchi: <span className="font-semibold text-[#1d1d1f] dark:text-white">{req.teacherName}</span></p>
-                          <p>Yuborilgan sana: <span>{new Date(req.createdAt).toLocaleDateString('uz-UZ')}</span></p>
-                          <p>Sertifikat sanasi: <span className="font-bold text-[#007aff] dark:text-[#30a2ff]">{req.issueDate || 'Kiritilmagan'}</span></p>
+                        <div className="text-[12px] text-gray-600 dark:text-gray-400 grid grid-cols-1 gap-1.5 mb-4 border-t border-b border-gray-200/50 dark:border-white/5 py-3">
+                          <p className="flex items-center gap-2">
+                            <User size={12} className="text-gray-400 shrink-0" />
+                            Yuboruvchi: <span className="font-semibold text-[#1d1d1f] dark:text-white">{req.teacherName}</span>
+                          </p>
+                          <p className="flex items-center gap-2">
+                            <Calendar size={12} className="text-gray-400 shrink-0" />
+                            Yuborilgan: <span>{new Date(req.createdAt).toLocaleDateString('uz-UZ')}</span>
+                          </p>
+                          <p className="flex items-center gap-2">
+                            <Hash size={12} className="text-gray-400 shrink-0" />
+                            Sertifikat sanasi: <span className="font-bold text-[#007aff] dark:text-[#30a2ff]">{req.issueDate || 'Kiritilmagan'}</span>
+                          </p>
                           {req.message && (
-                            <p className="italic text-gray-555 dark:text-gray-400 mt-1.5 flex gap-1 bg-gray-50 dark:bg-white/5 p-2 rounded-lg">
+                            <p className="italic text-gray-500 dark:text-gray-400 mt-1 flex gap-1.5 bg-gray-50 dark:bg-white/5 p-2 rounded-lg">
                               <MessageSquare size={12} className="shrink-0 mt-0.5" />
                               <span>"{req.message}"</span>
                             </p>
@@ -775,7 +785,7 @@ const CertificatesPage = () => {
                         </div>
                       </div>
 
-                      <div className="flex gap-2 pt-3 border-t border-gray-150/40 dark:border-white/5 mt-auto">
+                      <div className="flex gap-2 pt-3 border-t border-gray-200/50 dark:border-white/5 mt-auto">
                         {req.status === 'PENDING' && (
                           <>
                             <button
@@ -801,36 +811,26 @@ const CertificatesPage = () => {
                             </button>
                           </>
                         )}
-                        {req.status !== 'PENDING' && (
-                          <div className="flex flex-col gap-2 w-full">
-                            {req.status === 'APPROVED' && (
-                              <button
-                                onClick={() => handleDownloadApprovedZip(req)}
-                                disabled={downloadingZipId !== null}
-                                className="w-full py-2 text-[12px] font-bold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                              >
-                                {downloadingZipId === req.id ? (
-                                  <Loader2 size={13} className="animate-spin" />
-                                ) : (
-                                  <>
-                                    <Download size={13} />
-                                    Yuklab olish (ZIP)
-                                  </>
-                                )}
-                              </button>
+                        {req.status === 'APPROVED' && (
+                          <button
+                            onClick={() => handleDownloadApprovedZip(req)}
+                            disabled={downloadingZipId !== null}
+                            className="w-full py-2 text-[12px] font-bold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            {downloadingZipId === req.id ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <>
+                                <Download size={13} />
+                                Yuklab olish (ZIP)
+                              </>
                             )}
-                            <button
-                              onClick={() => handleDeleteRequest(req.id)}
-                              className="w-full py-2 text-[12px] font-bold text-gray-550 dark:text-gray-400 hover:text-rose-600 bg-gray-100 dark:bg-white/5 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center gap-1"
-                            >
-                              <Trash2 size={13} />
-                              So'rovni o'chirish
-                            </button>
-                          </div>
+                          </button>
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
