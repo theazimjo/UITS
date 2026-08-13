@@ -51,6 +51,10 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
+    // Bitta tasodifiy/vaqtinchalik uzilish overlay chiqarmasligi uchun,
+    // faqat ketma-ket 2 marta muvaffaqiyatsiz bo'lgandagina offline deb belgilanadi.
+    let consecutiveFailures = 0;
+
     const checkStatus = async () => {
       try {
         const baseUrl = import.meta.env.VITE_API_URL || '/api';
@@ -62,18 +66,21 @@ function App() {
         if (!res.ok) {
           // Server javob qaytardi, lekin xatolik statusi bilan — bu tizim
           // yangilanishi emas, serverga yetib bo'lmayotganini bildiradi.
+          consecutiveFailures += 1;
           setIsMaintenance(false);
-          setIsOffline(true);
+          if (consecutiveFailures >= 2) setIsOffline(true);
           return;
         }
+        consecutiveFailures = 0;
         const data = await res.json();
         setIsMaintenance(!!data.maintenance);
         setIsOffline(false);
       } catch (err) {
         // fetch network xatosi (internet yo'q, uzilgan, timeout) — server
         // yangilanishi bilan aralashtirmaslik uchun alohida holat sifatida belgilanadi.
+        consecutiveFailures += 1;
         setIsMaintenance(false);
-        setIsOffline(true);
+        if (consecutiveFailures >= 2) setIsOffline(true);
       }
     };
 

@@ -33,7 +33,8 @@ export const printPaymentReceipt = (payment) => {
     cashierName,
   } = payment;
 
-  const total = Number(amount) - Number(discount || 0) + Number(penalty || 0);
+  const total = Number(amount) || 0;
+  const baseAmount = total + Number(discount || 0) - Number(penalty || 0);
   const paymentTypeLabel = PAYMENT_TYPE_LABELS[paymentType] || paymentType || '';
   const now = new Date();
   const printedAt = now.toLocaleString('uz-UZ', {
@@ -55,11 +56,11 @@ export const printPaymentReceipt = (payment) => {
     -webkit-print-color-adjust: exact;
     print-color-scheme: only light;
   }
-  html, body { background: #fff; }
+  html, body { background: #fff; margin: 0; padding: 0; }
   body {
     width: 72mm;
     margin: 0 auto;
-    padding: 3mm 4mm 6mm;
+    padding: 3mm 4mm 12mm;
     font-family: 'Courier New', Consolas, monospace;
     font-weight: 700;
     font-size: 13px;
@@ -101,11 +102,11 @@ export const printPaymentReceipt = (payment) => {
 
   <div class="row" style="margin-top:4px;"><span class="label">Guruh:</span><span>${escapeHtml(groupName || '-')}</span></div>
   <div class="row"><span class="label">O'qituvchi:</span><span>${escapeHtml(teacherName || '-')}</span></div>
-  <div class="row"><span class="label">Hisobot oyi:</span><span>${escapeHtml(monthLabel)}</span></div>
+  <div class="row"><span class="label">To'lov oyi:</span><span>${escapeHtml(monthLabel)}</span></div>
 
   <div class="divider"></div>
 
-  <div class="row"><span>Asosiy summa:</span><span>${formatMoney(amount)}</span></div>
+  <div class="row"><span>Asosiy summa:</span><span>${formatMoney(baseAmount)}</span></div>
   ${Number(discount) > 0 ? `<div class="row"><span>Chegirma:</span><span>-${formatMoney(discount)}</span></div>` : ''}
   ${Number(penalty) > 0 ? `<div class="row"><span>Jarima:</span><span>+${formatMoney(penalty)}</span></div>` : ''}
 
@@ -118,10 +119,15 @@ export const printPaymentReceipt = (payment) => {
   <div class="row small"><span>To'lov turi:</span><span>${escapeHtml(paymentTypeLabel)}</span></div>
   <div class="row small"><span>To'lov sanasi:</span><span>${escapeHtml(paymentDate || '-')}</span></div>
   ${cashierName ? `<div class="row small"><span>Qabul qildi:</span><span>${escapeHtml(cashierName)}</span></div>` : ''}
-  ${comment ? `<div class="small" style="margin-top:4px;">Izoh: ${escapeHtml(comment)}</div>` : ''}
-
-  <div class="divider"></div>
-  <div class="center footer">Xaridingiz uchun rahmat!</div>
+  <!-- Qo'lda uziladigan printerlar uchun qog'ozni tepaga surish (Feed Lines) -->
+  <div style="margin-top: 8px; font-size: 15px; line-height: 1.8; user-select: none;">
+    &nbsp;<br/>
+    &nbsp;<br/>
+    &nbsp;<br/>
+    &nbsp;<br/>
+    &nbsp;<br/>
+    .
+  </div>
 </body>
 </html>`;
 
@@ -132,30 +138,42 @@ export const printPaymentReceipt = (payment) => {
   iframe.style.width = '0';
   iframe.style.height = '0';
   iframe.style.border = '0';
+  iframe.style.visibility = 'hidden';
 
+  let cleanedUp = false;
   const cleanup = () => {
-    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-  };
-
-  const triggerPrint = () => {
-    try {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.onafterprint = cleanup;
-      iframe.contentWindow.print();
-    } finally {
-      // Ba'zi brauzerlarda 'afterprint' ishlamasligi mumkin — zaxira tozalash
-      setTimeout(cleanup, 5000);
+    if (!cleanedUp) {
+      cleanedUp = true;
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
     }
   };
 
-  // Handler doc.write'dan OLDIN o'rnatiladi — ba'zi brauzerlarda 'load'
-  // hodisasi write/close paytida darhol otilib ketishi mumkin, shu sabab
-  // keyin biriktirilgan handler ishlamay qolishi (va chek bo'sh chiqishi) mumkin edi.
-  iframe.onload = triggerPrint;
   document.body.appendChild(iframe);
 
-  const doc = iframe.contentWindow.document;
+  const doc = iframe.contentWindow?.document || iframe.contentDocument;
+  if (!doc) {
+    console.error("Iframe document not accessible for receipt printing");
+    cleanup();
+    return;
+  }
+
   doc.open();
   doc.write(html);
   doc.close();
+
+  // Brauzerga HTML va CSS render qilish uchun biroz vaqt beriladi (250ms)
+  setTimeout(() => {
+    try {
+      const win = iframe.contentWindow || iframe.contentDocument?.defaultView;
+      if (win) {
+        win.focus();
+        win.onafterprint = cleanup;
+        win.print();
+      }
+    } catch (err) {
+      console.error('Print error:', err);
+    } finally {
+      setTimeout(cleanup, 3000);
+    }
+  }, 250);
 };

@@ -2,6 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import fs from 'fs'
+
+// Docker konteynerda ishlayotganligini aniqlash (/.dockerenv mavjud bo'lsa Docker deb olinadi)
+const isDocker = fs.existsSync('/.dockerenv')
+
+const defaultBackend = isDocker ? 'http://backend:3000' : 'http://localhost:3000'
+const defaultCertificate = isDocker ? 'http://certificate:8000' : 'http://localhost:8000'
+
+const backendTarget = process.env.VITE_BACKEND_URL || process.env.BACKEND_URL || defaultBackend
+const certificateTarget = process.env.VITE_CERTIFICATE_URL || defaultCertificate
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -41,12 +51,12 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:3000',
+        target: backendTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/sertifikat': {
-        target: 'http://certificate:8000',
+        target: certificateTarget,
         changeOrigin: true,
       },
     },
